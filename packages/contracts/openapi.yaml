@@ -1,0 +1,508 @@
+openapi: 3.0.3
+info:
+  title: API de gestión de incidencias
+  version: 0.1.0
+  description: >-
+    Contrato inicial de la plataforma. Las operaciones se implementarán por
+    iteración; publicar este archivo no implica que los endpoints estén activos.
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Desarrollo local (desde Iteración 1)
+tags:
+  - name: Auth
+  - name: Incidents
+  - name: Operations
+  - name: Institutions
+  - name: Public
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Registrar ciudadano
+      operationId: registerCitizen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Cuenta creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Sesión iniciada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /incidents:
+    post:
+      tags: [Incidents]
+      summary: Crear reporte ciudadano o preliminar de invitado
+      description: >-
+        Un invitado genera un reporte no verificado. La misma Idempotency-Key
+        debe devolver el mismo reporte al reintentar, sin crear duplicados.
+      operationId: createIncident
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIncidentRequest'
+      responses:
+        '201':
+          description: Reporte recibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentReceipt'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /incidents/mine:
+    get:
+      tags: [Incidents]
+      summary: Listar reportes propios
+      operationId: listMyIncidents
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Reportes del ciudadano autenticado
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/IncidentSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /incidents/{id}:
+    get:
+      tags: [Incidents]
+      summary: Obtener detalle autorizado
+      operationId: getIncident
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IncidentId'
+      responses:
+        '200':
+          description: Detalle del reporte
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentDetail'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /incidents/{id}/evidence:
+    post:
+      tags: [Incidents]
+      summary: Adjuntar fotografía al reporte
+      operationId: uploadIncidentEvidence
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IncidentId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Fotografía almacenada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceMetadata'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /ops/incidents:
+    get:
+      tags: [Operations]
+      summary: Bandeja institucional filtrada por ámbito autorizado
+      operationId: listOperationalIncidents
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/IncidentStatus' }
+      responses:
+        '200':
+          description: Incidencias autorizadas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/IncidentSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /ops/incidents/{id}/status:
+    patch:
+      tags: [Operations]
+      summary: Actualizar estado de atención
+      operationId: updateIncidentStatus
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IncidentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/IncidentStatus' }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: Estado actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentSummary' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /ops/incidents/{id}/assignments:
+    post:
+      tags: [Operations]
+      summary: Asignar institución, sede, unidades y personal
+      operationId: createAssignment
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IncidentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssignmentRequest'
+      responses:
+        '201':
+          description: Asignación creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Assignment' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/institutions:
+    get:
+      tags: [Institutions]
+      summary: Listar instituciones autorizadas
+      operationId: listInstitutions
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Instituciones visibles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Institution' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Institutions]
+      summary: Registrar institución
+      operationId: createInstitution
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInstitutionRequest' }
+      responses:
+        '201':
+          description: Institución creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Institution' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /public/directory:
+    get:
+      tags: [Public]
+      summary: Directorio de emergencias por territorio
+      operationId: getEmergencyDirectory
+      parameters:
+        - name: districtId
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Números nacionales y locales aplicables
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DirectoryEntry' }
+  /public/alerts:
+    get:
+      tags: [Public]
+      summary: Alertas públicas vigentes
+      operationId: listPublicAlerts
+      responses:
+        '200':
+          description: Alertas activas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PublicAlert' }
+  /public/heatmap:
+    get:
+      tags: [Public]
+      summary: Agregados espaciales sin ubicaciones exactas sensibles
+      operationId: getPublicHeatmap
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: categoryId
+          in: query
+          schema: { type: string }
+        - name: districtId
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Conteos por celda agregada
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/HeatmapCell' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IncidentId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Identificador único del intento de creación generado por el cliente.
+      schema: { type: string, minLength: 1, maxLength: 128 }
+  responses:
+    BadRequest:
+      description: Solicitud inválida
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Unauthorized:
+      description: Autenticación requerida o inválida
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Forbidden:
+      description: Acceso fuera del rol o ámbito autorizado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Conflict:
+      description: Conflicto de estado o duplicidad
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    TooManyRequests:
+      description: Límite de solicitudes superado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+  schemas:
+    ApiError:
+      type: object
+      required: [code, message, correlationId]
+      properties:
+        code: { type: string, example: VALIDATION_ERROR }
+        message: { type: string }
+        correlationId: { type: string }
+    RegisterRequest:
+      type: object
+      required: [name, email, password, acceptedTerms]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 150 }
+        email: { type: string, format: email }
+        password: { type: string, format: password, minLength: 12 }
+        acceptedTerms: { type: boolean, enum: [true] }
+    User:
+      type: object
+      required: [id, name, email, role]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    AuthTokens:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        tokenType: { type: string, enum: [Bearer] }
+        expiresIn: { type: integer, description: Duración en segundos }
+    Coordinates:
+      type: object
+      required: [latitude, longitude, capturedAt]
+      properties:
+        latitude: { type: number, format: double, minimum: -90, maximum: 90 }
+        longitude: { type: number, format: double, minimum: -180, maximum: 180 }
+        accuracyMeters: { type: number, minimum: 0 }
+        capturedAt: { type: string, format: date-time }
+        reference: { type: string, maxLength: 500 }
+    CreateIncidentRequest:
+      type: object
+      required: [categoryId, location, description]
+      properties:
+        categoryId: { type: string }
+        subcategoryId: { type: string }
+        location: { $ref: '#/components/schemas/Coordinates' }
+        description: { type: string, minLength: 1, maxLength: 2000 }
+        affectedPeople: { type: integer, minimum: 0 }
+    IncidentStatus:
+      type: string
+      enum: [reported, verifying, assigned, en_route, attending, resolved, closed]
+    IncidentReceipt:
+      type: object
+      required: [id, reference, status, verified, createdAt]
+      properties:
+        id: { type: string }
+        reference: { type: string }
+        status: { $ref: '#/components/schemas/IncidentStatus' }
+        verified: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    IncidentSummary:
+      allOf:
+        - $ref: '#/components/schemas/IncidentReceipt'
+        - type: object
+          properties:
+            categoryId: { type: string }
+            subcategoryId: { type: string }
+    IncidentDetail:
+      allOf:
+        - $ref: '#/components/schemas/IncidentSummary'
+        - type: object
+          properties:
+            description: { type: string }
+            location: { $ref: '#/components/schemas/Coordinates' }
+            evidence: { type: array, items: { $ref: '#/components/schemas/EvidenceMetadata' } }
+    EvidenceMetadata:
+      type: object
+      required: [id, mediaType, uploadedAt]
+      properties:
+        id: { type: string }
+        mediaType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        uploadedAt: { type: string, format: date-time }
+    CreateAssignmentRequest:
+      type: object
+      required: [institutionId, siteId]
+      properties:
+        institutionId: { type: string }
+        siteId: { type: string }
+        unitIds: { type: array, items: { type: string }, uniqueItems: true }
+        personnelIds: { type: array, items: { type: string }, uniqueItems: true }
+    Assignment:
+      allOf:
+        - $ref: '#/components/schemas/CreateAssignmentRequest'
+        - type: object
+          required: [id, incidentId, createdAt]
+          properties:
+            id: { type: string }
+            incidentId: { type: string }
+            createdAt: { type: string, format: date-time }
+    CreateInstitutionRequest:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        type: { type: string, enum: [pnp, samu, bomberos, municipalidad, otra] }
+        contactPhone: { type: string }
+    Institution:
+      allOf:
+        - $ref: '#/components/schemas/CreateInstitutionRequest'
+        - type: object
+          required: [id, active]
+          properties:
+            id: { type: string }
+            active: { type: boolean }
+    DirectoryEntry:
+      type: object
+      required: [name, phone, scope]
+      properties:
+        name: { type: string }
+        phone: { type: string }
+        scope: { type: string, enum: [national, local] }
+        institutionId: { type: string }
+    PublicAlert:
+      type: object
+      required: [id, title, message, validUntil]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        message: { type: string }
+        validUntil: { type: string, format: date-time }
+        districtIds: { type: array, items: { type: string } }
+    HeatmapCell:
+      type: object
+      required: [cellId, count]
+      properties:
+        cellId: { type: string, description: "Identificador de celda agregada, no punto GPS" }
+        count: { type: integer, minimum: 0 }
