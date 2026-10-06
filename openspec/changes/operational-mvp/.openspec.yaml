@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-10-05
+goal: Implementar un MVP operativo completo de la plataforma móvil y web para
+  gestión de desastres, emergencias y violencias, listo para despliegue y
+  posterior configuración con Cloudflare
