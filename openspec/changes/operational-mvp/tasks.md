@@ -135,8 +135,8 @@
 
 ## 12. Integración del piloto
 
-- [ ] 12.1 Ejecutar todas las pruebas API, React y Flutter, incluidas las existentes de health checks; guardar resultados observables sin declarar éxitos no ejecutados.
-- [ ] 12.2 Ejecutar migraciones y seed DEMO sobre MySQL real aislado; verificar estado de base, cuenta de aplicación no root y ausencia de cambios manuales.
+- [x] 12.1 Ejecutar todas las pruebas API, React y Flutter, incluidas las existentes de health checks; guardar resultados observables sin declarar éxitos no ejecutados.
+- [x] 12.2 Ejecutar migraciones y seed DEMO sobre MySQL real aislado; verificar estado de base, cuenta de aplicación no root y ausencia de cambios manuales.
 - [ ] 12.3 Ejecutar recorrido E2E Android→API→MySQL→panel→Android con GPS, foto, clasificación, asignación, estados, mapa, heatmap, directorio y auditoría; registrar referencias y resultados.
-- [ ] 12.4 Comprobar errores de MySQL caído, credenciales inválidas, acceso cruzado, pérdida de red y foto inválida sin filtrar secretos; guardar resultados de prueba.
-- [ ] 12.5 Revisar OpenAPI frente a rutas reales, ejecutar `openspec validate operational-mvp --strict` y `git status`; registrar pendientes antes de declarar terminado el MVP.
+- [x] 12.4 Comprobar errores de MySQL caído, credenciales inválidas, acceso cruzado, pérdida de red y foto inválida sin filtrar secretos; guardar resultados de prueba.
+- [x] 12.5 Revisar OpenAPI frente a rutas reales, ejecutar `openspec validate operational-mvp --strict` y `git status`; registrar pendientes antes de declarar terminado el MVP.
