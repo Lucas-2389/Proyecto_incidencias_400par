@@ -26,6 +26,7 @@ tags:
   - name: Operations
   - name: Institutions
   - name: Territory
+  - name: Resources
   - name: Public
 paths:
   /api/health:
@@ -687,6 +688,182 @@ paths:
               schema: { $ref: '#/components/schemas/InstitutionalUser' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /resources/personnel:
+    get:
+      tags: [Resources]
+      operationId: listPersonnel
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: institutionId, in: query, schema: { type: string } }
+        - { name: siteId, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Personal visible del ámbito
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Personnel' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Resources]
+      operationId: createPersonnel
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PersonnelInput' }
+      responses:
+        '201':
+          description: Personal creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Personnel' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /resources/personnel/{id}:
+    get:
+      tags: [Resources]
+      operationId: getPersonnel
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '200':
+          description: Personal autorizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Personnel' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Resources]
+      operationId: updatePersonnel
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PersonnelInput' }
+      responses:
+        '200':
+          description: Personal actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Personnel' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Resources]
+      operationId: deactivatePersonnel
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '204': { description: Personal desactivado }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /resources/units:
+    get:
+      tags: [Resources]
+      operationId: listUnits
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: institutionId, in: query, schema: { type: string } }
+        - { name: siteId, in: query, schema: { type: string } }
+        - { name: available, in: query, schema: { type: boolean }, description: Solo unidades disponibles si es true }
+      responses:
+        '200':
+          description: Unidades visibles del ámbito
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Unit' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+    post:
+      tags: [Resources]
+      operationId: createUnit
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UnitInput' }
+      responses:
+        '201':
+          description: Unidad creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Unit' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /resources/units/{id}:
+    get:
+      tags: [Resources]
+      operationId: getUnit
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '200':
+          description: Unidad autorizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Unit' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Resources]
+      operationId: updateUnit
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UnitInput' }
+      responses:
+        '200':
+          description: Unidad actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Unit' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Resources]
+      operationId: deactivateUnit
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '204': { description: Unidad fuera de servicio }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /resources/units/{id}/status:
+    patch:
+      tags: [Resources]
+      operationId: changeUnitStatus
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/UnitStatus' }
+                note: { type: string, maxLength: 500 }
+      responses:
+        '200':
+          description: Cambio válido persistido en historial
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Unit' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
   /public/directory:
     get:
       tags: [Public]
@@ -821,6 +998,46 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
   schemas:
+    PersonnelInput:
+      type: object
+      required: [institutionId, siteId, code, name]
+      properties:
+        institutionId: { type: string, format: uuid }
+        siteId: { type: string, format: uuid }
+        code: { type: string, maxLength: 50 }
+        name: { type: string, maxLength: 150 }
+        roleDescription: { type: string, maxLength: 100, nullable: true }
+        active: { type: boolean }
+    Personnel:
+      allOf:
+        - { $ref: '#/components/schemas/PersonnelInput' }
+        - type: object
+          required: [id, active, isDemo]
+          properties:
+            id: { type: string, format: uuid }
+            isDemo: { type: boolean }
+    UnitInput:
+      type: object
+      required: [institutionId, siteId, code, type]
+      properties:
+        institutionId: { type: string, format: uuid }
+        siteId: { type: string, format: uuid }
+        code: { type: string, maxLength: 50 }
+        type: { type: string, maxLength: 80 }
+        plate: { type: string, maxLength: 30, nullable: true }
+        capacityDescription: { type: string, maxLength: 200, nullable: true }
+    UnitStatus:
+      type: string
+      enum: [available, assigned, en_route, attending, returning, maintenance, out_of_service]
+    Unit:
+      allOf:
+        - { $ref: '#/components/schemas/UnitInput' }
+        - type: object
+          required: [id, status, isDemo]
+          properties:
+            id: { type: string, format: uuid }
+            status: { $ref: '#/components/schemas/UnitStatus' }
+            isDemo: { type: boolean }
     Territory:
       type: object
       required: [id, code, name, isDemo]

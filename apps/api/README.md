@@ -121,6 +121,35 @@ Para cargar coberturas DEMO, usar el seed explícito anterior; cada sede recibe 
 
 Para sustituir datos DEMO por límites autorizados: obtener la fuente oficial y su licencia, validar vigencia y geometrías fuera del repositorio, preparar un respaldo y una base de ensayo aislada, importar territorios y polígonos SRID 4326 mediante una migración o importador versionado revisado, y verificar puntos interiores, bordes y ausencia de cobertura antes de habilitar derivación. Registrar procedencia y aprobación del dato; no modificar el seed DEMO para hacerlo pasar por oficial. Desactivar zonas DEMO en el entorno de destino solo después de comprobar la cobertura aprobada. Esta iteración no incluye un importador de límites oficiales.
 
+### Personal y unidades
+
+`/api/v1/resources/personnel` y `/api/v1/resources/units` aceptan `GET` y `POST`; `/{id}` acepta `GET`, `PATCH` y `DELETE` (desactivación, sin borrar historial). Las altas exigen `institutionId`, `siteId` y código único dentro de la institución. El personal agrega `name` y `roleDescription`; las unidades agregan `type`, `plate` opcional y `capacityDescription` opcional. Un AdministradorInstitucional solo modifica recursos de sus sedes; un Operador puede consultar. `GET /api/v1/resources/units?institutionId=...&siteId=...&available=true` excluye Mantenimiento, Fuera de servicio y cualquier estado distinto de Disponible.
+
+El estado de unidad se cambia con `PATCH /api/v1/resources/units/{id}/status`, cuerpo `{"status":"maintenance","note":"Revisión programada"}`. Los valores son `available`, `assigned`, `en_route`, `attending`, `returning`, `maintenance` y `out_of_service`. El servidor valida cada transición, exige una asignación activa para estados operativos, impide liberar una unidad todavía asignada y registra actor, estado anterior, nuevo estado y nota en `unit_status_history`. El cambio de sede exige una unidad disponible; una sede ajena o inactiva se rechaza.
+
+Ejemplo reproducible sobre una base DEMO de pruebas, con `JWT_SECRET` local configurado. En una terminal, arrancar la API contra la base aislada y no contra `incidencias`:
+
+```powershell
+$env:DB_NAME = 'incidencias_full_test'
+npm --prefix apps/api start
+```
+
+En otra terminal, iniciar sesión con la cuenta DEMO creada por el seed y listar recursos de su sede. La contraseña se pide en la consola y no está en el repositorio:
+
+```powershell
+$demoSecret = Read-Host 'Clave DEMO' -AsSecureString
+$demoPassword = ConvertFrom-SecureString $demoSecret -AsPlainText
+$session = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:3000/api/v1/auth/login' -ContentType 'application/json' -Body (@{ email = 'admin-pnp@demo.invalid'; password = $demoPassword } | ConvertTo-Json)
+Remove-Variable demoSecret, demoPassword
+$headers = @{ Authorization = "Bearer $($session.accessToken)" }
+$sites = Invoke-RestMethod -Uri 'http://127.0.0.1:3000/api/v1/admin/sites' -Headers $headers
+$site = $sites | Where-Object { $_.name -eq 'DEMO Comisaría Centro' } | Select-Object -First 1
+Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/v1/resources/units?institutionId=$($site.institutionId)&siteId=$($site.id)&available=true" -Headers $headers
+Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/v1/resources/personnel?siteId=$($site.id)" -Headers $headers
+```
+
+Para verificar operaciones de escritura y transiciones sin usar la base operativa, establecer `DB_TEST_NAME=incidencias_full_test` y `RUN_MYSQL_INTEGRATION=1` y ejecutar `node --test apps/api/test/resources-api.test.js`. La prueba crea recursos con códigos aleatorios, revisa respuestas `201`, `403`, `409` y `422`, mueve recursos entre sedes y confirma el historial en MySQL. La migración `007_unit_status_history.sql` se aplica explícitamente mediante `db:migrate:test` antes de esta prueba.
+
 Para volver a un estado de prueba limpio, crear y seleccionar **otra base `_test` vacía**; no ejecutar `DROP`, `TRUNCATE`, `docker compose down -v` ni un borrado automático sobre el volumen compartido. Conservar la base anterior hasta revisar su contenido y decidir expresamente su retiro. Los comandos de migración y seed rechazan una base de prueba con el mismo nombre que `DB_NAME`.
 
 ## Respaldo y restauración verificados en base aislada

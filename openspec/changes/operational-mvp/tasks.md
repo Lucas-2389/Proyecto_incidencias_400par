@@ -48,12 +48,12 @@
 
 ## 5. Personal y unidades
 
-- [ ] 5.1 Implementar CRUD de personal asociado a institución/sede; comprobar alta, edición y rechazo de ámbito ajeno.
-- [ ] 5.2 Implementar CRUD de unidades con código, placa opcional, tipo, sede y capacidad; comprobar unicidad de código y validaciones.
-- [ ] 5.3 Implementar estados Disponible, Asignada, En camino, En atención, Retornando, Mantenimiento y Fuera de servicio; comprobar transiciones permitidas y rechazadas.
-- [ ] 5.4 Implementar consulta de disponibilidad por sede e institución; comprobar que Mantenimiento/Fuera de servicio no figuran asignables.
-- [ ] 5.5 Probar operaciones de recursos sobre MySQL real, incluidos cambios de sede y estados; comprobar integridad FK.
-- [ ] 5.6 Completar OpenAPI de personal/unidades y documentar su gestión local; comprobar contrato válido y ejemplos ejecutables.
+- [x] 5.1 Implementar CRUD de personal asociado a institución/sede; comprobar alta, edición y rechazo de ámbito ajeno.
+- [x] 5.2 Implementar CRUD de unidades con código, placa opcional, tipo, sede y capacidad; comprobar unicidad de código y validaciones.
+- [x] 5.3 Implementar estados Disponible, Asignada, En camino, En atención, Retornando, Mantenimiento y Fuera de servicio; comprobar transiciones permitidas y rechazadas.
+- [x] 5.4 Implementar consulta de disponibilidad por sede e institución; comprobar que Mantenimiento/Fuera de servicio no figuran asignables.
+- [x] 5.5 Probar operaciones de recursos sobre MySQL real, incluidos cambios de sede y estados; comprobar integridad FK.
+- [x] 5.6 Completar OpenAPI de personal/unidades y documentar su gestión local; comprobar contrato válido y ejemplos ejecutables.
 
 ## 6. Reportes, idempotencia y fotografías
 

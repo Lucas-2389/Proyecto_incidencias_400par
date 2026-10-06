@@ -6,6 +6,8 @@ const { createInstitutionsRouter } = require('../institutions/router');
 const { createSitesRouter } = require('../institutions/sites');
 const { createCoverageRouter } = require('../institutions/coverage');
 const { createInstitutionalUsersRouter } = require('../institutions/users');
+const { createPersonnelRouter } = require('../resources/personnel');
+const { createUnitsRouter } = require('../resources/units');
 
 function createV1Router({ pool, authConfig, mailbox } = {}) {
   const router = express.Router();
@@ -15,6 +17,8 @@ function createV1Router({ pool, authConfig, mailbox } = {}) {
   if (pool) router.use('/admin/sites', createSitesRouter(pool, authConfig));
   if (pool) router.use('/admin/coverage', createCoverageRouter(pool, authConfig));
   if (pool) router.use('/admin/users', createInstitutionalUsersRouter(pool, authConfig));
+  if (pool) router.use('/resources/personnel', createPersonnelRouter(pool, authConfig));
+  if (pool) router.use('/resources/units', createUnitsRouter(pool, authConfig));
   router.use(notFound);
   return router;
 }
