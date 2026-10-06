@@ -5,6 +5,7 @@ const { createHealthService } = require('./health/service');
 const { startServer } = require('./lifecycle');
 const path = require('node:path');
 const { createFileMailbox } = require('./auth/mailbox');
+const { createEvidenceStore } = require('./incidents/evidence-store');
 
 async function main() {
   const config = loadConfig();
@@ -12,7 +13,10 @@ async function main() {
   const mailbox = config.auth.devMailboxDir
     ? createFileMailbox(path.resolve(__dirname, '..', config.auth.devMailboxDir))
     : undefined;
-  const app = createApp(createHealthService(pool), { pool, authConfig: config.auth, mailbox });
+  const evidenceStore = config.evidence.directory
+    ? createEvidenceStore(path.resolve(__dirname, '..', config.evidence.directory))
+    : undefined;
+  const app = createApp(createHealthService(pool), { pool, authConfig: config.auth, mailbox, evidenceStore });
   await startServer({ app, port: config.http.port, closePool });
 }
 

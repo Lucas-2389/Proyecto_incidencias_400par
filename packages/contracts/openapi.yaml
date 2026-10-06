@@ -27,6 +27,7 @@ tags:
   - name: Institutions
   - name: Territory
   - name: Resources
+  - name: Catalog
   - name: Public
 paths:
   /api/health:
@@ -198,8 +199,8 @@ paths:
       tags: [Incidents]
       summary: Crear reporte ciudadano o preliminar de invitado
       description: >-
-        Un invitado genera un reporte no verificado. La misma Idempotency-Key
-        debe devolver el mismo reporte al reintentar, sin crear duplicados.
+        Un invitado genera un reporte no verificado. El servidor fija source=MOBILE_APP.
+        Idempotency-Key o clientRequestId evita duplicados; un reintento idéntico devuelve 200.
       operationId: createIncident
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -216,15 +217,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IncidentReceipt'
+        '200':
+          description: Reintento idéntico con la misma referencia
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentReceipt' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { $ref: '#/components/responses/Conflict' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
   /incidents/mine:
     get:
       tags: [Incidents]
       summary: Listar reportes propios
       operationId: listMyIncidents
       security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
       responses:
         '200':
           description: Reportes del ciudadano autenticado
@@ -282,6 +292,148 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /incidents/{id}/evidence/{evidenceId}:
+    get:
+      tags: [Incidents]
+      summary: Leer fotografía privada y auditar acceso
+      operationId: readIncidentEvidence
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IncidentId'
+        - { name: evidenceId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Bytes de imagen autorizada, sin URL pública estable
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /ops/incidents/phone:
+    post:
+      tags: [Operations]
+      summary: Registrar reporte telefónico con fuente PHONE fijada por el servidor
+      operationId: createPhoneIncident
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PhoneIncidentRequest' }
+      responses:
+        '201':
+          description: Llamada registrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentReceipt' }
+        '200':
+          description: Reintento idéntico
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentReceipt' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /catalog/categories:
+    get:
+      tags: [Catalog]
+      operationId: listIncidentCategories
+      responses:
+        '200':
+          description: Categorías activas con prioridad inicial
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/IncidentCategory' } }
+    post:
+      tags: [Catalog]
+      operationId: createIncidentCategory
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IncidentCategoryInput' }
+      responses:
+        '201':
+          description: Categoría creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentCategory' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /catalog/categories/{id}:
+    patch:
+      tags: [Catalog]
+      operationId: updateIncidentCategory
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IncidentCategoryInput' }
+      responses:
+        '200':
+          description: Categoría actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentCategory' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /catalog/categories/{id}/subcategories:
+    get:
+      tags: [Catalog]
+      operationId: listIncidentSubcategories
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '200':
+          description: Subcategorías activas
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/IncidentSubcategory' } }
+    post:
+      tags: [Catalog]
+      operationId: createIncidentSubcategory
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IncidentSubcategoryInput' }
+      responses:
+        '201':
+          description: Subcategoría creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentSubcategory' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /catalog/subcategories/{id}:
+    patch:
+      tags: [Catalog]
+      operationId: updateIncidentSubcategory
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IncidentSubcategoryInput' }
+      responses:
+        '200':
+          description: Subcategoría actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentSubcategory' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /ops/incidents:
     get:
       tags: [Operations]
@@ -987,6 +1139,11 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
+    PayloadTooLarge:
+      description: Fotografía supera el límite de tamaño
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
     UnprocessableEntity:
       description: Contraseña fuera de la política de seguridad
       content:
@@ -998,6 +1155,53 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
   schemas:
+    IncidentCategoryInput:
+      type: object
+      required: [code, name, family]
+      properties:
+        code: { type: string, maxLength: 60 }
+        name: { type: string, maxLength: 120 }
+        family: { type: string, enum: [emergency, security] }
+        defaultPriority: { type: string, enum: [low, normal, high, critical] }
+        isSensitive: { type: boolean }
+        active: { type: boolean }
+    IncidentCategory:
+      allOf:
+        - { $ref: '#/components/schemas/IncidentCategoryInput' }
+        - type: object
+          required: [id, defaultPriority, active, isDemo]
+          properties:
+            id: { type: integer }
+            isDemo: { type: boolean }
+    IncidentSubcategoryInput:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, maxLength: 60 }
+        name: { type: string, maxLength: 120 }
+        isSensitive: { type: boolean }
+        active: { type: boolean }
+    IncidentSubcategory:
+      allOf:
+        - { $ref: '#/components/schemas/IncidentSubcategoryInput' }
+        - type: object
+          required: [id, categoryId, active, isDemo]
+          properties:
+            id: { type: integer }
+            categoryId: { type: integer }
+            isDemo: { type: boolean }
+    PhoneIncidentRequest:
+      type: object
+      required: [institutionId, siteId, categoryId, description]
+      properties:
+        institutionId: { type: string, format: uuid }
+        siteId: { type: string, format: uuid }
+        categoryId: { type: integer }
+        subcategoryId: { type: integer }
+        description: { type: string, minLength: 1, maxLength: 2000 }
+        location: { allOf: [{ $ref: '#/components/schemas/Coordinates' }], nullable: true }
+        callerContact: { type: string, maxLength: 100 }
+        clientRequestId: { type: string, maxLength: 128 }
     PersonnelInput:
       type: object
       required: [institutionId, siteId, code, name]
@@ -1217,7 +1421,7 @@ components:
               items: { type: string }
     Coordinates:
       type: object
-      required: [latitude, longitude, capturedAt]
+      required: [latitude, longitude]
       properties:
         latitude: { type: number, format: double, minimum: -90, maximum: 90 }
         longitude: { type: number, format: double, minimum: -180, maximum: 180 }
@@ -1228,37 +1432,40 @@ components:
       type: object
       required: [categoryId, location, description]
       properties:
-        categoryId: { type: string }
-        subcategoryId: { type: string }
+        categoryId: { type: integer }
+        subcategoryId: { type: integer }
         location: { $ref: '#/components/schemas/Coordinates' }
         description: { type: string, minLength: 1, maxLength: 2000 }
         affectedPeople: { type: integer, minimum: 0 }
+        occurredAt: { type: string, format: date-time }
+        clientRequestId: { type: string, maxLength: 128 }
     IncidentStatus:
       type: string
       enum: [reported, verifying, assigned, en_route, attending, resolved, closed]
     IncidentReceipt:
       type: object
-      required: [id, reference, status, verified, createdAt]
+      required: [id, reference, status, verified, source, createdAt]
       properties:
         id: { type: string }
         reference: { type: string }
         status: { $ref: '#/components/schemas/IncidentStatus' }
         verified: { type: boolean }
+        source: { type: string, enum: [MOBILE_APP, PHONE] }
         createdAt: { type: string, format: date-time }
     IncidentSummary:
       allOf:
         - $ref: '#/components/schemas/IncidentReceipt'
         - type: object
           properties:
-            categoryId: { type: string }
-            subcategoryId: { type: string }
+            categoryId: { type: integer }
+            subcategoryId: { type: integer, nullable: true }
     IncidentDetail:
       allOf:
         - $ref: '#/components/schemas/IncidentSummary'
         - type: object
           properties:
             description: { type: string }
-            location: { $ref: '#/components/schemas/Coordinates' }
+            location: { allOf: [{ $ref: '#/components/schemas/Coordinates' }], nullable: true }
             evidence: { type: array, items: { $ref: '#/components/schemas/EvidenceMetadata' } }
     EvidenceMetadata:
       type: object

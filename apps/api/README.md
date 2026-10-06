@@ -17,6 +17,7 @@ Desde PowerShell, copiar `apps/api/.env.example` a `apps/api/.env` y sustituir `
 | `DB_TEST_NAME` | Base aislada para pruebas integradas, terminada en `_test`; nunca usar `DB_NAME`. |
 | `JWT_SECRET` | Secreto local aleatorio de 32 caracteres o más para firmar JWT; nunca versionarlo. Si falta, login y refresh devuelven 503. |
 | `DEV_MAILBOX_DIR` | Directorio local del buzón de recuperación en desarrollo, relativo a `apps/api`; usar `.local/mailbox` e ignorarlo en Git. Si falta, recuperación devuelve 503. |
+| `EVIDENCE_DIR` | Almacén local persistente de fotografías, relativo a `apps/api`; usar `.local/evidence` e ignorarlo en Git. Si falta, las rutas de fotos devuelven 503. |
 
 | Ubicación de Node.js | `DB_HOST` | `DB_PORT` |
 | --- | --- | ---: |
@@ -149,6 +150,30 @@ Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/v1/resources/personnel?siteId=
 ```
 
 Para verificar operaciones de escritura y transiciones sin usar la base operativa, establecer `DB_TEST_NAME=incidencias_full_test` y `RUN_MYSQL_INTEGRATION=1` y ejecutar `node --test apps/api/test/resources-api.test.js`. La prueba crea recursos con códigos aleatorios, revisa respuestas `201`, `403`, `409` y `422`, mueve recursos entre sedes y confirma el historial en MySQL. La migración `007_unit_status_history.sql` se aplica explícitamente mediante `db:migrate:test` antes de esta prueba.
+
+### Reportes y fotografías privadas
+
+`GET /api/v1/catalog/categories` y `GET /api/v1/catalog/categories/{id}/subcategories` devuelven el catálogo activo y la prioridad inicial configurada. Un SuperAdministrador administra el catálogo con las rutas `POST` y `PATCH` documentadas en OpenAPI. Las migraciones 008 y 009 añaden la prioridad configurable e inicializan los valores DEMO existentes; se aplican explícitamente, sin editar migraciones anteriores. La prioridad final de un incidente puede cambiar posteriormente por verificación operativa.
+
+`POST /api/v1/incidents` admite ciudadano autenticado o invitado, pero siempre registra `source=MOBILE_APP` en el servidor. El cuerpo incluye `categoryId`, `description` y `location` con `latitude` y `longitude` WGS84. `accuracyMeters`, `capturedAt`, referencia del lugar y `occurredAt` son opcionales; se guarda el marcador final enviado. Enviar `Idempotency-Key` en la cabecera o `clientRequestId` en el JSON. Una repetición idéntica devuelve HTTP 200 con la misma referencia; reutilizar la clave con contenido distinto devuelve 409. Invitados quedan `unverified` y tienen límite de solicitudes por origen. El operador usa `POST /api/v1/ops/incidents/phone` con `institutionId` y `siteId` autorizados; la ubicación puede quedar pendiente y el servidor fija `source=PHONE`.
+
+Con `$headers` de la sesión DEMO de la sección anterior y la API apuntando a la base de pruebas, este ejemplo registra un reporte y adjunta una fotografía. Sustituir `$photoPath` por una imagen local propia antes de ejecutar la subida:
+
+```powershell
+$categories = Invoke-RestMethod 'http://127.0.0.1:3000/api/v1/catalog/categories'
+$fire = $categories | Where-Object { $_.code -eq 'fire' } | Select-Object -First 1
+$requestId = [guid]::NewGuid().ToString()
+$body = @{ categoryId = $fire.id; description = 'Prueba local de reporte'; location = @{ latitude = -13.16; longitude = -74.22; accuracyMeters = 10; capturedAt = (Get-Date).ToUniversalTime().ToString('o') } } | ConvertTo-Json -Depth 4
+$reportHeaders = $headers.Clone()
+$reportHeaders['Idempotency-Key'] = $requestId
+$report = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:3000/api/v1/incidents' -Headers $reportHeaders -ContentType 'application/json' -Body $body
+$photoPath = 'C:\ruta\foto.jpg'
+$evidence = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:3000/api/v1/incidents/$($report.id)/evidence" -Headers $headers -Form @{ photo = Get-Item -LiteralPath $photoPath }
+```
+
+La foto admite JPEG, PNG o WebP, máximo 5 MiB y tres fotos por incidente. Se valida el contenido real, se reescribe la imagen para eliminar metadatos y solo se guarda en MySQL la clave interna, hash y tamaño, sin BLOB. La respuesta no expone la clave interna; `GET /api/v1/incidents/{id}/evidence/{evidenceId}` exige autorización y registra la lectura. `GET /api/v1/incidents/mine` y el detalle devuelven solo reportes propios para un ciudadano. Un fallo de foto no borra el reporte ya confirmado.
+
+El directorio `EVIDENCE_DIR` debe estar en un disco persistente con respaldo y permisos restringidos. No borrarlo al reiniciar ni mediante limpieza automática. Para retirar una foto, primero comprobar su referencia y política de retención, respaldar metadatos y archivo, y ejecutar una operación específica revisada; no eliminar el directorio completo. El almacén local sirve para desarrollo y una sola instancia; antes de escalar se sustituirá por almacenamiento compartido de objetos con el mismo contrato `EvidenceStore`.
 
 Para volver a un estado de prueba limpio, crear y seleccionar **otra base `_test` vacía**; no ejecutar `DROP`, `TRUNCATE`, `docker compose down -v` ni un borrado automático sobre el volumen compartido. Conservar la base anterior hasta revisar su contenido y decidir expresamente su retiro. Los comandos de migración y seed rechazan una base de prueba con el mismo nombre que `DB_NAME`.
 

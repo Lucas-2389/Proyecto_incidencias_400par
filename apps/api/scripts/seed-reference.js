@@ -38,9 +38,10 @@ async function seedReference(connection) {
       );
     }
     for (const [code, name, family, isSensitive, targets] of categories) {
+      const priority = ['fire', 'medical_emergency', 'violence', 'aggression'].includes(code) ? 'high' : 'normal';
       await connection.execute(
-        'INSERT INTO incident_categories (code, name, family, is_sensitive, is_demo) VALUES (?, ?, ?, ?, TRUE) ON DUPLICATE KEY UPDATE name = VALUES(name), family = VALUES(family), is_sensitive = VALUES(is_sensitive)',
-        [code, name, family, isSensitive],
+        'INSERT INTO incident_categories (code, name, family, is_sensitive, default_priority, is_demo) VALUES (?, ?, ?, ?, ?, TRUE) ON DUPLICATE KEY UPDATE name = VALUES(name), family = VALUES(family), is_sensitive = VALUES(is_sensitive)',
+        [code, name, family, isSensitive, priority],
       );
       const [[category]] = await connection.execute('SELECT id FROM incident_categories WHERE code = ?', [code]);
       for (const institutionType of targets) {

@@ -39,6 +39,7 @@ function loadConfig(options) {
       password: raw.dbPassword,
     }),
     auth: Object.freeze({ jwtSecret: raw.jwtSecret, devMailboxDir: raw.devMailboxDir }),
+    evidence: Object.freeze({ directory: raw.evidenceDir }),
   });
 }
 

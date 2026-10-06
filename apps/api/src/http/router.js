@@ -8,8 +8,11 @@ const { createCoverageRouter } = require('../institutions/coverage');
 const { createInstitutionalUsersRouter } = require('../institutions/users');
 const { createPersonnelRouter } = require('../resources/personnel');
 const { createUnitsRouter } = require('../resources/units');
+const { createCatalogRouter } = require('../incidents/catalog');
+const { createIncidentsRouter, createPhoneReportRouter } = require('../incidents/router');
+const { createEvidenceRouter } = require('../incidents/evidence');
 
-function createV1Router({ pool, authConfig, mailbox } = {}) {
+function createV1Router({ pool, authConfig, mailbox, evidenceStore } = {}) {
   const router = express.Router();
   if (pool) router.use('/auth', createAuthRouter(pool, authConfig, mailbox));
   if (pool) router.use('/territory', createTerritoryRouter(pool));
@@ -19,6 +22,10 @@ function createV1Router({ pool, authConfig, mailbox } = {}) {
   if (pool) router.use('/admin/users', createInstitutionalUsersRouter(pool, authConfig));
   if (pool) router.use('/resources/personnel', createPersonnelRouter(pool, authConfig));
   if (pool) router.use('/resources/units', createUnitsRouter(pool, authConfig));
+  if (pool) router.use('/catalog', createCatalogRouter(pool, authConfig));
+  if (pool) router.use('/incidents', createIncidentsRouter(pool, authConfig, evidenceStore));
+  if (pool) router.use('/incidents', createEvidenceRouter(pool, authConfig, evidenceStore));
+  if (pool) router.use('/ops/incidents', createPhoneReportRouter(pool, authConfig));
   router.use(notFound);
   return router;
 }

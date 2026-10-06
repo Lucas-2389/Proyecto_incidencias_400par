@@ -22,6 +22,7 @@ function readRawConfig(options) {
     dbPassword: env.DB_PASSWORD,
     jwtSecret: env.JWT_SECRET,
     devMailboxDir: env.DEV_MAILBOX_DIR,
+    evidenceDir: env.EVIDENCE_DIR,
   };
 }
 

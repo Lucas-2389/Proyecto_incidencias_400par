@@ -57,16 +57,16 @@
 
 ## 6. Reportes, idempotencia y fotografías
 
-- [ ] 6.1 Implementar consulta y administración autorizada de categorías/subcategorías y prioridad inicial; comprobar catálogo mínimo solicitado y cambios sin recompilar clientes.
-- [ ] 6.2 Implementar validación de descripción, fecha, latitud/longitud, precisión y marcador final; comprobar entradas fuera de rango y punto corregido.
-- [ ] 6.3 Implementar creación ciudadana con fuente `MOBILE_APP`, referencia y estado Reportado; comprobar persistencia en MySQL real.
-- [ ] 6.4 Implementar creación de invitado no verificado y límite de abuso; comprobar referencia preliminar y HTTP 429 por exceso.
-- [ ] 6.5 Implementar creación por Operador con fuente `PHONE` y ubicación confirmada o pendiente; comprobar que el cliente no puede falsificar la fuente.
-- [ ] 6.6 Implementar idempotencia transaccional por `Idempotency-Key`/`clientRequestId`; comprobar reintento idéntico, contenido distinto y dos solicitudes concurrentes.
-- [ ] 6.7 Implementar `EvidenceStore` local fuera de Git y metadatos MySQL; comprobar que no se crean BLOB y que el archivo persiste tras reinicio.
-- [ ] 6.8 Implementar subida con límite de tamaño/cantidad/tipo y lectura autorizada; comprobar archivo inválido, acceso ajeno y acceso auditado.
-- [ ] 6.9 Implementar `GET /incidents/mine` y detalle autorizado; comprobar que un ciudadano no ve reportes ajenos ni datos internos.
-- [ ] 6.10 Completar OpenAPI de reportes/fotos y documentar ubicación del almacén local y limpieza segura; comprobar contrato y ejemplo de subida.
+- [x] 6.1 Implementar consulta y administración autorizada de categorías/subcategorías y prioridad inicial; comprobar catálogo mínimo solicitado y cambios sin recompilar clientes.
+- [x] 6.2 Implementar validación de descripción, fecha, latitud/longitud, precisión y marcador final; comprobar entradas fuera de rango y punto corregido.
+- [x] 6.3 Implementar creación ciudadana con fuente `MOBILE_APP`, referencia y estado Reportado; comprobar persistencia en MySQL real.
+- [x] 6.4 Implementar creación de invitado no verificado y límite de abuso; comprobar referencia preliminar y HTTP 429 por exceso.
+- [x] 6.5 Implementar creación por Operador con fuente `PHONE` y ubicación confirmada o pendiente; comprobar que el cliente no puede falsificar la fuente.
+- [x] 6.6 Implementar idempotencia transaccional por `Idempotency-Key`/`clientRequestId`; comprobar reintento idéntico, contenido distinto y dos solicitudes concurrentes.
+- [x] 6.7 Implementar `EvidenceStore` local fuera de Git y metadatos MySQL; comprobar que no se crean BLOB y que el archivo persiste tras reinicio.
+- [x] 6.8 Implementar subida con límite de tamaño/cantidad/tipo y lectura autorizada; comprobar archivo inválido, acceso ajeno y acceso auditado.
+- [x] 6.9 Implementar `GET /incidents/mine` y detalle autorizado; comprobar que un ciudadano no ve reportes ajenos ni datos internos.
+- [x] 6.10 Completar OpenAPI de reportes/fotos y documentar ubicación del almacén local y limpieza segura; comprobar contrato y ejemplo de subida.
 
 ## 7. Derivación, asignaciones y ciclo operativo
 
