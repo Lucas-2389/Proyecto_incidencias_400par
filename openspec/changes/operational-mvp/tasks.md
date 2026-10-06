@@ -24,15 +24,15 @@
 
 ## 3. Identidad y acceso
 
-- [ ] 3.1 Implementar hash seguro y política de contraseña; comprobar prueba que la base no guarda contraseñas en claro.
-- [ ] 3.2 Implementar registro ciudadano con aceptación de términos y correo único; comprobar HTTP 201, 400 y 409 en pruebas.
-- [ ] 3.3 Implementar login de cuentas activas con error uniforme; comprobar éxito, cuenta inactiva y credenciales erróneas.
-- [ ] 3.4 Implementar JWT de acceso corto y refresh opaco rotado/revocable; comprobar expiración, rotación, revocación por versión de credenciales y rechazo de token reutilizado.
-- [ ] 3.5 Implementar recuperación con token temporal de un uso y buzón de desarrollo; comprobar vencimiento, no reutilización y respuesta que no revela existencia de correo.
-- [ ] 3.6 Implementar middleware de autenticación y permisos por rol, institución, sede y jurisdicción; comprobar 401/403 y acceso cruzado denegado.
-- [ ] 3.7 Implementar límites de intentos para login y recuperación; comprobar HTTP 429 tras superar el límite configurado.
-- [ ] 3.8 Completar OpenAPI de auth y errores, y probar concordancia de rutas/cuerpos; comprobar validación del contrato.
-- [ ] 3.9 Documentar configuración de JWT, recuperación y cuentas demo sin secretos en `apps/api/README.md`; comprobar procedimiento local.
+- [x] 3.1 Implementar hash seguro y política de contraseña; comprobar prueba que la base no guarda contraseñas en claro.
+- [x] 3.2 Implementar registro ciudadano con aceptación de términos y correo único; comprobar HTTP 201, 400 y 409 en pruebas.
+- [x] 3.3 Implementar login de cuentas activas con error uniforme; comprobar éxito, cuenta inactiva y credenciales erróneas.
+- [x] 3.4 Implementar JWT de acceso corto y refresh opaco rotado/revocable; comprobar expiración, rotación, revocación por versión de credenciales y rechazo de token reutilizado.
+- [x] 3.5 Implementar recuperación con token temporal de un uso y buzón de desarrollo; comprobar vencimiento, no reutilización y respuesta que no revela existencia de correo.
+- [x] 3.6 Implementar middleware de autenticación y permisos por rol, institución, sede y jurisdicción; comprobar 401/403 y acceso cruzado denegado.
+- [x] 3.7 Implementar límites de intentos para login y recuperación; comprobar HTTP 429 tras superar el límite configurado.
+- [x] 3.8 Completar OpenAPI de auth y errores, y probar concordancia de rutas/cuerpos; comprobar validación del contrato.
+- [x] 3.9 Documentar configuración de JWT, recuperación y cuentas demo sin secretos en `apps/api/README.md`; comprobar procedimiento local.
 
 ## 4. Territorio, instituciones y usuarios institucionales
 

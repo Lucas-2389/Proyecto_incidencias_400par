@@ -1,6 +1,6 @@
 # API técnica
 
-Este paquete inicia el backend Node.js + Express. En el cierre de la Iteración 0 solo ofrece comprobaciones de salud; las rutas de negocio del [OpenAPI](../../packages/contracts/openapi.yaml) pertenecen a iteraciones posteriores.
+Este paquete inicia el backend Node.js + Express. Las rutas técnicas y de autenticación están disponibles; el resto del [OpenAPI](../../packages/contracts/openapi.yaml) se implementa por fases del MVP.
 
 ## Configuración de la API
 
@@ -15,6 +15,8 @@ Desde PowerShell, copiar `apps/api/.env.example` a `apps/api/.env` y sustituir `
 | `DB_USER` | Usuario de aplicación, `incidencias_app`; `root` se rechaza. |
 | `DB_PASSWORD` | Contraseña de ese usuario, nunca versionada. |
 | `DB_TEST_NAME` | Base aislada para pruebas integradas, terminada en `_test`; nunca usar `DB_NAME`. |
+| `JWT_SECRET` | Secreto local aleatorio de 32 caracteres o más para firmar JWT; nunca versionarlo. Si falta, login y refresh devuelven 503. |
+| `DEV_MAILBOX_DIR` | Directorio local del buzón de recuperación en desarrollo, relativo a `apps/api`; usar `.local/mailbox` e ignorarlo en Git. Si falta, recuperación devuelve 503. |
 
 | Ubicación de Node.js | `DB_HOST` | `DB_PORT` |
 | --- | --- | ---: |
@@ -67,6 +69,31 @@ npm --prefix apps/api start
 Comprobar las rutas técnicas con los dos comandos `Invoke-RestMethod` de la sección anterior. El router funcional se monta en `/api/v1`; las rutas de dominio se añaden por fases y una ruta inexistente responde `NOT_FOUND` con `correlationId`. Las respuestas funcionales indican `Cache-Control: no-store` y el log HTTP no incluye cuerpo, consulta ni encabezados.
 
 Las migraciones son explícitas y usan archivos versionados en `apps/api/migrations`. Una vez creada y autorizada la base de pruebas aislada, ejecutar `npm --prefix apps/api run db:migrate:test`. Para la base operativa, revisar antes el SQL y un respaldo, luego usar `npm --prefix apps/api run db:migrate:app`. Ninguna migración corre al arrancar la API. El ejecutor registra un checksum y rechaza modificar un archivo ya aplicado; si falla una migración MySQL DDL a medio camino, detenerse y revisar antes de reintentar.
+
+## Autenticación local y cuentas DEMO
+
+Generar `JWT_SECRET` con el generador criptográfico del sistema y guardarlo solo en `apps/api/.env`. En PowerShell, con el archivo local ya creado:
+
+```powershell
+$secret = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+Add-Content apps/api/.env "JWT_SECRET=$secret"
+Remove-Variable secret
+```
+
+Si el archivo ya contiene `JWT_SECRET`, **reemplazar** su valor; no agregar una segunda definición. Configurar `DEV_MAILBOX_DIR=.local/mailbox` para recuperación durante desarrollo. El buzón guarda el token en archivos JSON locales de acceso restringido; no copiar esos archivos a Git ni a registros. En un despliegue real se sustituirá este transporte de desarrollo por un servicio de correo autorizado.
+
+Tras aplicar migraciones y seeds explícitos a la base seleccionada, la API expone `POST /api/v1/auth/register`, `/login`, `/refresh`, `/logout`, `/password-reset/request` y `/password-reset/confirm`. El registro exige nombre, correo, contraseña de 12 a 128 caracteres y `acceptedTerms: true`. Login devuelve JWT de acceso de 15 minutos y refresh opaco de 30 días. El refresh rota y revoca el token anterior. La solicitud de recuperación devuelve el mismo HTTP 202 para correos existentes o desconocidos; el token de recuperación dura 30 minutos y solo sirve una vez. Login y solicitud de recuperación devuelven HTTP 429 al superar sus límites por dirección y correo. Los errores no incluyen contraseñas ni tokens.
+
+Las cuentas `@demo.invalid` se crean **solo** mediante `db:seed:demo:test` o `db:seed:demo:app`, con la contraseña local `DEMO_PASSWORD` de la primera ejecución. No hay una contraseña DEMO en el repositorio. El seed es idempotente y una repetición no restablece contraseñas. Para comprobar autenticación sin tocar la base operativa, usar `incidencias_full_test` migrada y sembrada:
+
+```powershell
+$env:DB_TEST_NAME = 'incidencias_full_test'
+$env:RUN_MYSQL_INTEGRATION = '1'
+npm --prefix apps/api test
+Remove-Item Env:RUN_MYSQL_INTEGRATION
+```
+
+El suite usa cuentas de prueba con correos aleatorios en esa base aislada. La base indicada por `DB_NAME` nunca se selecciona para estas pruebas.
 
 ## Esquema y datos DEMO
 

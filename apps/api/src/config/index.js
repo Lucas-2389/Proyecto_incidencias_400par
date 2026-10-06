@@ -25,6 +25,9 @@ function loadConfig(options) {
     throw new Error('DB_USER no puede ser root');
   }
   requiredText(raw.dbPassword, 'DB_PASSWORD');
+  if (raw.jwtSecret !== undefined && raw.jwtSecret.length < 32) {
+    throw new Error('JWT_SECRET debe tener al menos 32 caracteres');
+  }
 
   return Object.freeze({
     http: Object.freeze({ port: requiredPort(raw.port, 'PORT') }),
@@ -35,6 +38,7 @@ function loadConfig(options) {
       user,
       password: raw.dbPassword,
     }),
+    auth: Object.freeze({ jwtSecret: raw.jwtSecret, devMailboxDir: raw.devMailboxDir }),
   });
 }
 

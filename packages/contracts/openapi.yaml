@@ -11,7 +11,7 @@ x-access-roles:
   - Operador
   - Ciudadano
 x-access-policy:
-  public: [health, register, login, directory, alerts, aggregated-heatmap]
+  public: [health, register, login, refresh, logout, password-reset, directory, alerts, aggregated-heatmap]
   citizen: [create-mobile-incident, own-incidents, own-evidence, own-notifications]
   operator: [institutional-inbox, phone-incident, verification, dispatch, status, authorized-map]
   institutional-admin: [institutional-users, own-sites, own-resources, own-audit]
@@ -99,6 +99,7 @@ paths:
                 $ref: '#/components/schemas/User'
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
   /auth/login:
     post:
       tags: [Auth]
@@ -119,6 +120,77 @@ paths:
                 $ref: '#/components/schemas/AuthTokens'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotar token de actualización
+      operationId: refreshSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '200':
+          description: Nuevos tokens; el token anterior queda revocado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthTokens' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revocar token de actualización
+      operationId: logout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '204': { description: Sesión revocada }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /auth/password-reset/request:
+    post:
+      tags: [Auth]
+      summary: Solicitar recuperación sin revelar si existe el correo
+      operationId: requestPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordResetRequest' }
+      responses:
+        '202':
+          description: Solicitud recibida
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AcceptedStatus' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /auth/password-reset/confirm:
+    post:
+      tags: [Auth]
+      summary: Confirmar token de un uso y establecer contraseña nueva
+      operationId: confirmPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordResetConfirm' }
+      responses:
+        '200':
+          description: Contraseña actualizada y sesiones anteriores invalidadas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkStatus' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
   /incidents:
     post:
       tags: [Incidents]
@@ -425,6 +497,16 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
+    UnprocessableEntity:
+      description: Contraseña fuera de la política de seguridad
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    ServiceUnavailable:
+      description: Servicio de autenticación o recuperación no configurado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
   schemas:
     DatabaseHealthError:
       type: object
@@ -464,6 +546,32 @@ components:
       properties:
         email: { type: string, format: email }
         password: { type: string, format: password }
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string, minLength: 40, maxLength: 256 }
+    PasswordResetRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    PasswordResetConfirm:
+      type: object
+      required: [token, password]
+      properties:
+        token: { type: string, minLength: 40, maxLength: 256 }
+        password: { type: string, format: password, minLength: 12 }
+    AcceptedStatus:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [accepted] }
+    OkStatus:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ok] }
     AuthTokens:
       type: object
       required: [accessToken, refreshToken, tokenType, expiresIn]
@@ -472,6 +580,16 @@ components:
         refreshToken: { type: string }
         tokenType: { type: string, enum: [Bearer] }
         expiresIn: { type: integer, description: Duración en segundos }
+        user:
+          type: object
+          required: [id, name, email, roles]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            email: { type: string, format: email }
+            roles:
+              type: array
+              items: { type: string }
     Coordinates:
       type: object
       required: [latitude, longitude, capturedAt]

@@ -3,11 +3,16 @@ const { createApp } = require('./app');
 const { getPool, closePool } = require('./db/pool');
 const { createHealthService } = require('./health/service');
 const { startServer } = require('./lifecycle');
+const path = require('node:path');
+const { createFileMailbox } = require('./auth/mailbox');
 
 async function main() {
   const config = loadConfig();
   const pool = getPool(config.database);
-  const app = createApp(createHealthService(pool));
+  const mailbox = config.auth.devMailboxDir
+    ? createFileMailbox(path.resolve(__dirname, '..', config.auth.devMailboxDir))
+    : undefined;
+  const app = createApp(createHealthService(pool), { pool, authConfig: config.auth, mailbox });
   await startServer({ app, port: config.http.port, closePool });
 }
 
