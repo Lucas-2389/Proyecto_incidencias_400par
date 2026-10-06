@@ -97,13 +97,13 @@
 
 ## 9. Alertas, notificaciones y auditoría
 
-- [ ] 9.1 Implementar publicación autorizada de alertas por zona, tipo y vigencia; comprobar que solo alertas vigentes llegan a la consulta pública.
-- [ ] 9.2 Implementar notificaciones internas de estado y asignación con leído/no leído; comprobar destinatario correcto y ausencia de entrega a terceros.
-- [ ] 9.3 Implementar adaptador push opcional y modo sin credenciales; comprobar con proveedor simulado la entrega cuando se configura y que la operación y notificación interna funcionan sin FCM.
-- [ ] 9.4 Implementar registro central de auditoría para cambios administrativos, operativos y accesos a fotos; comprobar actor, acción, entidad, hora y sin secretos.
-- [ ] 9.5 Implementar consulta de auditoría filtrada por ámbito; comprobar rechazo de acceso cruzado y persistencia tras cierre.
-- [ ] 9.6 Completar OpenAPI de alertas, notificaciones y auditoría; comprobar contrato válido.
-- [ ] 9.7 Documentar configuración opcional de FCM y buzón de desarrollo sin credenciales reales; comprobar arranque sin servicios externos.
+- [x] 9.1 Implementar publicación autorizada de alertas por zona, tipo y vigencia; comprobar que solo alertas vigentes llegan a la consulta pública.
+- [x] 9.2 Implementar notificaciones internas de estado y asignación con leído/no leído; comprobar destinatario correcto y ausencia de entrega a terceros.
+- [x] 9.3 Implementar adaptador push opcional y modo sin credenciales; comprobar con proveedor simulado la entrega cuando se configura y que la operación y notificación interna funcionan sin FCM.
+- [x] 9.4 Implementar registro central de auditoría para cambios administrativos, operativos y accesos a fotos; comprobar actor, acción, entidad, hora y sin secretos.
+- [x] 9.5 Implementar consulta de auditoría filtrada por ámbito; comprobar rechazo de acceso cruzado y persistencia tras cierre.
+- [x] 9.6 Completar OpenAPI de alertas, notificaciones y auditoría; comprobar contrato válido.
+- [x] 9.7 Documentar configuración opcional de FCM y buzón de desarrollo sin credenciales reales; comprobar arranque sin servicios externos.
 
 ## 10. Panel React institucional
 

@@ -2,6 +2,7 @@ const { randomUUID } = require('node:crypto');
 const { HttpError } = require('../http/errors');
 const { requireObject, requireText } = require('../http/validation');
 const { hasInstitutionScope } = require('../auth/authorization');
+const { sendBestEffort } = require('../notifications/sender');
 
 const verificationValues = new Set(['verified', 'unverifiable', 'false', 'duplicate']);
 const priorityValues = new Set(['low', 'normal', 'high', 'critical']);
@@ -18,11 +19,14 @@ async function recordAudit(connection, actorId, correlationId, action, entityId,
 }
 
 async function notifyReporter(connection, incidentId, reporterId, status) {
-  if (!reporterId) return;
+  if (!reporterId) return null;
+  const notification = { id: randomUUID(), userId: reporterId, incidentId,
+    type: 'incident_status', title: 'Estado del reporte', message: `Su reporte pasó a ${status}` };
   await connection.execute(
     'INSERT INTO notifications (id, user_id, incident_id, type, title, message) VALUES (?, ?, ?, ?, ?, ?)',
-    [randomUUID(), reporterId, incidentId, 'incident_status', 'Estado del reporte', `Su reporte pasó a ${status}`],
+    [notification.id, reporterId, incidentId, notification.type, notification.title, notification.message],
   );
+  return notification;
 }
 
 async function verifyIncident(pool, incidentId, actor, body, correlationId) {
@@ -71,7 +75,7 @@ async function setUnitStatuses(connection, assignmentId, oldStatus, newStatus, a
   }
 }
 
-async function advanceIncident(pool, incidentId, actor, body, correlationId) {
+async function advanceIncident(pool, incidentId, actor, body, correlationId, notificationSender = null) {
   const input = requireObject(body);
   const status = requireText(input.status, 'status', { max: 30 });
   const note = requireText(input.note, 'note', { max: 1000 });
@@ -87,8 +91,9 @@ async function advanceIncident(pool, incidentId, actor, body, correlationId) {
       await connection.execute('INSERT INTO incident_history (incident_id, actor_user_id, event_type, previous_value, new_value, note) VALUES (?, ?, ?, ?, ?, ?)',
         [incidentId, actor.user.id, 'status.changed', 'reported', 'verifying', note]);
       await recordAudit(connection, actor.user.id, correlationId, 'incident.status', incidentId, { status: 'reported' }, { status: 'verifying', note });
-      await notifyReporter(connection, incidentId, incident.reporterId, 'verifying');
+      const notification = await notifyReporter(connection, incidentId, incident.reporterId, 'verifying');
       await connection.commit();
+      if (notification) await sendBestEffort(notificationSender, notification);
       return { id: incidentId, status: 'verifying' };
     }
     const [[assignment]] = await connection.execute(
@@ -104,9 +109,10 @@ async function advanceIncident(pool, incidentId, actor, body, correlationId) {
     const [all] = await connection.execute('SELECT status FROM institution_assignments WHERE incident_id = ?', [incidentId]);
     const minimum = Math.min(...all.map((item) => assignmentStages[item.status]));
     const globalStatus = Object.keys(assignmentStages).find((key) => assignmentStages[key] === minimum);
+    let notification = null;
     if (globalStatus !== incident.status) {
       await connection.execute('UPDATE incidents SET status = ? WHERE id = ?', [globalStatus, incidentId]);
-      await notifyReporter(connection, incidentId, incident.reporterId, globalStatus);
+      notification = await notifyReporter(connection, incidentId, incident.reporterId, globalStatus);
     }
     await connection.execute(
       `INSERT INTO incident_history (incident_id, institution_assignment_id, actor_user_id, event_type, previous_value, new_value, note)
@@ -117,6 +123,7 @@ async function advanceIncident(pool, incidentId, actor, body, correlationId) {
       { assignmentId, status: assignment.status, globalStatus: incident.status },
       { assignmentId, status, globalStatus, note }, assignment);
     await connection.commit();
+    if (notification) await sendBestEffort(notificationSender, notification);
     return { id: incidentId, assignmentId, assignmentStatus: status, status: globalStatus };
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }

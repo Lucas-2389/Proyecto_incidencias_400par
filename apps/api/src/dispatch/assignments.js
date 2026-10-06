@@ -4,6 +4,7 @@ const { HttpError } = require('../http/errors');
 const { requireObject, requireText } = require('../http/validation');
 const { requireAuthentication, requireRoles, requireIncidentScope, hasInstitutionScope } = require('../auth/authorization');
 const { suggestSites } = require('./suggestions');
+const { sendBestEffort } = require('../notifications/sender');
 
 function ids(value, name) {
   if (value === undefined) return [];
@@ -49,7 +50,7 @@ async function reserveResources(connection, assignmentId, input, actorId) {
   }
 }
 
-async function createAssignment(pool, incidentId, actor, body, correlationId) {
+async function createAssignment(pool, incidentId, actor, body, correlationId, notificationSender = null) {
   const input = assignmentInput(body);
   if (!hasInstitutionScope(actor, input.institutionId, input.siteId)) throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
   const [[site]] = await pool.execute(
@@ -96,8 +97,18 @@ async function createAssignment(pool, incidentId, actor, body, correlationId) {
         isSuggested ? 'assignment.confirm' : 'assignment.override', id,
         JSON.stringify({ incidentId, siteId: input.siteId, reason: input.reason })],
     );
+    let notification = null;
+    if (input.operatorUserId) {
+      notification = { id: randomUUID(), userId: input.operatorUserId, incidentId,
+        type: 'assignment', title: 'Nueva asignación', message: 'Tiene una atención asignada' };
+      await connection.execute(
+        'INSERT INTO notifications (id, user_id, incident_id, type, title, message) VALUES (?, ?, ?, ?, ?, ?)',
+        [notification.id, notification.userId, incidentId, notification.type, notification.title, notification.message],
+      );
+    }
     const [[saved]] = await connection.execute('SELECT assigned_at AS assignedAt FROM institution_assignments WHERE id = ?', [id]);
     await connection.commit();
+    if (notification) await sendBestEffort(notificationSender, notification);
     return { id, incidentId, institutionId: input.institutionId, siteId: input.siteId,
       operatorUserId: input.operatorUserId, unitIds: input.unitIds, personnelIds: input.personnelIds,
       status: 'assigned', reason: input.reason, corrected: !isSuggested,
@@ -109,12 +120,12 @@ async function createAssignment(pool, incidentId, actor, body, correlationId) {
   } finally { connection.release(); }
 }
 
-function createAssignmentsRouter(pool, authConfig) {
+function createAssignmentsRouter(pool, authConfig, notificationSender = null) {
   const router = express.Router();
   router.post('/:id/assignments', requireAuthentication(pool, authConfig),
     requireRoles('SuperAdministrador', 'AdministradorInstitucional', 'Operador'),
     requireIncidentScope(pool), async (req, res) => {
-      res.status(201).json(await createAssignment(pool, req.params.id, req.auth, req.body, req.correlationId));
+      res.status(201).json(await createAssignment(pool, req.params.id, req.auth, req.body, req.correlationId, notificationSender));
     });
   return router;
 }

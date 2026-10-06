@@ -76,6 +76,14 @@ Invoke-RestMethod "http://127.0.0.1:3000/api/v1/public/directory?districtId=1"
 
 Los clientes deben configurar la URL de teselas OpenStreetMap por entorno y mostrar la atribución visible `© OpenStreetMap contributors` junto al mapa. El servicio público de teselas requiere respetar su política de uso y no hacer descargas masivas. Las coberturas y contactos DEMO del piloto en Ayacucho son ficticios; no deben utilizarse para despacho real.
 
+## Alertas, avisos y auditoría
+
+`GET /api/v1/public/alerts?districtId=...` devuelve alertas activas y vigentes de ese distrito más las globales. Los administradores publican, corrigen o desactivan alertas mediante `/api/v1/admin/alerts`. `GET /api/v1/notifications/mine` y `PATCH /api/v1/notifications/{id}/read` permiten consultar y marcar los avisos propios. Una asignación notifica al Operador designado y un cambio de estado notifica al ciudadano que reportó; estos avisos se guardan en MySQL antes de cualquier intento push. `GET /api/v1/admin/audit` consulta eventos con límites de institución y sede.
+
+FCM es opcional. Sin `FCM_PROJECT_ID`, la API arranca sin credenciales externas y los avisos internos funcionan. Para una prueba FCM, configurar en `apps/api/.env` un `FCM_PROJECT_ID` válido y definir `GOOGLE_APPLICATION_CREDENTIALS` en el entorno de PowerShell apuntando a un JSON de cuenta de servicio **fuera del repositorio**. El servidor usa [Firebase Admin SDK y credenciales ADC](https://firebase.google.com/docs/cloud-messaging/send/admin-sdk). Un cliente autenticado puede registrar su token mediante `POST /api/v1/notifications/devices` con `{ "token": "..." }` y desactivarlo mediante `DELETE /api/v1/notifications/devices/{id}`. La API nunca devuelve ni registra el token. Sin dispositivo registrado, o si FCM falla, la operación principal y el aviso interno permanecen guardados. El piloto limita la entrega a 20 dispositivos activos por usuario.
+
+El buzón local `DEV_MAILBOX_DIR` de `apps/api/.env` sirve solo para enlaces de recuperación en desarrollo y queda fuera de Git. No usar contraseñas, claves de servicio ni tokens reales en `.env.example`, código, logs o commits.
+
 ## Iteraciones
 
 La secuencia vigente se encuentra en la sección 21 del SDD. Cada iteración debe actualizar el contrato y registrar sus criterios de aceptación antes de implementar endpoints o clientes que dependan de ellos.

@@ -60,7 +60,7 @@ async function listOperational(pool, auth, query) {
   return visible;
 }
 
-function createOperationsRouter(pool, authConfig) {
+function createOperationsRouter(pool, authConfig, notificationSender = null) {
   const router = express.Router();
   router.use(requireAuthentication(pool, authConfig), requireRoles('SuperAdministrador', 'AdministradorInstitucional', 'Operador'));
   router.get('/', async (req, res) => { res.json(await listOperational(pool, req.auth, req.query)); });
@@ -68,7 +68,7 @@ function createOperationsRouter(pool, authConfig) {
     res.json(await verifyIncident(pool, req.params.id, req.auth, req.body, req.correlationId));
   });
   router.patch('/:id/status', requireIncidentScope(pool), async (req, res) => {
-    res.json(await advanceIncident(pool, req.params.id, req.auth, req.body, req.correlationId));
+    res.json(await advanceIncident(pool, req.params.id, req.auth, req.body, req.correlationId, notificationSender));
   });
   router.post('/:id/duplicates', requireIncidentScope(pool), async (req, res) => {
     res.status(201).json(await linkDuplicate(pool, req.params.id, req.auth, req.body, req.correlationId));

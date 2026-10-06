@@ -16,9 +16,14 @@ const { createAssignmentsRouter } = require('../dispatch/assignments');
 const { createOperationsRouter } = require('../dispatch/operations');
 const { createGeospatialRouter } = require('../geospatial/router');
 const { createDirectoryRouter } = require('../directory/router');
+const { createAlertsRouter } = require('../alerts/router');
+const { createNotificationsRouter } = require('../notifications/router');
+const { createAuditRouter } = require('../audit/router');
+const { auditMutation } = require('../audit/middleware');
 
-function createV1Router({ pool, authConfig, mailbox, evidenceStore } = {}) {
+function createV1Router({ pool, authConfig, mailbox, evidenceStore, notificationSender } = {}) {
   const router = express.Router();
+  if (pool) router.use(auditMutation(pool));
   if (pool) router.use('/auth', createAuthRouter(pool, authConfig, mailbox));
   if (pool) router.use('/territory', createTerritoryRouter(pool));
   if (pool) router.use('/admin/institutions', createInstitutionsRouter(pool, authConfig));
@@ -32,10 +37,13 @@ function createV1Router({ pool, authConfig, mailbox, evidenceStore } = {}) {
   if (pool) router.use('/incidents', createEvidenceRouter(pool, authConfig, evidenceStore));
   if (pool) router.use('/ops/incidents', createPhoneReportRouter(pool, authConfig));
   if (pool) router.use('/ops/incidents', createSuggestionsRouter(pool, authConfig));
-  if (pool) router.use('/ops/incidents', createAssignmentsRouter(pool, authConfig));
-  if (pool) router.use('/ops/incidents', createOperationsRouter(pool, authConfig));
+  if (pool) router.use('/ops/incidents', createAssignmentsRouter(pool, authConfig, notificationSender));
+  if (pool) router.use('/ops/incidents', createOperationsRouter(pool, authConfig, notificationSender));
   if (pool) router.use(createGeospatialRouter(pool, authConfig));
   if (pool) router.use(createDirectoryRouter(pool, authConfig));
+  if (pool) router.use(createAlertsRouter(pool, authConfig));
+  if (pool) router.use('/notifications', createNotificationsRouter(pool, authConfig));
+  if (pool) router.use('/admin/audit', createAuditRouter(pool, authConfig));
   router.use(notFound);
   return router;
 }
