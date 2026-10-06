@@ -25,6 +25,7 @@ tags:
   - name: Incidents
   - name: Operations
   - name: Institutions
+  - name: Territory
   - name: Public
 paths:
   /api/health:
@@ -389,6 +390,303 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/institutions/{id}:
+    get:
+      tags: [Institutions]
+      operationId: getInstitution
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/InstitutionId' }]
+      responses:
+        '200':
+          description: Institución autorizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Institution' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Institutions]
+      operationId: updateInstitution
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/InstitutionId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInstitutionRequest' }
+      responses:
+        '200':
+          description: Institución actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Institution' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Institutions]
+      operationId: deactivateInstitution
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/InstitutionId' }]
+      responses:
+        '204': { description: Institución desactivada sin borrar historial }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /territory/departments:
+    get:
+      tags: [Territory]
+      operationId: listDepartments
+      responses:
+        '200':
+          description: Departamentos configurados
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Territory' } }
+  /territory/provinces:
+    get:
+      tags: [Territory]
+      operationId: listProvinces
+      parameters: [{ name: departmentId, in: query, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Provincias configuradas
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Territory' } }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /territory/districts:
+    get:
+      tags: [Territory]
+      operationId: listDistricts
+      parameters: [{ name: provinceId, in: query, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Distritos configurados
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Territory' } }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /territory/sectors:
+    get:
+      tags: [Territory]
+      operationId: listSectors
+      parameters: [{ name: districtId, in: query, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Sectores configurados
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Territory' } }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /territory/resolve:
+    get:
+      tags: [Territory]
+      operationId: resolveTerritory
+      parameters:
+        - { name: latitude, in: query, required: true, schema: { type: number, minimum: -90, maximum: 90 } }
+        - { name: longitude, in: query, required: true, schema: { type: number, minimum: -180, maximum: 180 } }
+      responses:
+        '200':
+          description: Distrito y sector o null cuando no hay polígono
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TerritoryResolution' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /admin/sites:
+    get:
+      tags: [Institutions]
+      operationId: listSites
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: institutionId, in: query, schema: { type: string } }]
+      responses:
+        '200':
+          description: Sedes del ámbito autorizado
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Site' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Institutions]
+      operationId: createSite
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SiteInput' }
+      responses:
+        '201':
+          description: Sede creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /admin/sites/{id}:
+    get:
+      tags: [Institutions]
+      operationId: getSite
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '200':
+          description: Sede autorizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Institutions]
+      operationId: updateSite
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SiteInput' }
+      responses:
+        '200':
+          description: Sede actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Institutions]
+      operationId: deactivateSite
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '204': { description: Sede desactivada sin borrar historial }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/coverage/candidates:
+    get:
+      tags: [Institutions]
+      operationId: listCoveredSites
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: latitude, in: query, required: true, schema: { type: number } }
+        - { name: longitude, in: query, required: true, schema: { type: number } }
+      responses:
+        '200':
+          description: Sedes activas con cobertura coincidente
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/CoveredSite' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /admin/coverage/sites/{siteId}:
+    get:
+      tags: [Institutions]
+      operationId: listSiteCoverage
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/SiteId' }]
+      responses:
+        '200':
+          description: Zonas de cobertura de una sede
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/CoverageZone' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Institutions]
+      operationId: createSiteCoverage
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/SiteId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CoverageInput' }
+      responses:
+        '201':
+          description: Zona agregada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverageZone' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /admin/coverage/{id}:
+    patch:
+      tags: [Institutions]
+      operationId: updateCoverage
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, properties: { active: { type: boolean } } }
+      responses:
+        '200':
+          description: Zona actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverageZone' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [Institutions]
+      operationId: deactivateCoverage
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      responses:
+        '204': { description: Zona desactivada }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/users:
+    get:
+      tags: [Institutions]
+      operationId: listInstitutionalUsers
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: institutionId, in: query, schema: { type: string } }
+        - { name: siteId, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Usuarios institucionales del ámbito
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/InstitutionalUser' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Institutions]
+      operationId: createInstitutionalUser
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstitutionalUserInput' }
+      responses:
+        '201':
+          description: Cuenta institucional creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstitutionalUser' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/users/{id}:
+    patch:
+      tags: [Institutions]
+      operationId: updateInstitutionalUser
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, properties: { name: { type: string }, status: { type: string, enum: [active, inactive] } } }
+      responses:
+        '200':
+          description: Cuenta actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstitutionalUser' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /public/directory:
     get:
       tags: [Public]
@@ -455,6 +753,21 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    InstitutionId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SiteId:
+      name: siteId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
     IncidentId:
       name: id
       in: path
@@ -508,6 +821,101 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
   schemas:
+    Territory:
+      type: object
+      required: [id, code, name, isDemo]
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        isDemo: { type: boolean }
+        departmentId: { type: integer }
+        provinceId: { type: integer }
+        districtId: { type: integer }
+    TerritoryResolution:
+      type: object
+      required: [latitude, longitude, district, sector]
+      properties:
+        latitude: { type: number }
+        longitude: { type: number }
+        district: { allOf: [{ $ref: '#/components/schemas/Territory' }], nullable: true }
+        sector: { allOf: [{ $ref: '#/components/schemas/Territory' }], nullable: true }
+    SiteInput:
+      type: object
+      required: [institutionId, name, location]
+      properties:
+        institutionId: { type: string, format: uuid }
+        districtId: { type: integer }
+        name: { type: string }
+        address: { type: string }
+        contactPhone: { type: string }
+        location:
+          type: object
+          required: [latitude, longitude]
+          properties:
+            latitude: { type: number, minimum: -90, maximum: 90 }
+            longitude: { type: number, minimum: -180, maximum: 180 }
+        active: { type: boolean }
+    Site:
+      allOf:
+        - { $ref: '#/components/schemas/SiteInput' }
+        - type: object
+          required: [id, active, isDemo]
+          properties:
+            id: { type: string, format: uuid }
+            isDemo: { type: boolean }
+    CoverageInput:
+      type: object
+      required: [name, coordinates]
+      properties:
+        name: { type: string }
+        coordinates:
+          type: array
+          minItems: 4
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items: { type: number }
+    CoverageZone:
+      type: object
+      required: [id, siteId, institutionId, name, active, isDemo, geometry]
+      properties:
+        id: { type: integer }
+        siteId: { type: string }
+        institutionId: { type: string }
+        name: { type: string }
+        active: { type: boolean }
+        isDemo: { type: boolean }
+        geometry: { type: object, description: GeoJSON MultiPolygon }
+    CoveredSite:
+      type: object
+      required: [siteId, institutionId, siteName]
+      properties:
+        siteId: { type: string }
+        institutionId: { type: string }
+        siteName: { type: string }
+    InstitutionalUserInput:
+      type: object
+      required: [name, email, password, role, institutionId, siteId]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, format: password, minLength: 12 }
+        role: { type: string, enum: [Operador, AdministradorInstitucional] }
+        institutionId: { type: string }
+        siteId: { type: string }
+    InstitutionalUser:
+      type: object
+      required: [id, name, email, status, role, institutionId, siteId]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [active, inactive] }
+        role: { type: string }
+        institutionId: { type: string }
+        siteId: { type: string }
     DatabaseHealthError:
       type: object
       required: [status, database, code, message, correlationId]

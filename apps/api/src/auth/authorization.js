@@ -36,7 +36,7 @@ function hasInstitutionScope(auth, institutionId, siteId = null) {
   if (auth.roles.has('SuperAdministrador')) return true;
   return auth.memberships.some((membership) => {
     if (membership.institution_id !== institutionId) return false;
-    if (membership.role === 'AdministradorInstitucional') return true;
+    if (membership.role === 'AdministradorInstitucional') return !siteId || !membership.site_id || membership.site_id === siteId;
     return membership.role === 'Operador' && membership.site_id !== null && (!siteId || membership.site_id === siteId);
   });
 }

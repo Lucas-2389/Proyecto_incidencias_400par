@@ -36,15 +36,15 @@
 
 ## 4. Territorio, instituciones y usuarios institucionales
 
-- [ ] 4.1 Implementar consulta de departamentos, provincias, distritos y sectores; comprobar jerarquía del seed DEMO en API.
-- [ ] 4.2 Implementar resolución de punto WGS84 a territorio con manejo fuera de polígonos; comprobar pruebas GIS dentro, borde y fuera.
-- [ ] 4.3 Implementar CRUD de instituciones y tipos PNP/SAMU/Bomberos/Municipalidad; comprobar permisos de SuperAdministrador y rechazo de Ciudadano.
-- [ ] 4.4 Implementar CRUD de sedes con ubicación y estado; comprobar que una sede inactiva no aparezca como destino automático.
-- [ ] 4.5 Implementar gestión de múltiples zonas de cobertura por sede; comprobar coincidencias de dos zonas y ausencia de cobertura.
-- [ ] 4.6 Implementar alta y administración de Operadores y AdministradoresInstitucionales por ámbito; comprobar que no se crean cuentas en otra institución.
-- [ ] 4.7 Probar con MySQL real filtros de listas por institución/sede y altas en otro distrito; comprobar que no requiere cambiar código.
-- [ ] 4.8 Actualizar OpenAPI para territorio, instituciones, sedes, coberturas y usuarios; comprobar validación del contrato.
-- [ ] 4.9 Documentar carga de zonas DEMO y proceso para sustituirlas por datos autorizados; comprobar que README advierte que no son jurisdicciones oficiales.
+- [x] 4.1 Implementar consulta de departamentos, provincias, distritos y sectores; comprobar jerarquía del seed DEMO en API.
+- [x] 4.2 Implementar resolución de punto WGS84 a territorio con manejo fuera de polígonos; comprobar pruebas GIS dentro, borde y fuera.
+- [x] 4.3 Implementar CRUD de instituciones y tipos PNP/SAMU/Bomberos/Municipalidad; comprobar permisos de SuperAdministrador y rechazo de Ciudadano.
+- [x] 4.4 Implementar CRUD de sedes con ubicación y estado; comprobar que una sede inactiva no aparezca como destino automático.
+- [x] 4.5 Implementar gestión de múltiples zonas de cobertura por sede; comprobar coincidencias de dos zonas y ausencia de cobertura.
+- [x] 4.6 Implementar alta y administración de Operadores y AdministradoresInstitucionales por ámbito; comprobar que no se crean cuentas en otra institución.
+- [x] 4.7 Probar con MySQL real filtros de listas por institución/sede y altas en otro distrito; comprobar que no requiere cambiar código.
+- [x] 4.8 Actualizar OpenAPI para territorio, instituciones, sedes, coberturas y usuarios; comprobar validación del contrato.
+- [x] 4.9 Documentar carga de zonas DEMO y proceso para sustituirlas por datos autorizados; comprobar que README advierte que no son jurisdicciones oficiales.
 
 ## 5. Personal y unidades
 
