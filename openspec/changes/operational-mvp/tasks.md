@@ -70,18 +70,18 @@
 
 ## 7. Derivación, asignaciones y ciclo operativo
 
-- [ ] 7.1 Implementar evaluación determinística de reglas por subtipo e institución; comprobar incendio→Bomberos, médica→SAMU y robo→PNP con seeds.
-- [ ] 7.2 Combinar reglas con coberturas activas para sugerir sedes; comprobar caso con varias instituciones y caso sin cobertura en bandeja de excepción.
-- [ ] 7.3 Implementar confirmación/corrección manual de derivación con motivo; comprobar rechazo de sede fuera del ámbito y evento auditado.
-- [ ] 7.4 Implementar varias asignaciones institucionales para un incidente; comprobar tres instituciones sobre un accidente sin sobrescribir relaciones.
-- [ ] 7.5 Implementar asignación de Operador, personal y unidades disponibles; comprobar relaciones persistidas y recursos ocupados.
-- [ ] 7.6 Bloquear reservas simultáneas incompatibles de unidad/persona; comprobar carrera con dos transacciones MySQL y solo una ganadora.
-- [ ] 7.7 Implementar verificación (verificado, no verificable, falso, duplicado) y prioridad con motivo; comprobar permisos y línea de tiempo.
-- [ ] 7.8 Implementar máquina de estados y hitos por asignación; comprobar secuencia válida, salto inválido y cierre con varias instituciones.
-- [ ] 7.9 Implementar vínculo de reportes duplicados sin borrar referencias; comprobar consulta de ambos e historial conservado.
-- [ ] 7.10 Implementar bandeja institucional y seguimiento ciudadano; comprobar visibilidad por rol/sede y ocultación de datos de personal al ciudadano.
-- [ ] 7.11 Probar transacción de estado, historial, recursos y auditoría ante error intermedio; comprobar que no queda cambio parcial.
-- [ ] 7.12 Completar OpenAPI de operación y documentar reglas de estados/derivación; comprobar contrato válido y casos de excepción descritos.
+- [x] 7.1 Implementar evaluación determinística de reglas por subtipo e institución; comprobar incendio→Bomberos, médica→SAMU y robo→PNP con seeds.
+- [x] 7.2 Combinar reglas con coberturas activas para sugerir sedes; comprobar caso con varias instituciones y caso sin cobertura en bandeja de excepción.
+- [x] 7.3 Implementar confirmación/corrección manual de derivación con motivo; comprobar rechazo de sede fuera del ámbito y evento auditado.
+- [x] 7.4 Implementar varias asignaciones institucionales para un incidente; comprobar tres instituciones sobre un accidente sin sobrescribir relaciones.
+- [x] 7.5 Implementar asignación de Operador, personal y unidades disponibles; comprobar relaciones persistidas y recursos ocupados.
+- [x] 7.6 Bloquear reservas simultáneas incompatibles de unidad/persona; comprobar carrera con dos transacciones MySQL y solo una ganadora.
+- [x] 7.7 Implementar verificación (verificado, no verificable, falso, duplicado) y prioridad con motivo; comprobar permisos y línea de tiempo.
+- [x] 7.8 Implementar máquina de estados y hitos por asignación; comprobar secuencia válida, salto inválido y cierre con varias instituciones.
+- [x] 7.9 Implementar vínculo de reportes duplicados sin borrar referencias; comprobar consulta de ambos e historial conservado.
+- [x] 7.10 Implementar bandeja institucional y seguimiento ciudadano; comprobar visibilidad por rol/sede y ocultación de datos de personal al ciudadano.
+- [x] 7.11 Probar transacción de estado, historial, recursos y auditoría ante error intermedio; comprobar que no queda cambio parcial.
+- [x] 7.12 Completar OpenAPI de operación y documentar reglas de estados/derivación; comprobar contrato válido y casos de excepción descritos.
 
 ## 8. Mapas, mapa de calor y directorio
 

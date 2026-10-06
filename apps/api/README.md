@@ -175,6 +175,31 @@ La foto admite JPEG, PNG o WebP, máximo 5 MiB y tres fotos por incidente. Se va
 
 El directorio `EVIDENCE_DIR` debe estar en un disco persistente con respaldo y permisos restringidos. No borrarlo al reiniciar ni mediante limpieza automática. Para retirar una foto, primero comprobar su referencia y política de retención, respaldar metadatos y archivo, y ejecutar una operación específica revisada; no eliminar el directorio completo. El almacén local sirve para desarrollo y una sola instancia; antes de escalar se sustituirá por almacenamiento compartido de objetos con el mismo contrato `EvidenceStore`.
 
+### Derivación y ciclo de atención
+
+`GET /api/v1/ops/incidents/{id}/suggestions` aplica las reglas activas de categoría y subtipo, por prioridad, y cruza el tipo institucional con sedes y coberturas activas. Devuelve la regla y su motivo por sede. Si ninguna sede autorizada cubre el punto, `exception=true`; `GET /api/v1/ops/incidents?exception=true` permite revisar esos casos. En el seed DEMO, incendio sugiere Bomberos, emergencia médica SAMU y robo PNP. Se pueden configurar varias reglas para una categoría, por ejemplo PNP, SAMU y Bomberos para un accidente grave. Estas sugerencias no confirman una asignación por sí solas.
+
+`POST /api/v1/ops/incidents/{id}/assignments` confirma una sede sugerida o añade una institución/sede manual con `reason` obligatorio. El cuerpo acepta `institutionId`, `siteId`, `operatorUserId`, `unitIds` y `personnelIds`. El usuario debe tener permiso para esa sede. La transacción reserva recursos disponibles con bloqueo de filas MySQL; una segunda solicitud incompatible recibe 409. Se guardan la decisión, el actor y el motivo en historial y auditoría. Varias instituciones pueden trabajar sobre el mismo incidente. No se asigna automáticamente una sede inactiva, sin cobertura o fuera de los permisos del actor.
+
+`PATCH /api/v1/ops/incidents/{id}/verification` recibe `verificationStatus` (`verified`, `unverifiable`, `false`, `duplicate`), `priority` opcional y `reason` obligatorio. `POST /api/v1/ops/incidents/{id}/duplicates` vincula el duplicado con `primaryIncidentId` y motivo; ambos reportes conservan sus referencias. `GET /api/v1/ops/incidents/{id}/history` muestra eventos autorizados. Una cuenta Ciudadano no puede ejecutar esas mutaciones.
+
+`PATCH /api/v1/ops/incidents/{id}/status` recibe `status` y `note`. De `reported` solo avanza a `verifying` sin `assignmentId`; al asignar pasa a `assigned`. Cada asignación avanza `assigned → en_route → attending → resolved → closed` con su propio `assignmentId`. El estado global es el hito mínimo de todas las asignaciones: una institución no cierra el incidente mientras otra siga atendiendo. Las unidades avanzan con el hito y se liberan al cerrar la asignación. Estado, historial, recursos, notificación interna y auditoría se confirman en la misma transacción. Las transiciones inválidas responden 409 y no dejan cambios parciales.
+
+Ejemplo local sobre datos DEMO con el JWT operativo en `$headers` y un incidente real visible en `/ops/incidents`:
+
+```powershell
+$inbox = Invoke-RestMethod -Uri 'http://127.0.0.1:3000/api/v1/ops/incidents?status=reported' -Headers $headers
+$incident = $inbox | Select-Object -First 1
+$suggested = Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/v1/ops/incidents/$($incident.id)/suggestions" -Headers $headers
+$site = $suggested.suggestions | Select-Object -First 1
+$assignmentBody = @{ institutionId = $site.institutionId; siteId = $site.siteId } | ConvertTo-Json
+$assignment = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:3000/api/v1/ops/incidents/$($incident.id)/assignments" -Headers $headers -ContentType 'application/json' -Body $assignmentBody
+$statusBody = @{ assignmentId = $assignment.id; status = 'en_route'; note = 'Salida DEMO registrada' } | ConvertTo-Json
+Invoke-RestMethod -Method Patch -Uri "http://127.0.0.1:3000/api/v1/ops/incidents/$($incident.id)/status" -Headers $headers -ContentType 'application/json' -Body $statusBody
+```
+
+El ejemplo presupone una incidencia reportada y una sugerencia dentro del ámbito del token; si no las hay, consultar la bandeja de excepciones y decidir con un motivo humano. Para ejecutar las pruebas de carrera y rollback en la base aislada: `node --test apps/api/test/dispatch-assignment.test.js apps/api/test/incident-lifecycle.test.js` con `DB_TEST_NAME=incidencias_full_test` y `RUN_MYSQL_INTEGRATION=1`.
+
 Para volver a un estado de prueba limpio, crear y seleccionar **otra base `_test` vacía**; no ejecutar `DROP`, `TRUNCATE`, `docker compose down -v` ni un borrado automático sobre el volumen compartido. Conservar la base anterior hasta revisar su contenido y decidir expresamente su retiro. Los comandos de migración y seed rechazan una base de prueba con el mismo nombre que `DB_NAME`.
 
 ## Respaldo y restauración verificados en base aislada

@@ -11,6 +11,9 @@ const { createUnitsRouter } = require('../resources/units');
 const { createCatalogRouter } = require('../incidents/catalog');
 const { createIncidentsRouter, createPhoneReportRouter } = require('../incidents/router');
 const { createEvidenceRouter } = require('../incidents/evidence');
+const { createSuggestionsRouter } = require('../dispatch/suggestions');
+const { createAssignmentsRouter } = require('../dispatch/assignments');
+const { createOperationsRouter } = require('../dispatch/operations');
 
 function createV1Router({ pool, authConfig, mailbox, evidenceStore } = {}) {
   const router = express.Router();
@@ -26,6 +29,9 @@ function createV1Router({ pool, authConfig, mailbox, evidenceStore } = {}) {
   if (pool) router.use('/incidents', createIncidentsRouter(pool, authConfig, evidenceStore));
   if (pool) router.use('/incidents', createEvidenceRouter(pool, authConfig, evidenceStore));
   if (pool) router.use('/ops/incidents', createPhoneReportRouter(pool, authConfig));
+  if (pool) router.use('/ops/incidents', createSuggestionsRouter(pool, authConfig));
+  if (pool) router.use('/ops/incidents', createAssignmentsRouter(pool, authConfig));
+  if (pool) router.use('/ops/incidents', createOperationsRouter(pool, authConfig));
   router.use(notFound);
   return router;
 }

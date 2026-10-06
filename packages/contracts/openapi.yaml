@@ -444,6 +444,7 @@ paths:
         - name: status
           in: query
           schema: { $ref: '#/components/schemas/IncidentStatus' }
+        - { name: exception, in: query, schema: { type: boolean }, description: Solo incidentes sin sede sugerida }
       responses:
         '200':
           description: Incidencias autorizadas
@@ -454,6 +455,43 @@ paths:
                 items: { $ref: '#/components/schemas/IncidentSummary' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /ops/incidents/{id}/suggestions:
+    get:
+      tags: [Operations]
+      summary: Sugerir sedes activas por regla y cobertura o indicar excepción
+      operationId: getIncidentSuggestions
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IncidentId' }]
+      responses:
+        '200':
+          description: Sedes sugeridas y estado de excepción
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuggestionResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /ops/incidents/{id}/verification:
+    patch:
+      tags: [Operations]
+      summary: Verificar reporte y ajustar prioridad con motivo
+      operationId: verifyIncident
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IncidentId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerifyIncidentRequest' }
+      responses:
+        '200':
+          description: Verificación y prioridad persistidas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VerificationResult' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
   /ops/incidents/{id}/status:
     patch:
       tags: [Operations]
@@ -468,22 +506,37 @@ paths:
           application/json:
             schema:
               type: object
-              required: [status]
+              required: [status, note]
               properties:
                 status: { $ref: '#/components/schemas/IncidentStatus' }
-                note: { type: string, maxLength: 1000 }
+                assignmentId: { type: string, format: uuid, description: Requerido para hitos de una institución }
+                note: { type: string, minLength: 1, maxLength: 1000 }
       responses:
         '200':
           description: Estado actualizado
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/IncidentSummary' }
+              schema: { $ref: '#/components/schemas/StatusResult' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
   /ops/incidents/{id}/assignments:
+    get:
+      tags: [Operations]
+      summary: Listar asignaciones visibles de la incidencia
+      operationId: listIncidentAssignments
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IncidentId' }]
+      responses:
+        '200':
+          description: Asignaciones del ámbito
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Assignment' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Operations]
       summary: Asignar institución, sede, unidades y personal
@@ -508,6 +561,41 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /ops/incidents/{id}/duplicates:
+    post:
+      tags: [Operations]
+      summary: Vincular reporte duplicado sin borrar referencias
+      operationId: linkDuplicateIncident
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IncidentId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DuplicateRequest' }
+      responses:
+        '201':
+          description: Vínculo conservado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DuplicateLink' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /ops/incidents/{id}/history:
+    get:
+      tags: [Operations]
+      summary: Línea de tiempo operativa autorizada
+      operationId: getIncidentHistory
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IncidentId' }]
+      responses:
+        '200':
+          description: Hitos, actor y notas
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/HistoryEvent' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /admin/institutions:
     get:
       tags: [Institutions]
@@ -1155,6 +1243,73 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
   schemas:
+    SuggestionResult:
+      type: object
+      required: [incidentId, suggestions, exception]
+      properties:
+        incidentId: { type: string, format: uuid }
+        exception: { type: boolean }
+        suggestions:
+          type: array
+          items:
+            type: object
+            required: [siteId, institutionId, institutionType, ruleId, reason]
+            properties:
+              siteId: { type: string }
+              siteName: { type: string }
+              institutionId: { type: string }
+              institutionName: { type: string }
+              institutionType: { type: string }
+              ruleId: { type: integer }
+              priority: { type: integer }
+              reason: { type: string }
+    VerifyIncidentRequest:
+      type: object
+      required: [verificationStatus, reason]
+      properties:
+        verificationStatus: { type: string, enum: [verified, unverifiable, 'false', duplicate] }
+        priority: { type: string, enum: [low, normal, high, critical] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    VerificationResult:
+      type: object
+      required: [id, verificationStatus, priority]
+      properties:
+        id: { type: string }
+        verificationStatus: { type: string }
+        priority: { type: string }
+    StatusResult:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string }
+        status: { $ref: '#/components/schemas/IncidentStatus' }
+        assignmentId: { type: string }
+        assignmentStatus: { type: string }
+    DuplicateRequest:
+      type: object
+      required: [primaryIncidentId, reason]
+      properties:
+        primaryIncidentId: { type: string, format: uuid }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    DuplicateLink:
+      type: object
+      required: [duplicateIncidentId, primaryIncidentId, reason]
+      properties:
+        duplicateIncidentId: { type: string }
+        primaryIncidentId: { type: string }
+        reason: { type: string }
+    HistoryEvent:
+      type: object
+      required: [id, eventType, createdAt]
+      properties:
+        id: { type: integer }
+        assignmentId: { type: string, nullable: true }
+        actorUserId: { type: string, nullable: true }
+        eventType: { type: string }
+        previousValue: { type: string, nullable: true }
+        newValue: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
     IncidentCategoryInput:
       type: object
       required: [code, name, family]
@@ -1480,6 +1635,8 @@ components:
       properties:
         institutionId: { type: string }
         siteId: { type: string }
+        operatorUserId: { type: string, format: uuid }
+        reason: { type: string, maxLength: 1000, description: Obligatorio cuando se corrige una sugerencia }
         unitIds: { type: array, items: { type: string }, uniqueItems: true }
         personnelIds: { type: array, items: { type: string }, uniqueItems: true }
     Assignment:
@@ -1491,6 +1648,8 @@ components:
             id: { type: string }
             incidentId: { type: string }
             createdAt: { type: string, format: date-time }
+            status: { type: string }
+            corrected: { type: boolean }
     CreateInstitutionRequest:
       type: object
       required: [name, type]
