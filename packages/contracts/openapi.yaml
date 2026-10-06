@@ -9,12 +9,65 @@ servers:
   - url: http://localhost:3000/api/v1
     description: Desarrollo local (desde Iteración 1)
 tags:
+  - name: Technical
   - name: Auth
   - name: Incidents
   - name: Operations
   - name: Institutions
   - name: Public
 paths:
+  /api/health:
+    servers:
+      - url: http://localhost:3000
+        description: Raíz HTTP local para endpoints técnicos
+    get:
+      tags: [Technical]
+      summary: Comprobar que el proceso HTTP está activo
+      operationId: getProcessHealth
+      responses:
+        '200':
+          description: Proceso activo
+          headers:
+            Cache-Control:
+              schema: { type: string, enum: [no-store] }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
+  /api/health/database:
+    servers:
+      - url: http://localhost:3000
+        description: Raíz HTTP local para endpoints técnicos
+    get:
+      tags: [Technical]
+      summary: Comprobar conectividad real con MySQL
+      operationId: getDatabaseHealth
+      responses:
+        '200':
+          description: Consulta de diagnóstico correcta
+          headers:
+            Cache-Control:
+              schema: { type: string, enum: [no-store] }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, database]
+                properties:
+                  status: { type: string, enum: [ok] }
+                  database: { type: string, enum: [connected] }
+        '503':
+          description: Base de datos no disponible o credenciales rechazadas
+          headers:
+            Cache-Control:
+              schema: { type: string, enum: [no-store] }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseHealthError'
   /auth/register:
     post:
       tags: [Auth]
@@ -362,6 +415,15 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
   schemas:
+    DatabaseHealthError:
+      type: object
+      required: [status, database, code, message, correlationId]
+      properties:
+        status: { type: string, enum: [error] }
+        database: { type: string, enum: [unavailable] }
+        code: { type: string, enum: [DATABASE_UNAVAILABLE] }
+        message: { type: string }
+        correlationId: { type: string, format: uuid }
     ApiError:
       type: object
       required: [code, message, correlationId]

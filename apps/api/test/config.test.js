@@ -1,0 +1,92 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const test = require('node:test');
+const { spawnSync } = require('node:child_process');
+const { apiEnvPath, readRawConfig } = require('../src/config/env');
+const { loadConfig } = require('../src/config');
+
+test('carga el archivo de la API por ruta absoluta y respeta variables del proceso', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'incidencias-env-'));
+  const filePath = path.join(directory, 'api.env');
+  fs.writeFileSync(filePath, 'DB_HOST=desde-archivo\nDB_PORT=3307\nDB_USER=incidencias_app\n');
+  const originalCwd = process.cwd();
+  try {
+    process.chdir(os.tmpdir());
+    const raw = readRawConfig({ env: { DB_HOST: 'desde-proceso' }, filePath });
+    assert.equal(raw.dbHost, 'desde-proceso');
+    assert.equal(raw.dbPort, '3307');
+    assert.equal(raw.dbUser, 'incidencias_app');
+    assert.equal(path.isAbsolute(apiEnvPath), true);
+    assert.equal(apiEnvPath, path.resolve(__dirname, '../.env'));
+  } finally {
+    process.chdir(originalCwd);
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('no carga MYSQL_ROOT_PASSWORD del archivo de Compose', () => {
+  const env = {};
+  const raw = readRawConfig({ env, filePath: path.join(os.tmpdir(), 'archivo-api-inexistente.env') });
+  assert.equal(raw.dbHost, undefined);
+  assert.equal(Object.hasOwn(env, 'MYSQL_ROOT_PASSWORD'), false);
+});
+
+const validEnv = Object.freeze({
+  PORT: '3000',
+  DB_HOST: '127.0.0.1',
+  DB_PORT: '3307',
+  DB_NAME: 'incidencias',
+  DB_USER: 'incidencias_app',
+  DB_PASSWORD: 'sentinel-secret-do-not-print',
+});
+
+test('valida y centraliza la configuración antes del arranque', () => {
+  const config = loadConfig({ env: { ...validEnv }, filePath: 'archivo-inexistente.env' });
+  assert.equal(config.http.port, 3000);
+  assert.equal(config.database.port, 3307);
+  assert.equal(config.database.user, 'incidencias_app');
+  assert.equal(config.database.password, validEnv.DB_PASSWORD);
+  assert.equal(Object.isFrozen(config.database), true);
+});
+
+test('rechaza cada variable faltante sin mostrar el secreto', () => {
+  for (const name of Object.keys(validEnv)) {
+    const env = { ...validEnv };
+    delete env[name];
+    assert.throws(
+      () => loadConfig({ env, filePath: 'archivo-inexistente.env' }),
+      (error) => error.message.includes(name) && !error.message.includes(validEnv.DB_PASSWORD),
+    );
+  }
+});
+
+test('rechaza puertos inválidos y el usuario root', () => {
+  for (const name of ['PORT', 'DB_PORT']) {
+    for (const value of ['0', '65536', 'abc', '3307.5']) {
+      assert.throws(
+        () => loadConfig({ env: { ...validEnv, [name]: value }, filePath: 'archivo-inexistente.env' }),
+        new RegExp(name),
+      );
+    }
+  }
+  for (const user of ['root', 'ROOT']) {
+    assert.throws(
+      () => loadConfig({ env: { ...validEnv, DB_USER: user }, filePath: 'archivo-inexistente.env' }),
+      /DB_USER no puede ser root/,
+    );
+  }
+});
+
+test('rechaza root antes de abrir el servidor HTTP', () => {
+  const result = spawnSync(process.execPath, ['src/server.js'], {
+    cwd: path.resolve(__dirname, '..'),
+    env: { ...process.env, ...validEnv, DB_USER: 'root' },
+    encoding: 'utf8',
+    timeout: 3000,
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /DB_USER no puede ser root/);
+  assert.equal(result.stderr.includes(validEnv.DB_PASSWORD), false);
+});

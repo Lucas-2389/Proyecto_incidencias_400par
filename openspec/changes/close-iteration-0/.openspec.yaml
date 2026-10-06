@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-05
+goal: Completar y validar la infraestructura base del proyecto y la conexión
+  Node.js con MySQL
