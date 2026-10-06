@@ -14,6 +14,8 @@ const { createEvidenceRouter } = require('../incidents/evidence');
 const { createSuggestionsRouter } = require('../dispatch/suggestions');
 const { createAssignmentsRouter } = require('../dispatch/assignments');
 const { createOperationsRouter } = require('../dispatch/operations');
+const { createGeospatialRouter } = require('../geospatial/router');
+const { createDirectoryRouter } = require('../directory/router');
 
 function createV1Router({ pool, authConfig, mailbox, evidenceStore } = {}) {
   const router = express.Router();
@@ -32,6 +34,8 @@ function createV1Router({ pool, authConfig, mailbox, evidenceStore } = {}) {
   if (pool) router.use('/ops/incidents', createSuggestionsRouter(pool, authConfig));
   if (pool) router.use('/ops/incidents', createAssignmentsRouter(pool, authConfig));
   if (pool) router.use('/ops/incidents', createOperationsRouter(pool, authConfig));
+  if (pool) router.use(createGeospatialRouter(pool, authConfig));
+  if (pool) router.use(createDirectoryRouter(pool, authConfig));
   router.use(notFound);
   return router;
 }

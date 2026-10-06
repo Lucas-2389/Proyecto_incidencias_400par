@@ -85,15 +85,15 @@
 
 ## 8. Mapas, mapa de calor y directorio
 
-- [ ] 8.1 Implementar endpoint de puntos de incidentes y sedes del ámbito operativo; comprobar que un usuario ajeno no recibe coordenadas privadas.
-- [ ] 8.2 Implementar agregados espaciales por celda/zona e intervalo para mapa público; comprobar que la respuesta no contiene puntos exactos ni datos personales.
-- [ ] 8.3 Aplicar umbral mínimo y degradación de categorías sensibles; comprobar supresión de celda con menos de tres eventos y protección de violencia.
-- [ ] 8.4 Implementar filtros por tipo, categoría, fecha, hora, distrito e institución con límites de consulta; comprobar conteos y rechazo de intervalo inválido.
-- [ ] 8.5 Implementar agregado institucional limitado por rol/ámbito y estadísticas básicas de conteos/tiempos; comprobar que no mezcla otra institución.
-- [ ] 8.6 Implementar CRUD autorizado de contactos de emergencia nacionales/locales; comprobar selección por distrito y fallback nacional.
-- [ ] 8.7 Probar consultas GIS y agregados con MySQL real y datos DEMO dentro/fuera de cobertura; comprobar conteos esperados.
-- [ ] 8.8 Completar OpenAPI de mapas, heatmap, estadísticas y directorio; comprobar validación del contrato.
-- [ ] 8.9 Documentar configuración de teselas OSM, atribución, umbral público y límites del piloto; comprobar ejemplos de consultas.
+- [x] 8.1 Implementar endpoint de puntos de incidentes y sedes del ámbito operativo; comprobar que un usuario ajeno no recibe coordenadas privadas.
+- [x] 8.2 Implementar agregados espaciales por celda/zona e intervalo para mapa público; comprobar que la respuesta no contiene puntos exactos ni datos personales.
+- [x] 8.3 Aplicar umbral mínimo y degradación de categorías sensibles; comprobar supresión de celda con menos de tres eventos y protección de violencia.
+- [x] 8.4 Implementar filtros por tipo, categoría, fecha, hora, distrito e institución con límites de consulta; comprobar conteos y rechazo de intervalo inválido.
+- [x] 8.5 Implementar agregado institucional limitado por rol/ámbito y estadísticas básicas de conteos/tiempos; comprobar que no mezcla otra institución.
+- [x] 8.6 Implementar CRUD autorizado de contactos de emergencia nacionales/locales; comprobar selección por distrito y fallback nacional.
+- [x] 8.7 Probar consultas GIS y agregados con MySQL real y datos DEMO dentro/fuera de cobertura; comprobar conteos esperados.
+- [x] 8.8 Completar OpenAPI de mapas, heatmap, estadísticas y directorio; comprobar validación del contrato.
+- [x] 8.9 Documentar configuración de teselas OSM, atribución, umbral público y límites del piloto; comprobar ejemplos de consultas.
 
 ## 9. Alertas, notificaciones y auditoría
 

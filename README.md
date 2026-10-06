@@ -59,6 +59,23 @@ El primer endpoint devuelve `{ "status": "ok" }` si HTTP funciona. El segundo de
 
 El contrato inicial está en [OpenAPI](packages/contracts/openapi.yaml). Las rutas funcionales futuras usan `/api/v1`; los dos health checks técnicos usan `/api/health` y `/api/health/database`. Las convenciones de código y API están en [docs/conventions.md](docs/conventions.md).
 
+## Mapa y directorio del piloto
+
+La API expone `GET /api/v1/public/heatmap?from=...&to=...` sin autenticación. Acepta `type=emergency|security`, `categoryId`, `hour` (0–23 UTC), `districtId` e `institutionId`. El intervalo debe ser válido y no superar 90 días; la consulta se limita a 5 000 incidentes. Cada celda publicada tiene al menos tres incidentes de una categoría. Las categorías sensibles usan celdas de 0,2 grados y las restantes de 0,05 grados. `latitude` y `longitude` son el centro de la celda, no la ubicación de un reporte. No se envían descripciones, reportantes ni fotos. Estos controles son del piloto y no equivalen a anonimización formal ante consultas repetidas y cruzadas.
+
+`GET /api/v1/ops/map` y `GET /api/v1/ops/stats` usan los mismos filtros y requieren token de SuperAdministrador, AdministradorInstitucional u Operador. La API comprueba el ámbito de cada incidente y sede antes de entregar puntos exactos o estadísticas. Para consultar el directorio, `GET /api/v1/public/directory?districtId=...` entrega contactos locales activos de ese distrito y contactos nacionales activos; sin contactos locales sigue devolviendo los nacionales. `POST /api/v1/admin/directory` y `PATCH/DELETE /api/v1/admin/directory/{id}` exigen administrador y registran cada cambio en auditoría.
+
+Ejemplo desde PowerShell, con API en ejecución:
+
+```powershell
+$from = [uri]::EscapeDataString((Get-Date).ToUniversalTime().AddDays(-1).ToString('o'))
+$to = [uri]::EscapeDataString((Get-Date).ToUniversalTime().AddMinutes(1).ToString('o'))
+Invoke-RestMethod "http://127.0.0.1:3000/api/v1/public/heatmap?from=$from&to=$to"
+Invoke-RestMethod "http://127.0.0.1:3000/api/v1/public/directory?districtId=1"
+```
+
+Los clientes deben configurar la URL de teselas OpenStreetMap por entorno y mostrar la atribución visible `© OpenStreetMap contributors` junto al mapa. El servicio público de teselas requiere respetar su política de uso y no hacer descargas masivas. Las coberturas y contactos DEMO del piloto en Ayacucho son ficticios; no deben utilizarse para despacho real.
+
 ## Iteraciones
 
 La secuencia vigente se encuentra en la sección 21 del SDD. Cada iteración debe actualizar el contrato y registrar sus criterios de aceptación antes de implementar endpoints o clientes que dependan de ellos.

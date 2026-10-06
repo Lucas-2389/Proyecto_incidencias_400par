@@ -1112,7 +1112,7 @@ paths:
       parameters:
         - name: districtId
           in: query
-          schema: { type: string }
+          schema: { type: integer, minimum: 1 }
       responses:
         '200':
           description: Números nacionales y locales aplicables
@@ -1121,6 +1121,112 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/DirectoryEntry' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /admin/directory:
+    get:
+      tags: [Public]
+      summary: Listar contactos administrables en el ámbito institucional
+      operationId: listAdminDirectory
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Contactos visibles para el administrador
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/DirectoryEntry' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Public]
+      summary: Crear contacto nacional o local y auditarlo
+      operationId: createDirectoryEntry
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DirectoryEntryInput' }
+      responses:
+        '201':
+          description: Contacto creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectoryEntry' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /admin/directory/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+    patch:
+      tags: [Public]
+      summary: Corregir contacto y auditar el cambio
+      operationId: updateDirectoryEntry
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DirectoryEntryInput' }
+      responses:
+        '200':
+          description: Contacto actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectoryEntry' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+    delete:
+      tags: [Public]
+      summary: Desactivar contacto y auditar el cambio
+      operationId: deactivateDirectoryEntry
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Contacto desactivado }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /ops/map:
+    get:
+      tags: [Operations]
+      summary: Puntos exactos autorizados de incidentes y sedes
+      operationId: getOperationalMap
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/GeoFrom'
+        - $ref: '#/components/parameters/GeoTo'
+        - $ref: '#/components/parameters/GeoType'
+        - $ref: '#/components/parameters/GeoCategory'
+        - $ref: '#/components/parameters/GeoHour'
+        - $ref: '#/components/parameters/GeoDistrict'
+        - $ref: '#/components/parameters/GeoInstitution'
+      responses:
+        '200':
+          description: Puntos del ámbito operativo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OperationalMap' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /ops/stats:
+    get:
+      tags: [Operations]
+      summary: Conteos y tiempo medio de asignación del ámbito autorizado
+      operationId: getOperationalStats
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/GeoFrom'
+        - $ref: '#/components/parameters/GeoTo'
+        - $ref: '#/components/parameters/GeoType'
+        - $ref: '#/components/parameters/GeoCategory'
+        - $ref: '#/components/parameters/GeoHour'
+        - $ref: '#/components/parameters/GeoDistrict'
+        - $ref: '#/components/parameters/GeoInstitution'
+      responses:
+        '200':
+          description: Estadísticas autorizadas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OperationalStats' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
   /public/alerts:
     get:
       tags: [Public]
@@ -1140,20 +1246,13 @@ paths:
       summary: Agregados espaciales sin ubicaciones exactas sensibles
       operationId: getPublicHeatmap
       parameters:
-        - name: from
-          in: query
-          required: true
-          schema: { type: string, format: date-time }
-        - name: to
-          in: query
-          required: true
-          schema: { type: string, format: date-time }
-        - name: categoryId
-          in: query
-          schema: { type: string }
-        - name: districtId
-          in: query
-          schema: { type: string }
+        - $ref: '#/components/parameters/GeoFrom'
+        - $ref: '#/components/parameters/GeoTo'
+        - $ref: '#/components/parameters/GeoType'
+        - $ref: '#/components/parameters/GeoCategory'
+        - $ref: '#/components/parameters/GeoHour'
+        - $ref: '#/components/parameters/GeoDistrict'
+        - $ref: '#/components/parameters/GeoInstitution'
       responses:
         '200':
           description: Conteos por celda agregada
@@ -1162,7 +1261,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/HeatmapCell' }
-        '400': { $ref: '#/components/responses/BadRequest' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
 components:
   securitySchemes:
     bearerAuth:
@@ -1170,6 +1269,36 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    GeoFrom:
+      name: from
+      in: query
+      required: true
+      schema: { type: string, format: date-time }
+    GeoTo:
+      name: to
+      in: query
+      required: true
+      schema: { type: string, format: date-time }
+    GeoType:
+      name: type
+      in: query
+      schema: { type: string, enum: [emergency, security] }
+    GeoCategory:
+      name: categoryId
+      in: query
+      schema: { type: integer, minimum: 1 }
+    GeoHour:
+      name: hour
+      in: query
+      schema: { type: integer, minimum: 0, maximum: 23 }
+    GeoDistrict:
+      name: districtId
+      in: query
+      schema: { type: integer, minimum: 1 }
+    GeoInstitution:
+      name: institutionId
+      in: query
+      schema: { type: string, format: uuid }
     InstitutionId:
       name: id
       in: path
@@ -1667,12 +1796,27 @@ components:
             active: { type: boolean }
     DirectoryEntry:
       type: object
-      required: [name, phone, scope]
+      required: [id, name, phone, scope, active]
       properties:
+        id: { type: string, format: uuid }
         name: { type: string }
         phone: { type: string }
         scope: { type: string, enum: [national, local] }
         institutionId: { type: string }
+        siteId: { type: string }
+        districtId: { type: integer }
+        active: { type: boolean }
+        isDemo: { type: boolean }
+    DirectoryEntryInput:
+      type: object
+      required: [name, phone, scope]
+      properties:
+        name: { type: string, maxLength: 150 }
+        phone: { type: string, maxLength: 40 }
+        scope: { type: string, enum: [national, local] }
+        institutionId: { type: string, format: uuid }
+        siteId: { type: string, format: uuid }
+        districtId: { type: integer, minimum: 1 }
     PublicAlert:
       type: object
       required: [id, title, message, validUntil]
@@ -1684,7 +1828,45 @@ components:
         districtIds: { type: array, items: { type: string } }
     HeatmapCell:
       type: object
-      required: [cellId, count]
+      required: [cellId, count, latitude, longitude, cellSizeDegrees]
       properties:
         cellId: { type: string, description: "Identificador de celda agregada, no punto GPS" }
-        count: { type: integer, minimum: 0 }
+        count: { type: integer, minimum: 3 }
+        latitude: { type: number, description: Centro de celda agregada }
+        longitude: { type: number, description: Centro de celda agregada }
+        cellSizeDegrees: { type: number, enum: [0.05, 0.2] }
+    OperationalMap:
+      type: object
+      required: [incidents, sites]
+      properties:
+        incidents:
+          type: array
+          items:
+            type: object
+            required: [id, reference, status, categoryId, latitude, longitude]
+            properties:
+              id: { type: string, format: uuid }
+              reference: { type: string }
+              status: { type: string }
+              categoryId: { type: integer }
+              latitude: { type: number }
+              longitude: { type: number }
+        sites:
+          type: array
+          items:
+            type: object
+            required: [id, institutionId, name, latitude, longitude]
+            properties:
+              id: { type: string, format: uuid }
+              institutionId: { type: string, format: uuid }
+              name: { type: string }
+              latitude: { type: number }
+              longitude: { type: number }
+    OperationalStats:
+      type: object
+      required: [total, byStatus, byCategory, averageAssignmentMinutes]
+      properties:
+        total: { type: integer, minimum: 0 }
+        byStatus: { type: object, additionalProperties: { type: integer } }
+        byCategory: { type: object, additionalProperties: { type: integer } }
+        averageAssignmentMinutes: { type: number, nullable: true }
