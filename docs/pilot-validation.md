@@ -40,4 +40,6 @@ El recorrido se repitió sin reiniciar ni vaciar la base y volvió a cerrar otro
 
 La tarea 12.3 permanece abierta: ejecutar de principio a fin **en Android**, conectando la app Flutter, API, MySQL y panel React, y confirmar visualmente el retorno al móvil. El equipo usado carece de Android SDK y de emulador o dispositivo Android configurado. Se necesitan esas herramientas para compilar APK y hacer la demostración. No se considera terminado el MVP por el recorrido HTTP ni por las pruebas de widgets.
 
+Comprobación adicional del equipo HP Laptop 15-dy5xxx: Windows informa `HypervisorPresent=True` y la distribución WSL 2 `docker-desktop` funciona. Aunque `Win32_Processor.VirtualizationFirmwareEnabled` devolvió `False`, esos dos resultados indican que no conviene cambiar la BIOS preventivamente. Cuando se instale Android Studio/SDK al final, ejecutar `flutter doctor -v`, crear un AVD y probar `flutter emulators` y `flutter run`; revisar BIOS/UEFI solo si el emulador reporta un problema concreto de aceleración.
+
 No se ejecutó `openspec archive`; no se alteró el volumen ni se eliminó ninguna base. Antes de usar datos reales o despliegue público siguen pendientes la validación legal, límites oficiales, almacenamiento compartido de fotos y prueba de carga; son riesgos posteriores al piloto descritos en el SDD.
