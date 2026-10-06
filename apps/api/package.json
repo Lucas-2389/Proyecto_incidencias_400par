@@ -8,12 +8,17 @@
     "test": "node --test",
     "contract:check": "node scripts/check-openapi.js",
     "db:migrate:test": "node scripts/migrate.js --target=test",
-    "db:migrate:app": "node scripts/migrate.js --target=app"
+    "db:migrate:app": "node scripts/migrate.js --target=app",
+    "db:seed:reference:test": "node scripts/seed-reference.js --target=test",
+    "db:seed:reference:app": "node scripts/seed-reference.js --target=app",
+    "db:seed:demo:test": "node scripts/seed-demo.js --target=test",
+    "db:seed:demo:app": "node scripts/seed-demo.js --target=app"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
     "mysql2": "^3.24.5"

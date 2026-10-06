@@ -12,15 +12,15 @@
 
 ## 2. Esquema y datos de demostración
 
-- [ ] 2.1 Crear migraciones de roles, usuarios, membresías y tokens con PK/FK/índices; comprobar esquema en MySQL de pruebas.
-- [ ] 2.2 Crear migraciones de jerarquía territorial, instituciones, sedes y coberturas SRID 4326; comprobar FK y consulta espacial dentro/fuera.
-- [ ] 2.3 Crear migraciones de personal, unidades, categorías, subcategorías y reglas; comprobar restricciones e índices por sede/estado.
-- [ ] 2.4 Crear migraciones de incidentes, ubicaciones, idempotencia y vínculos de duplicados; comprobar clave única de referencia e idempotencia.
-- [ ] 2.5 Crear migraciones de asignaciones, historial, evidencias, directorio, alertas, notificaciones y auditoría; comprobar todas las FK e índices.
-- [ ] 2.6 Probar aplicación de todas las migraciones en una base vacía y segunda ejecución sin cambios; verificar ausencia de SQL manual fuera de migraciones.
-- [ ] 2.7 Crear seed explícito e idempotente de roles, categorías y reglas del piloto; comprobar dos ejecuciones sin duplicados.
-- [ ] 2.8 Crear seed DEMO de Ayacucho con territorios, polígonos, PNP, SAMU, Bomberos, Municipalidad, sedes, usuarios, recursos e incidentes ficticios; comprobar etiquetas DEMO y que no se cargue al arranque normal.
-- [ ] 2.9 Documentar migración, respaldo, recuperación y ejecución/limpieza segura de seeds; verificar los comandos en base aislada sin borrar volúmenes.
+- [x] 2.1 Crear migraciones de roles, usuarios, membresías y tokens con PK/FK/índices; comprobar esquema en MySQL de pruebas.
+- [x] 2.2 Crear migraciones de jerarquía territorial, instituciones, sedes y coberturas SRID 4326; comprobar FK y consulta espacial dentro/fuera.
+- [x] 2.3 Crear migraciones de personal, unidades, categorías, subcategorías y reglas; comprobar restricciones e índices por sede/estado.
+- [x] 2.4 Crear migraciones de incidentes, ubicaciones, idempotencia y vínculos de duplicados; comprobar clave única de referencia e idempotencia.
+- [x] 2.5 Crear migraciones de asignaciones, historial, evidencias, directorio, alertas, notificaciones y auditoría; comprobar todas las FK e índices.
+- [x] 2.6 Probar aplicación de todas las migraciones en una base vacía y segunda ejecución sin cambios; verificar ausencia de SQL manual fuera de migraciones.
+- [x] 2.7 Crear seed explícito e idempotente de roles, categorías y reglas del piloto; comprobar dos ejecuciones sin duplicados.
+- [x] 2.8 Crear seed DEMO de Ayacucho con territorios, polígonos, PNP, SAMU, Bomberos, Municipalidad, sedes, usuarios, recursos e incidentes ficticios; comprobar etiquetas DEMO y que no se cargue al arranque normal.
+- [x] 2.9 Documentar migración, respaldo, recuperación y ejecución/limpieza segura de seeds; verificar los comandos en base aislada sin borrar volúmenes.
 
 ## 3. Identidad y acceso
 
