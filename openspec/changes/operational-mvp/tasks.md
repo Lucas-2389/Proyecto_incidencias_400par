@@ -2,13 +2,13 @@
 
 ## 1. Base de API y contrato
 
-- [ ] 1.1 Verificar que `apps/api` conserva los dos health checks y conexión con `incidencias_app`; comprobar `npm --prefix apps/api test` y consulta real `/api/health/database`.
-- [ ] 1.2 Definir comandos locales de prueba con base MySQL aislada y variables de entorno no secretas en ejemplos; comprobar que las pruebas no apuntan a `incidencias` por accidente.
-- [ ] 1.3 Añadir infraestructura de migraciones versionadas con registro de versión/checksum; comprobar aplicación repetida sin cambios y error por checksum alterado.
-- [ ] 1.4 Montar router `/api/v1` y manejador uniforme de errores con `correlationId`; comprobar respuestas 404 y error validado en prueba HTTP.
-- [ ] 1.5 Incorporar validación de entrada, `Cache-Control: no-store` privado y logs estructurados sin secretos; comprobar con pruebas de cuerpo inválido y redacción.
-- [ ] 1.6 Definir matriz de permisos API por rol/ámbito y convenciones de rutas en OpenAPI; comprobar que el contrato parsea y enumera los cuatro roles.
-- [ ] 1.7 Documentar arranque y pruebas de la nueva API en `apps/api/README.md`; ejecutar los comandos documentados.
+- [x] 1.1 Verificar que `apps/api` conserva los dos health checks y conexión con `incidencias_app`; comprobar `npm --prefix apps/api test` y consulta real `/api/health/database`.
+- [x] 1.2 Definir comandos locales de prueba con base MySQL aislada y variables de entorno no secretas en ejemplos; comprobar que las pruebas no apuntan a `incidencias` por accidente.
+- [x] 1.3 Añadir infraestructura de migraciones versionadas con registro de versión/checksum; comprobar aplicación repetida sin cambios y error por checksum alterado.
+- [x] 1.4 Montar router `/api/v1` y manejador uniforme de errores con `correlationId`; comprobar respuestas 404 y error validado en prueba HTTP.
+- [x] 1.5 Incorporar validación de entrada, `Cache-Control: no-store` privado y logs estructurados sin secretos; comprobar con pruebas de cuerpo inválido y redacción.
+- [x] 1.6 Definir matriz de permisos API por rol/ámbito y convenciones de rutas en OpenAPI; comprobar que el contrato parsea y enumera los cuatro roles.
+- [x] 1.7 Documentar arranque y pruebas de la nueva API en `apps/api/README.md`; ejecutar los comandos documentados.
 
 ## 2. Esquema y datos de demostración
 

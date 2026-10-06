@@ -5,6 +5,17 @@ info:
   description: >-
     Contrato inicial de la plataforma. Las operaciones se implementarán por
     iteración; publicar este archivo no implica que los endpoints estén activos.
+x-access-roles:
+  - SuperAdministrador
+  - AdministradorInstitucional
+  - Operador
+  - Ciudadano
+x-access-policy:
+  public: [health, register, login, directory, alerts, aggregated-heatmap]
+  citizen: [create-mobile-incident, own-incidents, own-evidence, own-notifications]
+  operator: [institutional-inbox, phone-incident, verification, dispatch, status, authorized-map]
+  institutional-admin: [institutional-users, own-sites, own-resources, own-audit]
+  super-admin: [all-institutions, catalogs, territories, routing-rules, global-audit]
 servers:
   - url: http://localhost:3000/api/v1
     description: Desarrollo local (desde Iteración 1)

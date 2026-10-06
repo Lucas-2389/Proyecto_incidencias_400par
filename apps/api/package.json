@@ -5,7 +5,10 @@
   "description": "API técnica de la plataforma de gestión de incidencias",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "contract:check": "node scripts/check-openapi.js",
+    "db:migrate:test": "node scripts/migrate.js --target=test",
+    "db:migrate:app": "node scripts/migrate.js --target=app"
   },
   "engines": {
     "node": ">=20"
@@ -14,5 +17,8 @@
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
     "mysql2": "^3.24.5"
+  },
+  "devDependencies": {
+    "yaml": "^2.9.1"
   }
 }

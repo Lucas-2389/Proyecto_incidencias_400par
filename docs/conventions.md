@@ -17,9 +17,21 @@
 - Las coordenadas usan WGS84: `latitude` de -90 a 90 y `longitude` de -180 a 180. MySQL almacena geometrías con SRID 4326.
 - Las fotos se almacenan fuera de MySQL; las respuestas públicas no revelan su ubicación exacta ni datos sensibles.
 
+### Matriz de permisos base
+
+| Operación | Ciudadano | Operador | AdministradorInstitucional | SuperAdministrador |
+| --- | --- | --- | --- | --- |
+| Crear y seguir reporte propio | Sí | No | No | Sí |
+| Crear reporte por llamada, verificar, despachar y cambiar estado | No | En su ámbito | En su ámbito | Global |
+| Ver mapa exacto y evidencias operativas | Solo propias | En su ámbito | En su ámbito | Global |
+| Gestionar personal, unidades, sedes y usuarios | No | No | En su institución | Global |
+| Gestionar instituciones, territorios y reglas globales | No | No | No | Sí |
+| Consultar auditoría | No | Limitada a sus acciones | En su institución | Global |
+
+La API confirma el ámbito sobre datos persistidos en cada operación. Las rutas funcionales viven en `/api/v1`; los health checks técnicos permanecen en `/api/health`. El contrato indica roles con `x-access-roles` y operaciones con `x-access-policy`.
+
 ## Calidad
 
 - Cada iteración documentará sus pruebas y criterios de aceptación antes de darse por terminada.
 - Las respuestas privadas y autenticadas deben indicar `Cache-Control: no-store` cuando se implementen.
 - Toda operación administrativa y cambio de estado crítico dejará registro de auditoría cuando su módulo exista.
-
