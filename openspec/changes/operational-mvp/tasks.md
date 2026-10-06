@@ -120,18 +120,18 @@
 
 ## 11. Aplicación Flutter ciudadana
 
-- [ ] 11.1 Crear proyecto Flutter Android en `apps/mobile` con URL API y URL de teselas configurables; comprobar `flutter analyze` y ausencia de `localhost` fijo.
-- [ ] 11.2 Implementar navegación Inicio, Reportar, Mapa, Mis reportes, Alertas, Directorio y Perfil; comprobar prueba de navegación.
-- [ ] 11.3 Implementar registro, login, cierre y acceso de invitado; comprobar estados de sesión y que invitado no ve reportes ajenos.
-- [ ] 11.4 Implementar selector de categorías y formulario breve con validación; comprobar campos requeridos y errores visibles.
-- [ ] 11.5 Implementar permiso GPS, precisión/hora y ubicación manual cuando no hay permiso; comprobar ambos caminos en pruebas.
-- [ ] 11.6 Implementar mapa OSM con atribución y marcador movible; comprobar que se envían las coordenadas finales corregidas.
-- [ ] 11.7 Implementar selección de foto opcional y subida posterior al reporte; comprobar éxito y fallo de foto sin perder referencia.
-- [ ] 11.8 Implementar envío con `clientRequestId` estable y pantalla de referencia; comprobar que reintento devuelve el mismo incidente.
-- [ ] 11.9 Implementar almacenamiento local de pendientes y reintento tras reconexión; comprobar corte/restablecimiento sin duplicados y limpieza tras confirmar.
-- [ ] 11.10 Implementar Mis reportes/seguimiento y notificaciones internas; comprobar que muestra cambios de estado propios.
-- [ ] 11.11 Implementar Alertas, Directorio, botón de llamada y mapa de calor público; comprobar visualización sin puntos sensibles exactos.
-- [ ] 11.12 Ejecutar pruebas Flutter de flujo de reporte y `flutter analyze`; documentar instalación Android, permisos y configuración en `apps/mobile/README.md` y verificar comandos.
+- [x] 11.1 Crear proyecto Flutter Android en `apps/mobile` con URL API y URL de teselas configurables; comprobar `flutter analyze` y ausencia de `localhost` fijo.
+- [x] 11.2 Implementar navegación Inicio, Reportar, Mapa, Mis reportes, Alertas, Directorio y Perfil; comprobar prueba de navegación.
+- [x] 11.3 Implementar registro, login, cierre y acceso de invitado; comprobar estados de sesión y que invitado no ve reportes ajenos.
+- [x] 11.4 Implementar selector de categorías y formulario breve con validación; comprobar campos requeridos y errores visibles.
+- [x] 11.5 Implementar permiso GPS, precisión/hora y ubicación manual cuando no hay permiso; comprobar ambos caminos en pruebas.
+- [x] 11.6 Implementar mapa OSM con atribución y marcador movible; comprobar que se envían las coordenadas finales corregidas.
+- [x] 11.7 Implementar selección de foto opcional y subida posterior al reporte; comprobar éxito y fallo de foto sin perder referencia.
+- [x] 11.8 Implementar envío con `clientRequestId` estable y pantalla de referencia; comprobar que reintento devuelve el mismo incidente.
+- [x] 11.9 Implementar almacenamiento local de pendientes y reintento tras reconexión; comprobar corte/restablecimiento sin duplicados y limpieza tras confirmar.
+- [x] 11.10 Implementar Mis reportes/seguimiento y notificaciones internas; comprobar que muestra cambios de estado propios.
+- [x] 11.11 Implementar Alertas, Directorio, botón de llamada y mapa de calor público; comprobar visualización sin puntos sensibles exactos.
+- [x] 11.12 Ejecutar pruebas Flutter de flujo de reporte y `flutter analyze`; documentar instalación Android, permisos y configuración en `apps/mobile/README.md` y verificar comandos.
 
 ## 12. Integración del piloto
 

@@ -88,6 +88,10 @@ El buzón local `DEV_MAILBOX_DIR` de `apps/api/.env` sirve solo para enlaces de 
 
 El panel React se inicia con `npm --prefix apps/admin run dev` después de copiar `apps/admin/.env.example` a `apps/admin/.env`; consultar su [guía de instalación](apps/admin/README.md). Para la demostración local se necesitan migraciones y seed DEMO de la API en la base elegida. Los componentes y el flujo institucional se verifican con `npm --prefix apps/admin test` y `npm --prefix apps/admin run build`.
 
+## Aplicación ciudadana
+
+La app Flutter Android vive en `apps/mobile`. Su [guía de instalación y prueba](apps/mobile/README.md) describe permisos, URL de API por `--dart-define`, emulador Android, GPS manual, fotos, reintentos y las siete vistas ciudadanas. En `apps/mobile`, ejecutar `flutter pub get`, `flutter analyze` y `flutter test` antes de iniciar un dispositivo.
+
 ## Iteraciones
 
 La secuencia vigente se encuentra en la sección 21 del SDD. Cada iteración debe actualizar el contrato y registrar sus criterios de aceptación antes de implementar endpoints o clientes que dependan de ellos.
