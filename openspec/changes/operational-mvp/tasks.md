@@ -107,16 +107,16 @@
 
 ## 10. Panel React institucional
 
-- [ ] 10.1 Crear proyecto React en `apps/admin` con URL API configurable por entorno; comprobar build de desarrollo sin `localhost` fijado en fuentes.
-- [ ] 10.2 Implementar Login y sesión cliente con renovación de token y cierre; comprobar prueba de login válido/expirado.
-- [ ] 10.3 Implementar navegación por rol y pantallas Dashboard, Incidentes y Detalle; comprobar que un Operador ve solo acciones permitidas.
-- [ ] 10.4 Implementar bandeja, filtros, registro por llamada y detalle con estados/historial; comprobar flujo UI con API de prueba.
-- [ ] 10.5 Implementar vista de derivación sugerida y corrección, asignación de institución/Operador/personal/unidad; comprobar flujo UI de accidente multiinstitución.
-- [ ] 10.6 Implementar pantallas Institución/Sede, Unidades y Personal con formularios y errores de validación; comprobar operaciones de AdministradorInstitucional.
-- [ ] 10.7 Implementar Mapa OSM con atribución y puntos autorizados, más vista de mapa de calor; comprobar que no solicita datos ajenos al ámbito.
-- [ ] 10.8 Implementar Directorio, Historial y estadísticas básicas; comprobar consultas y filtros desde interfaz.
-- [ ] 10.9 Añadir pruebas de componentes/rutas y un flujo institucional automatizado de login→bandeja→asignación→estado; ejecutar suite y build.
-- [ ] 10.10 Documentar instalación, variables, arranque y cuentas DEMO del panel; ejecutar comandos documentados.
+- [x] 10.1 Crear proyecto React en `apps/admin` con URL API configurable por entorno; comprobar build de desarrollo sin `localhost` fijado en fuentes.
+- [x] 10.2 Implementar Login y sesión cliente con renovación de token y cierre; comprobar prueba de login válido/expirado.
+- [x] 10.3 Implementar navegación por rol y pantallas Dashboard, Incidentes y Detalle; comprobar que un Operador ve solo acciones permitidas.
+- [x] 10.4 Implementar bandeja, filtros, registro por llamada y detalle con estados/historial; comprobar flujo UI con API de prueba.
+- [x] 10.5 Implementar vista de derivación sugerida y corrección, asignación de institución/Operador/personal/unidad; comprobar flujo UI de accidente multiinstitución.
+- [x] 10.6 Implementar pantallas Institución/Sede, Unidades y Personal con formularios y errores de validación; comprobar operaciones de AdministradorInstitucional.
+- [x] 10.7 Implementar Mapa OSM con atribución y puntos autorizados, más vista de mapa de calor; comprobar que no solicita datos ajenos al ámbito.
+- [x] 10.8 Implementar Directorio, Historial y estadísticas básicas; comprobar consultas y filtros desde interfaz.
+- [x] 10.9 Añadir pruebas de componentes/rutas y un flujo institucional automatizado de login→bandeja→asignación→estado; ejecutar suite y build.
+- [x] 10.10 Documentar instalación, variables, arranque y cuentas DEMO del panel; ejecutar comandos documentados.
 
 ## 11. Aplicación Flutter ciudadana
 
