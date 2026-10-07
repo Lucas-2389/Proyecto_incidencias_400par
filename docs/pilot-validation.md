@@ -1,6 +1,6 @@
 # Validación del piloto operacional DEMO
 
-Fecha de ejecución: 2026-10-06. Cambio OpenSpec: `operational-mvp`. Esta evidencia corresponde a bases `_test` aisladas y datos ficticios de Ayacucho; la base operativa `incidencias` no recibió migraciones ni seeds.
+Fechas de ejecución: 2026-10-06 y 2026-10-07. Cambio OpenSpec: `operational-mvp`. Esta evidencia corresponde a bases `_test` aisladas y datos ficticios de Ayacucho; la base operativa `incidencias` no recibió migraciones ni seeds.
 
 ## Comprobaciones ejecutadas
 
@@ -15,9 +15,12 @@ Fecha de ejecución: 2026-10-06. Cambio OpenSpec: `operational-mvp`. Esta eviden
 | `npm --prefix apps/api run contract:check` | OpenAPI válido: 58 rutas, 4 roles. |
 | `openspec validate operational-mvp --strict` | Cambio válido. |
 | API real en puerto 3107 contra `incidencias_full_test` | `/api/health` devolvió `ok`; `/api/health/database` devolvió `connected`; catálogo 23 entradas y directorio público 6 en esta base de pruebas. |
-| `flutter build apk --debug --no-pub` | No ejecutó compilación: `No Android SDK found`. `flutter devices` detectó Windows, Chrome y Edge, sin Android; `flutter emulators` no encontró AVD. |
+| `flutter build apk --debug --no-pub --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1` | APK de depuración construido con JDK 17 y Android SDK local. Gradle usa 2 GB y Kotlin incremental desactivado porque el caché Pub está en `C:` y el proyecto en `D:`. |
+| Emulador `Medium_Phone_API_37.0` | ADB confirmó `sys.boot_completed=1`; APK instalado (`Success`), `MainActivity` activa y pantalla Inicio/Invitado visible. El AVD mostró ANR de Pixel Launcher y System UI durante los siguientes pasos. |
 
 Las pruebas de health checks simularon MySQL inaccesible y credenciales erróneas y comprobaron HTTP 503 genérico sin exponer la contraseña; la suite integrada también rechazó acceso cruzado y foto inválida. Las pruebas Flutter simularon pérdida y retorno de red con el mismo `clientRequestId`, sin crear un segundo pendiente. Los logs HTTP omiten cuerpos, consultas, tokens y encabezados.
+
+El 2026-10-07 se repitieron las verificaciones tras ajustar la compilación Android: `flutter analyze` sin problemas, `flutter test` 6/6, API/MySQL 57/57, panel React 4/4, OpenAPI 58 rutas y `openspec validate operational-mvp --strict` válido. El APK compiló y abrió en el AVD, con la limitación de memoria descrita abajo.
 
 ## Recorrido HTTP integrado
 
@@ -38,8 +41,8 @@ El recorrido se repitió sin reiniciar ni vaciar la base y volvió a cerrar otro
 
 ## Pendiente para cerrar las 105 tareas
 
-La tarea 12.3 permanece abierta: ejecutar de principio a fin **en Android**, conectando la app Flutter, API, MySQL y panel React, y confirmar visualmente el retorno al móvil. El equipo usado carece de Android SDK y de emulador o dispositivo Android configurado. Se necesitan esas herramientas para compilar APK y hacer la demostración. No se considera terminado el MVP por el recorrido HTTP ni por las pruebas de widgets.
+La tarea 12.3 permanece abierta: ejecutar de principio a fin **en Android**, conectando la app Flutter, API, MySQL y panel React, y confirmar visualmente el retorno al móvil. Android SDK y el AVD ya están instalados. El APK compiló, se instaló y abrió. El recorrido interactivo completo no pasó: el AVD API 37 con Play Store eleva la RAM virtual a 4 GB en este equipo de 8 GB, dejó cerca de 400 MB libres y mostró ANR de Pixel Launcher/System UI. Un segundo arranque con `-memory 1536` volvió a mostrar ANR de System UI. No hay evidencia de envío de reporte desde Android; por eso 12.3 sigue sin marcar.
 
-Comprobación adicional del equipo HP Laptop 15-dy5xxx: Windows informa `HypervisorPresent=True` y la distribución WSL 2 `docker-desktop` funciona. Aunque `Win32_Processor.VirtualizationFirmwareEnabled` devolvió `False`, esos dos resultados indican que no conviene cambiar la BIOS preventivamente. Cuando se instale Android Studio/SDK al final, ejecutar `flutter doctor -v`, crear un AVD y probar `flutter emulators` y `flutter run`; revisar BIOS/UEFI solo si el emulador reporta un problema concreto de aceleración.
+Comprobación adicional del equipo HP Laptop 15-dy5xxx: Windows informa `HypervisorPresent=True`, WSL 2 `docker-desktop` funciona y `emulator-check.exe accel` indicó que WHPX está instalado y utilizable. No se requiere un cambio de BIOS para este AVD. Para terminar 12.3 se necesita un teléfono Android con depuración USB o un AVD más ligero en un equipo con memoria suficiente; repetir el recorrido descrito arriba y registrar referencia, foto, estados y retorno visual al móvil.
 
 No se ejecutó `openspec archive`; no se alteró el volumen ni se eliminó ninguna base. Antes de usar datos reales o despliegue público siguen pendientes la validación legal, límites oficiales, almacenamiento compartido de fotos y prueba de carga; son riesgos posteriores al piloto descritos en el SDD.

@@ -15,10 +15,10 @@ class SignedInApi extends DemoApi {
   bool get signedIn => true;
   @override
   Future<List<Map<String, dynamic>>> list(String path, {bool auth = false}) async {
-    if (path == '/incidents/mine') return [{'id': 'own-1', 'reference': 'AYA-TEST',
-      'status': 'assigned', 'createdAt': '2026-01-01T00:00:00Z'}];
-    if (path == '/notifications/mine') return [{'id': 'notice-1', 'title': 'Atención iniciada',
-      'message': 'Tu reporte cambió de estado', 'readAt': null}];
+    if (path == '/incidents/mine') { return [{'id': 'own-1', 'reference': 'AYA-TEST',
+      'status': 'assigned', 'createdAt': '2026-01-01T00:00:00Z'}]; }
+    if (path == '/notifications/mine') { return [{'id': 'notice-1', 'title': 'Atención iniciada',
+      'message': 'Tu reporte cambió de estado', 'readAt': null}]; }
     return [];
   }
   @override
