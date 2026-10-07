@@ -79,6 +79,27 @@ test('rechaza puertos inválidos y el usuario root', () => {
   }
 });
 
+test('production exige HTTPS, origen explícito, JWT y almacenamiento de fotos', () => {
+  const environment = { ...validEnv, APP_ENV: 'production', JWT_SECRET: 'x'.repeat(40),
+    PUBLIC_API_URL: 'https://api.example.invalid/api/v1', CORS_ORIGINS: 'https://admin.example.invalid',
+    EVIDENCE_DIR: path.resolve('evidence'), UPLOAD_CONFIGURATION: 'local' };
+  const config = loadConfig({ env: environment, filePath: 'archivo-inexistente.env' });
+  assert.equal(config.http.appEnv, 'production');
+  assert.deepEqual(config.http.corsOrigins, ['https://admin.example.invalid']);
+  assert.equal(config.http.publicApiUrl, 'https://api.example.invalid/api/v1');
+  for (const invalid of [
+    { PUBLIC_API_URL: 'http://api.example.invalid/api/v1' },
+    { CORS_ORIGINS: 'http://admin.example.invalid' },
+    { CORS_ORIGINS: 'https://admin.example.invalid/path' },
+    { JWT_SECRET: undefined },
+    { EVIDENCE_DIR: undefined },
+    { EVIDENCE_DIR: '.local/evidence' },
+    { CORS_ORIGINS: undefined },
+    { UPLOAD_CONFIGURATION: 'memory' },
+    { DEV_MAILBOX_DIR: '.local/mailbox' },
+  ]) assert.throws(() => loadConfig({ env: { ...environment, ...invalid }, filePath: 'archivo-inexistente.env' }));
+});
+
 test('rechaza root antes de abrir el servidor HTTP', () => {
   const result = spawnSync(process.execPath, ['src/server.js'], {
     cwd: path.resolve(__dirname, '..'),

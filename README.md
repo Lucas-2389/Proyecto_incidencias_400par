@@ -1,6 +1,10 @@
 # Plataforma de gestión de incidencias
 
-Monorepo para el piloto en Ayacucho de la plataforma descrita en el [SDD](SDD_Plataforma_Gestion_Desastres_Violencias_v0.1.md). La Iteración 0 define la estructura, MySQL local, el contrato inicial y dos endpoints técnicos de salud. Las funciones de negocio se implementarán en las iteraciones siguientes.
+Monorepo del piloto DEMO de Ayacucho descrito en el [SDD](SDD_Plataforma_Gestion_Desastres_Violencias_v0.1.md). Incluye app ciudadana Android (Flutter), panel institucional (React), API Node.js/Express y MySQL. Los reportes, ubicación, fotos, asignaciones, estados, mapas, directorio, avisos y auditoría ya están implementados para el piloto; el despliegue público V1 está en preparación.
+
+![Arquitectura del piloto](docs/arquitectura-operational-mvp.svg)
+
+La app y el panel consumen `/api/v1`; solo la API se conecta a MySQL con `incidencias_app`. Las fotos se guardan fuera de MySQL. Los datos, cuentas y coberturas DEMO no sirven para despacho real.
 
 ## Estructura
 
@@ -11,6 +15,8 @@ Monorepo para el piloto en Ayacucho de la plataforma descrita en el [SDD](SDD_Pl
 | `apps/mobile` | App Flutter, Android primero. |
 | `packages/contracts/openapi.yaml` | Contrato HTTP compartido. |
 | `openspec` | Cambios y especificaciones de implementación. |
+
+Tecnologías: Node.js 20.19+ o 22.12+ para el monorepo (requisito de Vite 8), Express 5, MySQL 9, React 19, Vite 8, Flutter 3.38, Docker Compose y OpenAPI. El SDD original conserva la arquitectura y decisiones de diseño; [convenciones](docs/conventions.md), [validación del piloto](docs/pilot-validation.md) y [despliegue V1](docs/DEPLOYMENT_V1.md) tienen propósitos distintos. OpenSpec conserva el historial de cambios.
 
 ## Entorno local
 
@@ -57,7 +63,7 @@ El primer endpoint devuelve `{ "status": "ok" }` si HTTP funciona. El segundo de
 
 ## Contrato y convenciones
 
-El contrato inicial está en [OpenAPI](packages/contracts/openapi.yaml). Las rutas funcionales futuras usan `/api/v1`; los dos health checks técnicos usan `/api/health` y `/api/health/database`. Las convenciones de código y API están en [docs/conventions.md](docs/conventions.md).
+El contrato está en [OpenAPI](packages/contracts/openapi.yaml). Las rutas funcionales usan `/api/v1`; los dos health checks técnicos usan `/api/health` y `/api/health/database`. Las convenciones de código y API están en [docs/conventions.md](docs/conventions.md).
 
 ## Mapa y directorio del piloto
 
@@ -88,9 +94,17 @@ El buzón local `DEV_MAILBOX_DIR` de `apps/api/.env` sirve solo para enlaces de 
 
 El panel React se inicia con `npm --prefix apps/admin run dev` después de copiar `apps/admin/.env.example` a `apps/admin/.env`; consultar su [guía de instalación](apps/admin/README.md). Para la demostración local se necesitan migraciones y seed DEMO de la API en la base elegida. Los componentes y el flujo institucional se verifican con `npm --prefix apps/admin test` y `npm --prefix apps/admin run build`.
 
+Abrir la URL que imprima Vite, normalmente `http://127.0.0.1:5173/login`. Las cuentas de ejemplo son `operator-pnp@demo.invalid`, `admin-pnp@demo.invalid` y `superadmin@demo.invalid`. Usan la contraseña local `DEMO_PASSWORD` establecida al sembrar los datos; ninguna contraseña se guarda en Git. Operador ve Dashboard, Incidentes y Mapa de su ámbito. Administrador institucional también ve Instituciones, Unidades, Personal, Directorio e Historial según sus permisos. SuperAdministrador accede a todos los módulos del piloto. La API comprueba rol, institución y sede en cada operación.
+
 ## Aplicación ciudadana
 
 La app Flutter Android vive en `apps/mobile`. Su [guía de instalación y prueba](apps/mobile/README.md) describe permisos, URL de API por `--dart-define`, emulador Android, GPS manual, fotos, reintentos y las siete vistas ciudadanas. En `apps/mobile`, ejecutar `flutter pub get`, `flutter analyze` y `flutter test` antes de iniciar un dispositivo.
+
+En Android, abrir **Perfil** para crear una cuenta ciudadana o iniciar sesión. La cuenta permite ver **Mis reportes** y adjuntar fotos; un invitado puede enviar un reporte preliminar. Las otras vistas son Inicio, Reportar, Mapa, Alertas y Directorio. Para teléfono físico con ADB, usar `adb reverse tcp:3000 tcp:3000` y compilar con `API_BASE_URL=http://127.0.0.1:3000/api/v1`; para emulador usar `10.0.2.2`. La URL de producción se inyecta con `--dart-define`, sin IP local fija en el código.
+
+## Estado y despliegue
+
+El cambio OpenSpec `operational-mvp` mantiene pendiente su recorrido visual completo Android→panel→Android (tarea 12.3). Las suites API, React y Flutter y el contrato OpenAPI se verifican antes de publicar; los resultados concretos están en [validación del piloto](docs/pilot-validation.md). La [guía de despliegue V1](docs/DEPLOYMENT_V1.md) contiene la topología propuesta, variables, Cloudflare, pruebas y rollback. No hay dominio ni servicio público configurado por este repositorio.
 
 ## Iteraciones
 

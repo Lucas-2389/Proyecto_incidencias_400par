@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="940" viewBox="0 0 1440 940" role="img" aria-labelledby="title desc">
+  <title id="title">Arquitectura del piloto de gestión de incidencias</title>
+  <desc id="desc">La aplicación Android Flutter y el panel React usan la API Node.js Express; esta gestiona autenticación, reportes, asignaciones, mapas, notificaciones y auditoría, y se conecta con MySQL y fotos locales.</desc>
+  <defs>
+    <style>
+      text{font-family:Segoe UI,Arial,sans-serif;fill:#12313d} .title{font-size:42px;font-weight:750} .sub{font-size:20px;fill:#55707c}
+      .box{fill:#fff;stroke:#bad3db;stroke-width:2} .head{font-size:25px;font-weight:700} .body{font-size:18px} .mini{font-size:16px;fill:#49636e}
+      .line{fill:none;stroke:#187b82;stroke-width:4;marker-end:url(#arrow)} .link{fill:none;stroke:#42748a;stroke-width:3;marker-end:url(#arrow)}
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto"><path d="M1 1 L10 6 L1 11" fill="none" stroke="#187b82" stroke-width="2"/></marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="7" stdDeviation="10" flood-color="#142e3d" flood-opacity=".12"/></filter>
+  </defs>
+  <rect width="1440" height="940" fill="#f2f8fa"/>
+  <rect x="0" y="0" width="1440" height="14" fill="#0b786f"/>
+  <text x="72" y="82" class="title">Arquitectura del sistema · piloto Ayacucho</text>
+  <text x="74" y="118" class="sub">Dos interfaces, una API central y datos DEMO en MySQL</text>
+
+  <rect x="70" y="175" width="410" height="210" rx="22" class="box" filter="url(#shadow)"/>
+  <rect x="70" y="175" width="410" height="12" rx="6" fill="#12a090"/>
+  <text x="100" y="225" class="head">Ciudadanía · Android</text>
+  <text x="100" y="260" class="body">Flutter · Perfil / registro / login</text>
+  <text x="100" y="289" class="body">Reportar + GPS + foto</text>
+  <text x="100" y="318" class="body">Mis reportes + alertas</text>
+  <text x="100" y="347" class="body">Mapa de calor + directorio</text>
+
+  <rect x="960" y="175" width="410" height="210" rx="22" class="box" filter="url(#shadow)"/>
+  <rect x="960" y="175" width="410" height="12" rx="6" fill="#3379b5"/>
+  <text x="990" y="225" class="head">Instituciones · Web</text>
+  <text x="990" y="260" class="body">React · Login por rol y sede</text>
+  <text x="990" y="289" class="body">Dashboard + incidentes + mapa</text>
+  <text x="990" y="318" class="body">Asignación + estados</text>
+  <text x="990" y="347" class="body">Recursos + directorio + historial</text>
+
+  <path d="M275 385 V445 H530" class="line"/>
+  <path d="M1165 385 V445 H910" class="line"/>
+  <text x="247" y="428" class="mini">HTTPS / JSON</text>
+  <text x="1070" y="428" class="mini">HTTPS / JSON</text>
+
+  <rect x="530" y="410" width="380" height="320" rx="24" class="box" filter="url(#shadow)"/>
+  <rect x="530" y="410" width="380" height="12" rx="6" fill="#0b786f"/>
+  <text x="560" y="462" class="head">API · Node.js + Express</text>
+  <text x="560" y="502" class="body">/api/v1 · contrato OpenAPI</text>
+  <text x="560" y="538" class="body">Autenticación + permisos</text>
+  <text x="560" y="572" class="body">Reportes + clasificación</text>
+  <text x="560" y="606" class="body">Despacho + ciclo de estados</text>
+  <text x="560" y="640" class="body">Territorio + mapas</text>
+  <text x="560" y="674" class="body">Avisos + auditoría</text>
+  <text x="560" y="705" class="mini">La app y el panel nunca usan MySQL directo</text>
+
+  <rect x="75" y="755" width="390" height="135" rx="20" class="box" filter="url(#shadow)"/>
+  <rect x="75" y="755" width="390" height="10" rx="5" fill="#e3a942"/>
+  <text x="100" y="803" class="head">Servicios externos</text>
+  <text x="100" y="837" class="body">Teselas OpenStreetMap</text>
+  <text x="100" y="866" class="mini">FCM opcional para avisos push</text>
+
+  <rect x="535" y="755" width="370" height="135" rx="20" class="box" filter="url(#shadow)"/>
+  <rect x="535" y="755" width="370" height="10" rx="5" fill="#2e88b7"/>
+  <text x="560" y="803" class="head">MySQL · Docker Compose</text>
+  <text x="560" y="837" class="body">Datos, cuentas, estados, auditoría</text>
+  <text x="560" y="866" class="mini">Usuario API: incidencias_app</text>
+
+  <rect x="975" y="755" width="390" height="135" rx="20" class="box" filter="url(#shadow)"/>
+  <rect x="975" y="755" width="390" height="10" rx="5" fill="#8d78b9"/>
+  <text x="1000" y="803" class="head">Fotos · almacén local</text>
+  <text x="1000" y="837" class="body">Evidencias del reporte</text>
+  <text x="1000" y="866" class="mini">Ruta definida por EVIDENCE_DIR</text>
+
+  <path d="M720 730 V750" class="link"/>
+  <path d="M830 730 V743 H1170 V750" class="link"/>
+  <text x="946" y="716" class="mini">fotos</text>
+  <text x="706" y="747" class="mini"> </text>
+  <text x="75" y="917" class="mini">SDD v0.1 · estado actual de operational-mvp · octubre 2026</text>
+</svg>

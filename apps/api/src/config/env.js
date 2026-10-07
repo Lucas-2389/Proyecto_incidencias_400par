@@ -23,6 +23,10 @@ function readRawConfig(options) {
     jwtSecret: env.JWT_SECRET,
     devMailboxDir: env.DEV_MAILBOX_DIR,
     evidenceDir: env.EVIDENCE_DIR,
+    appEnv: env.APP_ENV,
+    corsOrigins: env.CORS_ORIGINS,
+    publicApiUrl: env.PUBLIC_API_URL,
+    uploadConfiguration: env.UPLOAD_CONFIGURATION,
   };
 }
 

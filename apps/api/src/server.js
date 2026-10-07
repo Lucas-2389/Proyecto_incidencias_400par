@@ -18,7 +18,7 @@ async function main() {
     ? createEvidenceStore(path.resolve(__dirname, '..', config.evidence.directory))
     : undefined;
   const notificationSender = createFcmSender(pool);
-  const app = createApp(createHealthService(pool), { pool, authConfig: config.auth, mailbox, evidenceStore, notificationSender });
+  const app = createApp(createHealthService(pool), { pool, authConfig: config.auth, mailbox, evidenceStore, notificationSender, httpConfig: config.http });
   await startServer({ app, port: config.http.port, closePool: async () => {
     try { await notificationSender.close(); } finally { await closePool(); }
   } });

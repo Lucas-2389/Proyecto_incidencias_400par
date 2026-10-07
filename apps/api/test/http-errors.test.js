@@ -61,3 +61,19 @@ test('las respuestas v1 no se cachean y el log omite cuerpo, consulta y encabeza
     assert.equal(lines[0].includes(secret), false);
   }
 });
+
+test('CORS permite solo el panel configurado y añade encabezados seguros', async () => {
+  await withServer(async (base) => {
+    const preflight = await fetch(`${base}/api/v1/no-existe`, { method: 'OPTIONS',
+      headers: { origin: 'https://admin.example.invalid', 'access-control-request-method': 'POST' } });
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get('access-control-allow-origin'), 'https://admin.example.invalid');
+    assert.equal(preflight.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(preflight.headers.get('x-frame-options'), 'DENY');
+    assert.equal(preflight.headers.get('x-powered-by'), null);
+    const denied = await fetch(`${base}/api/v1/no-existe`, { headers: { origin: 'https://otro.example.invalid' } });
+    assert.equal(denied.status, 403);
+    assert.equal(denied.headers.get('cache-control'), 'no-store');
+    assert.equal(denied.headers.get('access-control-allow-origin'), null);
+  }, { httpConfig: { corsOrigins: ['https://admin.example.invalid'] } });
+});

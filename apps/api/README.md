@@ -1,6 +1,6 @@
 # API técnica
 
-Este paquete inicia el backend Node.js + Express. Las rutas técnicas y de autenticación están disponibles; el resto del [OpenAPI](../../packages/contracts/openapi.yaml) se implementa por fases del MVP.
+Este paquete inicia el backend Node.js + Express. Implementa las rutas técnicas y funcionales del piloto descritas en [OpenAPI](../../packages/contracts/openapi.yaml). La preparación de producción V1 está en [DEPLOYMENT_V1.md](../../docs/DEPLOYMENT_V1.md).
 
 ## Configuración de la API
 
@@ -18,6 +18,10 @@ Desde PowerShell, copiar `apps/api/.env.example` a `apps/api/.env` y sustituir `
 | `JWT_SECRET` | Secreto local aleatorio de 32 caracteres o más para firmar JWT; nunca versionarlo. Si falta, login y refresh devuelven 503. |
 | `DEV_MAILBOX_DIR` | Directorio local del buzón de recuperación en desarrollo, relativo a `apps/api`; usar `.local/mailbox` e ignorarlo en Git. Si falta, recuperación devuelve 503. |
 | `EVIDENCE_DIR` | Almacén local persistente de fotografías, relativo a `apps/api`; usar `.local/evidence` e ignorarlo en Git. Si falta, las rutas de fotos devuelven 503. |
+| `APP_ENV` | `development` por defecto; `production` exige HTTPS, orígenes CORS y ruta absoluta de fotos. |
+| `CORS_ORIGINS` | Lista separada por comas de orígenes web autorizados; en producción es obligatoria. |
+| `PUBLIC_API_URL` | URL HTTPS pública de `/api/v1` para el despliegue; obligatoria en producción. |
+| `UPLOAD_CONFIGURATION` | `local` en V1; exige volumen persistente en producción. |
 
 | Ubicación de Node.js | `DB_HOST` | `DB_PORT` |
 | --- | --- | ---: |
