@@ -4,6 +4,7 @@ import { currentRange, OSM_TILE_URL } from '../config';
 import { queryString } from '../api/client';
 import { ErrorBoundaryContent, Field, Panel, useRemote } from '../ui';
 import 'leaflet/dist/leaflet.css';
+import '../leaflet-icons';
 
 export default function MapView() {
   const [mode, setMode] = useState('operational');

@@ -25,6 +25,7 @@ test('desde apps/api: build React, rutas SPA, assets y API permanecen separados'
     for (const route of ['/', '/login', '/incidentes/example']) {
       const response = await fetch(base + route);
       assert.equal(response.status, 200);
+      assert.equal(response.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
       assert.equal(await response.text(), fs.readFileSync(index, 'utf8'));
     }
     const asset = fs.readFileSync(index, 'utf8').match(/src="([^"]+\.js)"/)[1];

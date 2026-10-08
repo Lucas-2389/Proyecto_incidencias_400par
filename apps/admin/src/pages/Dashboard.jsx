@@ -1,10 +1,11 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { currentRange } from '../config';
 import { queryString } from '../api/client';
 import { ErrorBoundaryContent, Panel, Pill, useRemote } from '../ui';
 
 export default function Dashboard() {
-  const range = currentRange();
+  const [range] = useState(() => currentRange());
   const stats = useRemote(`/ops/stats${queryString(range)}`);
   const incidents = useRemote('/ops/incidents');
   const total = stats.data?.total ?? 0;
