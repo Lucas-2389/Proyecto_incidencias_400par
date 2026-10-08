@@ -8,13 +8,16 @@ import 'core/pending.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (AppConfig.apiBaseUrl.isEmpty) {
+  late final String apiBaseUrl;
+  try {
+    apiBaseUrl = AppConfig.apiBaseUrl;
+  } on FormatException {
     runApp(const MaterialApp(home: Scaffold(body: Center(child: Text(
-      'Configura API_BASE_URL con --dart-define antes de ejecutar la app.', textAlign: TextAlign.center,
+      'Configuración de API inválida. Revisa APP_ENV y API_BASE_URL al compilar.', textAlign: TextAlign.center,
     )))));
     return;
   }
-  final api = ApiClient(baseUrl: AppConfig.apiBaseUrl);
+  final api = ApiClient(baseUrl: apiBaseUrl);
   await api.restore();
   final preferences = await SharedPreferences.getInstance();
   final pending = SharedPendingRepository(preferences);
