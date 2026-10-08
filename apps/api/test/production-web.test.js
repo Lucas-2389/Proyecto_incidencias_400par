@@ -11,7 +11,7 @@ test('desde apps/api: build React, rutas SPA, assets y API permanecen separados'
   assert.ok(fs.existsSync(index), 'Ejecutar build de apps/admin antes de las pruebas');
   const child = spawn(process.execPath, ['-e', `
     const { createApp } = require('./src/app');
-    const app = createApp({checkDatabase: async()=>{}}, {httpConfig:{appEnv:'production'}});
+    const app = createApp({checkDatabase: async()=>{}}, {httpConfig:{appEnv:'production',corsOrigins:['https://gestion-incidencias-200e.onrender.com']}});
     const server = app.listen(0, '127.0.0.1', ()=>process.send({port:server.address().port}));
     process.on('message', ()=>server.close(()=>process.exit(0)));
   `], { cwd: path.resolve(__dirname, '..'), stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
@@ -39,6 +39,18 @@ test('desde apps/api: build React, rutas SPA, assets y API permanecen separados'
     const health = await fetch(base + '/api/health');
     assert.equal(health.status, 200);
     assert.deepEqual(await health.json(), { status: 'ok' });
+    // Browser module/style requests send Origin; curl without it hid the failure.
+    const css = fs.readFileSync(index, 'utf8').match(/href="([^"]+\.css)"/)[1];
+    for (const route of ['/', '/index.html', asset, css]) {
+      for (const method of ['GET', 'HEAD']) {
+        const response = await fetch(base + route, { method, headers: { origin: 'https://gestionincidencias.cfd' } });
+        assert.equal(response.status, 200);
+        assert.doesNotMatch(response.headers.get('content-type'), /json/);
+      }
+    }
+    const denied = await fetch(base + '/api/v1/absent', { headers: { origin: 'https://gestionincidencias.cfd' } });
+    assert.equal(denied.status, 403);
+    assert.equal((await denied.json()).code, 'ORIGIN_NOT_ALLOWED');
   } finally {
     if (child.exitCode === null) {
       const stopped = new Promise(resolve => child.once('exit', resolve));
