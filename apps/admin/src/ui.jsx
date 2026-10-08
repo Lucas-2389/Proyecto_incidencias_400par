@@ -25,7 +25,7 @@ export function Panel({ title, eyebrow, action, children }) {
 
 export function Notice({ children, kind = 'info' }) { return children ? <div role="status" className={`notice ${kind}`}>{children}</div> : null; }
 export function Empty({ children = 'No hay registros para estos filtros.' }) { return <div className="empty">{children}</div>; }
-export function Field({ label, children }) { return <label className="field"><span>{label}</span>{children}</label>; }
+export function Field({ label, hint, children }) { return <label className="field"><span>{label}</span>{children}{hint && <small className="field-hint">{hint}</small>}</label>; }
 export function Pill({ children, tone = 'neutral' }) { return <span className={`pill ${tone}`}>{children}</span>; }
 
 export function friendlyDate(value) { return value ? new Date(value).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }) : '—'; }

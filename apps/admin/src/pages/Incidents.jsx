@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSession } from '../session';
-import { priorityLabels, sourceLabels, statusLabels, verificationLabels } from '../incidentLabels';
+import { priorityLabels, readableEvent, readableValue, sourceLabels, statusLabels, verificationLabels } from '../incidentLabels';
 import { Empty, ErrorBoundaryContent, Field, Notice, Panel, Pill, friendlyDate, useRemote } from '../ui';
 
 const statuses = ['reported', 'verifying', 'assigned', 'en_route', 'attending', 'resolved', 'closed'];
@@ -142,7 +142,7 @@ export function IncidentDetail() {
     <Notice kind="error">{error}</Notice><Notice kind="success">{success}</Notice>
     <Panel title="Derivación sugerida" eyebrow="Cobertura y reglas">
       {suggestions.data?.exception && <Notice kind="warn">Sin cobertura sugerida. Selecciona una sede y registra el motivo de la corrección.</Notice>}
-      <div className="suggestions">{(suggestions.data?.suggestions ?? []).map((item) => <button key={item.siteId} className="suggestion" onClick={() => setSiteId(item.siteId)}><strong>{item.institutionName}</strong><span>{item.siteName}</span><small>{item.reason}</small></button>)}</div>
+      <div className="suggestions">{(suggestions.data?.suggestions ?? []).map((item) => <button key={item.siteId} className="suggestion" aria-pressed={siteId === item.siteId} onClick={() => { setSiteId(item.siteId); setOperatorId(''); setUnitIds([]); setPersonnelIds([]); }}><strong>{item.institutionName}</strong><span>{item.siteName}</span><small>{item.reason}</small></button>)}</div>
       <form className="form-grid" onSubmit={assign}>
         <Field label="Sede responsable"><select required value={siteId} onChange={(e) => { setSiteId(e.target.value); setOperatorId(''); setUnitIds([]); setPersonnelIds([]); }}><option value="">Seleccionar sede</option>{(sites.data ?? []).map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}</select></Field>
         <Field label="Operador"><select value={operatorId} onChange={(e) => setOperatorId(e.target.value)}><option value="">Sin operador</option>{(users.data ?? []).filter((user) => user.siteId === siteId && user.role === 'Operador').map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select></Field>
@@ -156,6 +156,6 @@ export function IncidentDetail() {
       {(assignments.data ?? []).map((assignment) => <article className="mini-card" key={assignment.id}><div className="row-between"><strong>{(sites.data ?? []).find((site) => site.id === assignment.siteId)?.name ?? assignment.siteId}</strong><Pill>{statusLabels[assignment.status] ?? assignment.status}</Pill></div><small>{friendlyDate(assignment.assignedAt)}</small>
         {nextStatus[assignment.status] && <button className="button secondary" onClick={() => perform(`/ops/incidents/${id}/status`, { assignmentId: assignment.id, status: nextStatus[assignment.status], note: note || `Paso a ${nextStatus[assignment.status]}` }, 'PATCH')}>Pasar a {statusLabels[nextStatus[assignment.status]]}</button>}</article>)}
     </div></Panel>
-    <Panel title="Historial" eyebrow="Línea de tiempo">{history.data?.length ? <ol className="timeline">{history.data.map((item) => <li key={item.id}><strong>{item.eventType}</strong><span>{item.previousValue ?? '—'} → {item.newValue ?? '—'}</span><small>{friendlyDate(item.createdAt)} · {item.note}</small></li>)}</ol> : <Empty />}</Panel>
+    <Panel title="Historial" eyebrow="Línea de tiempo">{history.data?.length ? <ol className="timeline">{history.data.map((item) => <li key={item.id}><strong>{readableEvent(item.eventType)}</strong><span>{readableValue(item.previousValue)} → {readableValue(item.newValue)}</span><small>{friendlyDate(item.createdAt)} · {item.note}</small></li>)}</ol> : <Empty>Los cambios del reporte aparecerán aquí cuando comience su atención.</Empty>}</Panel>
   </div>;
 }

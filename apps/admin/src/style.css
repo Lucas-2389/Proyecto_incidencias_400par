@@ -58,6 +58,14 @@
 .map-legend-help{margin:9px 0 0;color:#688187;font-size:11px}
 @media(prefers-reduced-motion:no-preference){.incident-map-icon:hover{transform:translateY(-3px);transition:transform .16s ease}}
 
+.quick-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.quick-actions a{display:grid;gap:8px;padding:22px;border:1px solid #bcded6;border-radius:16px;background:linear-gradient(125deg,#e7f6ef,#fff);color:#164f53;text-decoration:none;box-shadow:0 5px 18px #17383b08}
+.quick-actions a:hover{border-color:#147d72;box-shadow:0 6px 20px #17383b18}
+.quick-actions span,.field-hint{font-size:13px;line-height:1.5;color:#526d74}
+button:disabled{opacity:.55;cursor:not-allowed}
+details{margin-top:6px;font-size:12px;overflow-wrap:anywhere}
+summary{cursor:pointer;color:#147d72}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #40b9a4;outline-offset:3px}
 .topbar{position:relative;z-index:1000}
 .topbar-actions{display:flex;align-items:center;gap:16px;min-width:0}
 .notification-area{position:relative}
@@ -79,3 +87,42 @@
 @media(max-width:900px){.notification-popover{left:0;right:auto;width:min(360px,calc(100vw - 250px))}.notification-toast{left:0;right:auto}}
 @media(max-width:600px){.topbar-actions{gap:6px}.notification-button{padding:5px 7px}.notification-button>span:nth-child(2){display:none}}
 @media(max-width:600px){.notification-popover{width:min(320px,calc(100vw - 214px))}}
+
+/* Respuesta visual compartida: reposo, foco, selección y pulsación. */
+.button,.text-button,.suggestion,.nav-item,.segmented button,.map-legend-item,.quick-actions a,.notification-button{
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .12s ease;
+}
+.button,.text-button,.segmented button,.nav-item{border:1px solid transparent}
+.text-button{border-radius:7px}
+.button.primary{border-color:#137d72}
+.button.secondary{border-color:#badbd2}
+.button.ghost{border-color:#d5e3e3}
+.field input,.field select,.field textarea{transition:border-color .16s ease,box-shadow .16s ease}
+.check input,.choice-list input{accent-color:#137d72;width:17px;height:17px;cursor:pointer}
+.choice-list label{padding:7px;border:1px solid transparent;border-radius:7px}
+.choice-list label:has(input:checked){background:#e6f5ee;border-color:#4c9e87;color:#174f46;font-weight:700}
+.suggestion[aria-pressed=true],.map-legend-item.active,.segmented button.active{border-color:#147d72;background:#e0f3eb;color:#145349;box-shadow:inset 0 0 0 1px #147d72}
+.suggestion[aria-pressed=true]::after{content:'✓ Sede seleccionada';font-size:12px;font-weight:700;color:#145349}
+.nav-item.active{border-color:#51847d;background:#265d59;color:#fff}
+@media(hover:hover){
+  .button.primary:not(:disabled):hover{background:#0b6058;border-color:#064c45;box-shadow:0 4px 12px #12695d30}
+  .button.secondary:not(:disabled):hover,.button.ghost:not(:disabled):hover{background:#d7eee5;border-color:#4d9d88;color:#164f43}
+  .text-button:not(:disabled):hover{background:#e5f3ef;border-color:#85b9ab;color:#0d5b50}
+  .text-button.danger:not(:disabled):hover{background:#fff0ed;border-color:#d98b83;color:#9d302a}
+  .suggestion:hover,.map-legend-item:hover,.quick-actions a:hover{border-color:#147d72;box-shadow:0 4px 14px #17383b20}
+  .nav-item:hover{border-color:#599c8e;background:#28645d;color:#fff}
+  .segmented button:hover{background:#d8ece5;color:#174f46}
+  .field input:not(:disabled):hover,.field select:not(:disabled):hover,.field textarea:not(:disabled):hover{border-color:#77aa9f}
+  .table-wrap tbody tr:hover{background:#f3faf7}
+  .table-wrap a:hover,.text-link:hover{text-decoration:underline;text-underline-offset:4px;color:#084e45}
+}
+.button:not(:disabled):active,.text-button:not(:disabled):active,.notification-button:not(:disabled):active,.suggestion:active,.segmented button:active,.map-legend-item:active,.quick-actions a:active{
+  transform:translateY(1px);box-shadow:inset 0 2px 5px #143b4328;background:#cce6dc;color:#103d34;border-color:#126c5e;
+}
+.button.primary:not(:disabled):active{background:#084d46;color:#fff;border-color:#043c36}
+.text-button.danger:not(:disabled):active{background:#fbd9d4;color:#8c2723;border-color:#c26d63}
+button:disabled{transform:none;box-shadow:none}
+@media(prefers-reduced-motion:reduce){
+  .button,.text-button,.suggestion,.nav-item,.segmented button,.map-legend-item,.quick-actions a,.notification-button,.field input,.field select,.field textarea{transition:none;transform:none}
+  .button:active,.text-button:active,.notification-button:active,.suggestion:active,.segmented button:active,.map-legend-item:active,.quick-actions a:active{transform:none}
+}

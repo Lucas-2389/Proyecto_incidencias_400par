@@ -20,6 +20,14 @@ Ejecutar migraciones y `db:seed:demo:test` o `db:seed:demo:app` de la API en una
 
 ## Comprobaciones
 
+### Usabilidad del panel
+
+La portada ofrece accesos directos a reportes y mapa. Estados y prioridades se presentan en español; el historial permite seleccionar institución y tipo de registro por nombre, con identificadores técnicos desplegables. El directorio selecciona distritos por nombre. Los formularios de recursos explican su identificación, bloquean el guardado sin sede y muestran el progreso; desactivar recursos o contactos requiere confirmación. Estos cambios conservan los valores del contrato HTTP y los permisos del backend.
+
+Las pruebas de interfaz verifican que cancelar una desactivación no envía una petición y que los filtros del historial se pueden elegir y limpiar sin escribir identificadores internos.
+
+Botones, navegación, enlaces y campos responden al cursor, foco de teclado y pulsación mediante bordes y colores. Las sedes sugeridas conservan su selección con `aria-pressed` y una marca visible; cambiar de sede limpia los recursos elegidos de la anterior. Las animaciones respetan `prefers-reduced-motion` y los botones deshabilitados no simulan una pulsación disponible.
+
 ```powershell
 npm --prefix apps/admin test
 npm --prefix apps/admin run build

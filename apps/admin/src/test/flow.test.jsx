@@ -90,7 +90,7 @@ it('administrador institucional ve la bandeja sin la acción de registrar llamad
   fireEvent.change(screen.getByLabelText('Correo institucional'), { target: { value: 'admin@demo.invalid' } });
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
-  await screen.findByRole('heading', { name: 'Dashboard operativo' });
+  await screen.findByRole('navigation', { name: 'Navegación principal' });
   fireEvent.click(screen.getByRole('link', { name: /Incidentes/ }));
   await screen.findByRole('heading', { name: 'Bandeja de incidentes' });
   expect(screen.queryByRole('button', { name: /Registrar llamada/ })).not.toBeInTheDocument();
@@ -101,7 +101,7 @@ it('operador hace login, abre bandeja, asigna sede y avanza estado sin ver admin
   fireEvent.change(screen.getByLabelText('Correo institucional'), { target: { value: 'operator@demo.invalid' } });
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
-  await screen.findByRole('heading', { name: 'Dashboard operativo' });
+  await screen.findByRole('navigation', { name: 'Navegación principal' });
   expect(screen.queryByRole('link', { name: /Personal/ })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('link', { name: /Incidentes/ }));
   await screen.findByText('DEMO-AY-001');
@@ -121,7 +121,7 @@ it('superadministrador confirma dos instituciones sobre el mismo accidente', asy
   fireEvent.change(screen.getByLabelText('Correo institucional'), { target: { value: 'super@demo.invalid' } });
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
-  await screen.findByRole('heading', { name: 'Dashboard operativo' });
+  await screen.findByRole('navigation', { name: 'Navegación principal' });
   fireEvent.click(screen.getByRole('link', { name: /Incidentes/ }));
   await screen.findByText('DEMO-AY-001');
   fireEvent.click(screen.getByRole('link', { name: 'Abrir →' }));
