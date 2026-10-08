@@ -1,4 +1,6 @@
-# Despliegue funcional V1 — plan y procedimiento
+# Despliegue funcional V1 — plan histórico
+
+> Documento histórico conservado para trazabilidad SDD. La propuesta VM + Cloudflare Pages + disco persistente que sigue no es la infraestructura actual. El despliegue vigente utiliza Render (Express + React), Aiven MySQL con TLS y Cloudinary. Seguir [la guía vigente de Render](RENDER_COLLABORATION.md). Las afirmaciones sobre ausencia de TLS y despliegue en las secciones siguientes corresponden al estado de esa propuesta inicial.
 
 Estado: **plan de primera instalación controlada; no desplegado**. El dominio, el servidor, las claves y los servicios Cloudflare aún deben ser elegidos y configurados por el propietario. Este documento usa `example.com` como marcador, nunca como URL real. El piloto DEMO de Ayacucho no sirve para atención de emergencias reales. El recorrido físico Android→panel→Android de OpenSpec aún tiene pasos pendientes; no publicar hasta cerrarlo o acordar expresamente una demostración limitada.
 

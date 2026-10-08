@@ -1,5 +1,18 @@
 # Colaboración y preparación de Render
 
+## Estado actual y acceso (2026-10-08)
+
+Panel y API desplegados, según la validación del propietario y las pruebas remotas de Flutter:
+
+- Panel/login: https://gestion-incidencias-200e.onrender.com/login
+- API funcional: https://gestion-incidencias-200e.onrender.com/api/v1
+- Salud HTTP: `/api/health`; conexión MySQL: `/api/health/database`.
+- Aiven: MySQL 8.4.8, base `incidencias`, usuario `incidencias_app`, TLS con CA y validación de certificado.
+- Evidencias nuevas: Cloudinary; migración 011 aplicada.
+- Flutter: configuración de producción centralizada, APK release de prueba generado y pruebas remotas de login, reporte y fotografía aprobadas. Commit `a20ac4c` publicado en `main`.
+
+Las secciones de resultados anteriores se conservan como registros fechados; sus pendientes de publicación y configuración no representan el estado actual. No ejecutar seeds ni migraciones al iniciar Render. Para uso y cuentas, consultar [la guía de usuarios](USER_GUIDE.md).
+
 ## Publicación del panel mejorado (2026-10-08)
 
 Se publica el panel con logo, avisos internos, mapa con pictogramas y agrupaciones, etiquetas en español, contacto telefónico autorizado y estilos. Incluye las dependencias de notificaciones del backend y el contrato actualizado. Flutter conserva cambios locales pendientes fuera de esta publicación.

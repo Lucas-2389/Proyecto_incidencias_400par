@@ -1,6 +1,15 @@
 # Plataforma de gestión de incidencias
 
-Monorepo del piloto DEMO de Ayacucho descrito en el [SDD](SDD_Plataforma_Gestion_Desastres_Violencias_v0.1.md). Incluye app ciudadana Android (Flutter), panel institucional (React), API Node.js/Express y MySQL. Los reportes, ubicación, fotos, asignaciones, estados, mapas, directorio, avisos y auditoría ya están implementados para el piloto; el despliegue público V1 está en preparación.
+Monorepo del piloto DEMO de Ayacucho descrito en el [SDD](SDD_Plataforma_Gestion_Desastres_Violencias_v0.1.md). Incluye app ciudadana Android (Flutter), panel institucional (React), API Node.js/Express y MySQL. El panel y la API están desplegados en Render; MySQL usa Aiven con TLS y las fotos nuevas se almacenan en Cloudinary.
+
+## Empieza aquí
+
+- [Abrir panel y login](https://gestion-incidencias-200e.onrender.com/login).
+- [Guía de usuarios y módulos](docs/USER_GUIDE.md): cuentas DEMO, permisos y recorrido de prueba.
+- [Índice de documentación](docs/README.md): instalación, arquitectura, colaboración y validación SDD/OpenSpec.
+- [App Android](apps/mobile/README.md): configuración de ambientes, compilación e instalación del APK.
+
+El piloto utiliza datos de demostración y no constituye un servicio de atención de emergencias reales.
 
 ![Arquitectura del piloto](docs/arquitectura-operational-mvp.svg)
 
@@ -16,7 +25,7 @@ La app y el panel consumen `/api/v1`; solo la API se conecta a MySQL con `incide
 | `packages/contracts/openapi.yaml` | Contrato HTTP compartido. |
 | `openspec` | Cambios y especificaciones de implementación. |
 
-Tecnologías: Node.js 20.19+ o 22.12+ para el monorepo (requisito de Vite 8), Express 5, MySQL 9, React 19, Vite 8, Flutter 3.38, Docker Compose y OpenAPI. El SDD original conserva la arquitectura y decisiones de diseño; [convenciones](docs/conventions.md), [validación del piloto](docs/pilot-validation.md) y [despliegue V1](docs/DEPLOYMENT_V1.md) tienen propósitos distintos. OpenSpec conserva el historial de cambios.
+Tecnologías: Node.js 20.19+ o 22.12+ para el monorepo (requisito de Vite 8), Express 5, MySQL 9.7.2 local / 8.4.8 en Aiven, React 19, Vite 8, Flutter 3.38, Docker Compose y OpenAPI. El SDD original conserva la arquitectura y decisiones de diseño; [convenciones](docs/conventions.md), [validación del piloto](docs/pilot-validation.md) y [operación en Render](docs/RENDER_COLLABORATION.md) documentan su aplicación. OpenSpec conserva el historial de cambios.
 
 ## Entorno local
 
@@ -104,11 +113,11 @@ Abrir la URL que imprima Vite, normalmente `http://127.0.0.1:5173/login`. Las cu
 
 La app Flutter Android vive en `apps/mobile`. Su [guía de instalación y prueba](apps/mobile/README.md) describe permisos, URL de API por `--dart-define`, emulador Android, GPS manual, fotos, reintentos y las siete vistas ciudadanas. En `apps/mobile`, ejecutar `flutter pub get`, `flutter analyze` y `flutter test` antes de iniciar un dispositivo.
 
-En Android, abrir **Perfil** para crear una cuenta ciudadana o iniciar sesión. La cuenta permite ver **Mis reportes** y adjuntar fotos; un invitado puede enviar un reporte preliminar. Las otras vistas son Inicio, Reportar, Mapa, Alertas y Directorio. Para teléfono físico con ADB, usar `adb reverse tcp:3000 tcp:3000` y compilar con `API_BASE_URL=http://127.0.0.1:3000/api/v1`; para emulador usar `10.0.2.2`. La URL de producción se inyecta con `--dart-define`, sin IP local fija en el código.
+En Android, abrir **Perfil** para crear una cuenta ciudadana o iniciar sesión. La cuenta permite ver **Mis reportes** y adjuntar fotos; un invitado puede enviar un reporte preliminar. Las otras vistas son Inicio, Reportar, Mapa, Alertas y Directorio. La configuración única está en `apps/mobile/lib/core/config.dart`: producción usa Render por defecto. Desarrollo exige `APP_ENV=development` y una `API_BASE_URL` explícita; consultar la guía móvil. No se incorporan contraseñas al APK.
 
 ## Estado y despliegue
 
-El cambio OpenSpec `operational-mvp` mantiene pendiente su recorrido visual completo Android→panel→Android (tarea 12.3). Las suites API, React y Flutter y el contrato OpenAPI se verifican antes de publicar; los resultados concretos están en [validación del piloto](docs/pilot-validation.md). La [guía de despliegue V1](docs/DEPLOYMENT_V1.md) contiene la topología propuesta, variables, Cloudflare, pruebas y rollback. No hay dominio ni servicio público configurado por este repositorio.
+El cambio OpenSpec `operational-mvp` mantiene pendiente su recorrido visual completo Android→panel→Android (tarea 12.3). Las suites API, React y Flutter y el contrato OpenAPI se verifican antes de publicar; los resultados concretos están en [validación del piloto](docs/pilot-validation.md) y en las guías de cada aplicación. El servicio público está en Render; [su guía](docs/RENDER_COLLABORATION.md) contiene comandos y configuración. El [plan V1 original](docs/DEPLOYMENT_V1.md) se conserva como referencia histórica de una topología distinta; no describe el despliegue actual. Cloudflare y un dominio propio quedan pendientes.
 
 ## Iteraciones
 
