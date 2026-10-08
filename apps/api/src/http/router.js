@@ -33,9 +33,9 @@ function createV1Router({ pool, authConfig, mailbox, evidenceStore, notification
   if (pool) router.use('/resources/personnel', createPersonnelRouter(pool, authConfig));
   if (pool) router.use('/resources/units', createUnitsRouter(pool, authConfig));
   if (pool) router.use('/catalog', createCatalogRouter(pool, authConfig));
-  if (pool) router.use('/incidents', createIncidentsRouter(pool, authConfig, evidenceStore));
+  if (pool) router.use('/incidents', createIncidentsRouter(pool, authConfig, notificationSender));
   if (pool) router.use('/incidents', createEvidenceRouter(pool, authConfig, evidenceStore));
-  if (pool) router.use('/ops/incidents', createPhoneReportRouter(pool, authConfig));
+  if (pool) router.use('/ops/incidents', createPhoneReportRouter(pool, authConfig, notificationSender));
   if (pool) router.use('/ops/incidents', createSuggestionsRouter(pool, authConfig));
   if (pool) router.use('/ops/incidents', createAssignmentsRouter(pool, authConfig, notificationSender));
   if (pool) router.use('/ops/incidents', createOperationsRouter(pool, authConfig, notificationSender));

@@ -7,7 +7,7 @@ const { createRateLimit } = require('../auth/rate-limit');
 const { createReport, requestKey } = require('./report');
 const { listMine, incidentDetail } = require('./queries');
 
-function createIncidentsRouter(pool, authConfig) {
+function createIncidentsRouter(pool, authConfig, notificationSender = null) {
   const router = express.Router();
   const authenticate = requireAuthentication(pool, authConfig);
   const guestLimit = createRateLimit(pool, 'guest_report', { limit: 10 });
@@ -26,7 +26,7 @@ function createIncidentsRouter(pool, authConfig) {
     const scopeId = req.auth?.user.id || createHash('sha256').update(req.ip || 'unknown').digest('hex');
     const result = await createReport(pool, req.body, {
       source: 'MOBILE_APP', reporterUserId: req.auth?.user.id || null,
-      scopeType, scopeId, key, locationRequired: true,
+      scopeType, scopeId, key, locationRequired: true, notificationSender,
     });
     res.status(result.repeated ? 200 : 201).json(result.receipt);
   });
@@ -39,22 +39,22 @@ function createIncidentsRouter(pool, authConfig) {
   return router;
 }
 
-function createPhoneReportRouter(pool, authConfig) {
+function createPhoneReportRouter(pool, authConfig, notificationSender = null) {
   const router = express.Router();
-  router.use(requireAuthentication(pool, authConfig), requireRoles('Operador', 'SuperAdministrador'));
-  router.post('/phone', async (req, res) => {
-    const institutionId = requireText(req.body?.institutionId, 'institutionId', { max: 36 });
-    const siteId = requireText(req.body?.siteId, 'siteId', { max: 36 });
-    if (!hasInstitutionScope(req.auth, institutionId, siteId)) throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
-    const [[site]] = await pool.execute('SELECT id FROM sites WHERE id = ? AND institution_id = ? AND active = TRUE', [siteId, institutionId]);
-    if (!site) throw new HttpError(422, 'VALIDATION_ERROR', 'Sede inválida');
-    const key = requestKey(req.get('Idempotency-Key'), req.body);
-    const result = await createReport(pool, req.body, {
-      source: 'PHONE', creatorUserId: req.auth.user.id,
-      scopeType: 'operator', scopeId: req.auth.user.id, key, locationRequired: false,
+  router.post('/phone', requireAuthentication(pool, authConfig),
+    requireRoles('Operador', 'SuperAdministrador'), async (req, res) => {
+      const institutionId = requireText(req.body?.institutionId, 'institutionId', { max: 36 });
+      const siteId = requireText(req.body?.siteId, 'siteId', { max: 36 });
+      if (!hasInstitutionScope(req.auth, institutionId, siteId)) throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
+      const [[site]] = await pool.execute('SELECT id FROM sites WHERE id = ? AND institution_id = ? AND active = TRUE', [siteId, institutionId]);
+      if (!site) throw new HttpError(422, 'VALIDATION_ERROR', 'Sede inválida');
+      const key = requestKey(req.get('Idempotency-Key'), req.body);
+      const result = await createReport(pool, req.body, {
+        source: 'PHONE', creatorUserId: req.auth.user.id,
+        scopeType: 'operator', scopeId: req.auth.user.id, key, locationRequired: false, notificationSender,
+      });
+      res.status(result.repeated ? 200 : 201).json(result.receipt);
     });
-    res.status(result.repeated ? 200 : 201).json(result.receipt);
-  });
   return router;
 }
 

@@ -1648,7 +1648,7 @@ components:
         subcategoryId: { type: integer }
         description: { type: string, minLength: 1, maxLength: 2000 }
         location: { allOf: [{ $ref: '#/components/schemas/Coordinates' }], nullable: true }
-        callerContact: { type: string, maxLength: 100 }
+        callerContact: { type: string, maxLength: 20, description: Teléfono opcional para que la central autorizada pueda contactar a la persona }
         clientRequestId: { type: string, maxLength: 128 }
     PersonnelInput:
       type: object
@@ -1884,6 +1884,7 @@ components:
         subcategoryId: { type: integer }
         location: { $ref: '#/components/schemas/Coordinates' }
         description: { type: string, minLength: 1, maxLength: 2000 }
+        callerContact: { type: string, maxLength: 20, description: Teléfono opcional visible solo para personal autorizado }
         affectedPeople: { type: integer, minimum: 0 }
         occurredAt: { type: string, format: date-time }
         clientRequestId: { type: string, maxLength: 128 }
@@ -1914,6 +1915,7 @@ components:
           properties:
             description: { type: string }
             location: { allOf: [{ $ref: '#/components/schemas/Coordinates' }], nullable: true }
+            callerContact: { type: string, nullable: true, description: Solo para roles institucionales autorizados }
             evidence: { type: array, items: { $ref: '#/components/schemas/EvidenceMetadata' } }
     EvidenceMetadata:
       type: object

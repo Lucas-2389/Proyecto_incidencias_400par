@@ -7,6 +7,7 @@ import { IncidentDetail, IncidentList } from './pages/Incidents';
 import { Organization, Resources } from './pages/Resources';
 import Directory from './pages/Directory';
 import History from './pages/History';
+import Notifications from './Notifications';
 import './style.css';
 
 const MapView = lazy(() => import('./pages/MapView'));
@@ -32,10 +33,10 @@ function Shell({ children }) {
     ['/directorio', '☎', 'Directorio', administrative],
     ['/historial', '↺', 'Historial', administrative],
   ];
-  return <div className="app-shell"><aside className="sidebar"><Link className="brand" to="/"><span className="brand-symbol">●</span><span><strong>Centro de<br />operaciones</strong><small>Gestión de incidencias</small></span></Link>
+  return <div className="app-shell"><aside className="sidebar"><Link className="brand" to="/"><span className="brand-symbol"><img src="/logo.png" alt="" /></span><span><strong>Centro de<br />operaciones</strong><small>Gestión de incidencias</small></span></Link>
     <div className="sidebar-label">PLATAFORMA</div><nav aria-label="Navegación principal">{links.filter(([, , , roles]) => hasRole(session, ...roles)).map(([path, icon, label]) => <NavLink key={path} to={path} end={path === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><span className="nav-icon">{icon}</span>{label}</NavLink>)}</nav>
     <div className="sidebar-footer"><div className="pilot"><span className="live-dot" /> Piloto Ayacucho</div><small>Datos DEMO · Uso de prueba</small></div></aside>
-    <div className="main-area"><header className="topbar"><div className="topbar-title">Plataforma de respuesta y coordinación</div><div className="user-menu"><span className="avatar">{session?.user?.name?.[0]?.toUpperCase() ?? 'U'}</span><div><strong>{session?.user?.name}</strong><small>{session?.user?.roles?.join(' · ')}</small></div><button className="text-button" onClick={logout}>Salir</button></div></header><main>{children}</main></div>
+    <div className="main-area"><header className="topbar"><div className="topbar-title">Plataforma de respuesta y coordinación</div><div className="topbar-actions"><Notifications /><div className="user-menu"><span className="avatar">{session?.user?.name?.[0]?.toUpperCase() ?? 'U'}</span><div><strong>{session?.user?.name}</strong><small>{session?.user?.roles?.join(' · ')}</small></div><button className="text-button" onClick={logout}>Salir</button></div></div></header><main>{children}</main></div>
   </div>;
 }
 

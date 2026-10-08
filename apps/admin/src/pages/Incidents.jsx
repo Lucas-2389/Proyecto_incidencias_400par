@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSession } from '../session';
+import { priorityLabels, sourceLabels, statusLabels, verificationLabels } from '../incidentLabels';
 import { Empty, ErrorBoundaryContent, Field, Notice, Panel, Pill, friendlyDate, useRemote } from '../ui';
 
 const statuses = ['reported', 'verifying', 'assigned', 'en_route', 'attending', 'resolved', 'closed'];
 const nextStatus = { reported: 'verifying', assigned: 'en_route', en_route: 'attending', attending: 'resolved', resolved: 'closed' };
 
 export function IncidentList() {
-  const { api } = useSession();
+  const { api, session } = useSession();
   const navigate = useNavigate();
   const [status, setStatus] = useState('');
   const [exception, setException] = useState(false);
@@ -17,6 +18,7 @@ export function IncidentList() {
   const [institutionId, setInstitutionId] = useState('');
   const [siteId, setSiteId] = useState('');
   const [description, setDescription] = useState('');
+  const [callerContact, setCallerContact] = useState('');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const categories = useRemote('/catalog/categories');
@@ -32,13 +34,15 @@ export function IncidentList() {
       const receipt = await api.request('/ops/incidents/phone', { method: 'POST',
         headers: { 'Idempotency-Key': crypto.randomUUID() },
         body: JSON.stringify({ institutionId, siteId, categoryId: Number(categoryId), description,
+          ...(callerContact.trim() ? { callerContact: callerContact.trim() } : {}),
           ...(latitude && longitude ? { location: { latitude: Number(latitude), longitude: Number(longitude) } } : {}) }) });
       setShowForm(false); await incidents.reload(); navigate(`/incidentes/${receipt.id}`);
     } catch (issue) { setError(issue.message); }
   }
   return <div className="page-stack">
     <div className="page-intro with-action"><div><span className="eyebrow">Operaciones</span><h1>Bandeja de incidentes</h1><p>Consulta reportes y coordina la atención.</p></div>
-      <button className="button primary" onClick={() => setShowForm((value) => !value)}>+ Registrar llamada</button></div>
+      {session?.user?.roles?.some((role) => ['Operador', 'SuperAdministrador'].includes(role)) &&
+        <button className="button primary" onClick={() => setShowForm((value) => !value)}>+ Registrar llamada</button>}</div>
     {showForm && <Panel title="Nuevo reporte por llamada" eyebrow="Registro telefónico">
       <form className="form-grid" onSubmit={createPhone}>
         <Field label="Institución"><select required value={institutionId} onChange={(e) => { setInstitutionId(e.target.value); setSiteId(''); }}><option value="">Seleccionar</option>
@@ -48,16 +52,17 @@ export function IncidentList() {
         <Field label="Categoría"><select required value={categoryId} onChange={(e) => setCategoryId(e.target.value)}><option value="">Seleccionar</option>
           {(categories.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
         <Field label="Descripción"><textarea required maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
+        <Field label="Teléfono de quien llamó (opcional)"><input type="tel" maxLength={20} placeholder="Para devolver la llamada" value={callerContact} onChange={(e) => setCallerContact(e.target.value)} /></Field>
         <Field label="Latitud (opcional)"><input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} /></Field>
         <Field label="Longitud (opcional)"><input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} /></Field>
         <Notice kind="error">{error}</Notice><button className="button primary">Guardar reporte</button>
       </form></Panel>}
     <Panel title="Reportes visibles" eyebrow="Bandeja" action={<button className="button ghost" onClick={incidents.reload}>Actualizar</button>}>
-      <div className="filters"><Field label="Estado"><select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">Todos</option>{statuses.map((item) => <option key={item}>{item}</option>)}</select></Field>
+      <div className="filters"><Field label="Estado"><select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">Todos</option>{statuses.map((item) => <option key={item} value={item}>{statusLabels[item]}</option>)}</select></Field>
         <label className="check"><input type="checkbox" checked={exception} onChange={(e) => setException(e.target.checked)} /> Solo excepciones</label></div>
       <ErrorBoundaryContent error={incidents.error} loading={incidents.loading}>
         {incidents.data?.length ? <div className="table-wrap"><table><thead><tr><th>Referencia</th><th>Estado</th><th>Verificación</th><th>Prioridad</th><th>Fecha</th><th></th></tr></thead><tbody>
-          {incidents.data.map((item) => <tr key={item.id}><td><strong>{item.reference}</strong>{item.exception && <Pill tone="warn">Sin cobertura</Pill>}</td><td><Pill>{item.status}</Pill></td><td>{item.verificationStatus}</td><td>{item.priority}</td><td>{friendlyDate(item.createdAt)}</td><td><Link to={`/incidentes/${item.id}`}>Abrir →</Link></td></tr>)}
+          {incidents.data.map((item) => <tr key={item.id}><td><strong>{item.reference}</strong>{item.exception && <Pill tone="warn">Sin cobertura</Pill>}</td><td><Pill>{statusLabels[item.status] ?? item.status}</Pill></td><td>{verificationLabels[item.verificationStatus] ?? item.verificationStatus}</td><td>{priorityLabels[item.priority] ?? item.priority}</td><td>{friendlyDate(item.createdAt)}</td><td><Link to={`/incidentes/${item.id}`}>Abrir →</Link></td></tr>)}
         </tbody></table></div> : <Empty />}
       </ErrorBoundaryContent>
     </Panel>
@@ -68,6 +73,25 @@ export function IncidentDetail() {
   const { id } = useParams();
   const { api } = useSession();
   const detail = useRemote(`/incidents/${id}`);
+  const categories = useRemote('/catalog/categories');
+  const evidenceIds = (detail.data?.evidence ?? []).map((photo) => photo.id).join(',');
+  const [evidenceUrls, setEvidenceUrls] = useState({});
+  const [evidenceError, setEvidenceError] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    const urls = [];
+    setEvidenceUrls({});
+    setEvidenceError('');
+    if (!evidenceIds) return () => {};
+    Promise.all((detail.data?.evidence ?? []).map(async (photo) => [photo.id, await api.getEvidence(id, photo.id)]))
+      .then((entries) => {
+        if (cancelled) return;
+        urls.push(...entries.map(([, url]) => url));
+        setEvidenceUrls(Object.fromEntries(entries));
+      })
+      .catch((issue) => { if (!cancelled) setEvidenceError(issue.message || 'No se pudieron cargar las fotografías.'); });
+    return () => { cancelled = true; urls.forEach((url) => URL.revokeObjectURL(url)); };
+  }, [api, id, evidenceIds]);
   const suggestions = useRemote(`/ops/incidents/${id}/suggestions`);
   const assignments = useRemote(`/ops/incidents/${id}/assignments`);
   const history = useRemote(`/ops/incidents/${id}/history`);
@@ -102,10 +126,19 @@ export function IncidentDetail() {
   return <div className="page-stack"><Link className="text-link" to="/incidentes">← Volver a bandeja</Link>
     <div className="page-intro"><span className="eyebrow">Detalle operativo</span><h1>{detail.data?.reference ?? 'Incidente'}</h1><p>Seguimiento y asignaciones de las instituciones autorizadas.</p></div>
     <ErrorBoundaryContent error={detail.error} loading={detail.loading}>
-      <div className="detail-grid"><Panel title="Reporte" eyebrow="Información"><div className="kv"><span>Estado</span><Pill>{detail.data?.status}</Pill><span>Fuente</span><strong>{detail.data?.source}</strong><span>Categoría</span><strong>{detail.data?.categoryId}</strong><span>Prioridad</span><strong>{detail.data?.priority ?? '—'}</strong><span>Ubicación</span><strong>{detail.data?.location ? `${detail.data.location.latitude}, ${detail.data.location.longitude}` : 'No disponible'}</strong></div><p className="description">{detail.data?.description}</p></Panel>
-        <Panel title="Verificar y priorizar" eyebrow="Control"><div className="stack"><Field label="Resultado"><select value={verification} onChange={(e) => setVerification(e.target.value)}>{['verified', 'unverifiable', 'false', 'duplicate'].map((value) => <option key={value}>{value}</option>)}</select></Field><Field label="Motivo"><input value={note} onChange={(e) => setNote(e.target.value)} /></Field><button className="button secondary" onClick={() => perform(`/ops/incidents/${id}/verification`, { verificationStatus: verification, reason: note }, 'PATCH')}>Guardar verificación</button>
+      <div className="detail-grid"><Panel title="Reporte" eyebrow="Información"><div className="kv"><span>Estado</span><Pill>{statusLabels[detail.data?.status] ?? detail.data?.status}</Pill><span>Fuente</span><strong>{sourceLabels[detail.data?.source] ?? detail.data?.source}</strong><span>Categoría</span><strong>{categories.data?.find((item) => item.id === detail.data?.categoryId)?.name ?? (categories.loading ? 'Cargando categoría…' : `Categoría ${detail.data?.categoryId}`)}</strong><span>Prioridad</span><strong>{priorityLabels[detail.data?.priority] ?? detail.data?.priority ?? '—'}</strong><span>Ubicación</span><strong>{detail.data?.location?.reference || (detail.data?.location ? 'Punto seleccionado en el mapa' : 'No disponible')}</strong><span>Contacto</span><strong>{detail.data?.callerContact ? <a href={`tel:${detail.data.callerContact.replace(/[^\d+]/g, '')}`}>{detail.data.callerContact} · Llamar</a> : 'No proporcionado'}</strong></div><p className="description">{detail.data?.description}</p></Panel>
+        <Panel title="Verificar y priorizar" eyebrow="Control"><div className="stack"><Field label="Resultado"><select value={verification} onChange={(e) => setVerification(e.target.value)}>{['verified', 'unverifiable', 'false', 'duplicate'].map((value) => <option key={value} value={value}>{verificationLabels[value]}</option>)}</select></Field><Field label="Motivo"><input value={note} onChange={(e) => setNote(e.target.value)} /></Field><button className="button secondary" onClick={() => perform(`/ops/incidents/${id}/verification`, { verificationStatus: verification, reason: note }, 'PATCH')}>Guardar verificación</button>
           {detail.data?.status === 'reported' && <button className="button ghost" onClick={() => perform(`/ops/incidents/${id}/status`, { status: 'verifying', note }, 'PATCH')}>Iniciar verificación</button>}</div></Panel></div>
     </ErrorBoundaryContent>
+    <Panel title="Fotografías" eyebrow="Evidencia del reporte">
+      <Notice kind="error">{evidenceError}</Notice>
+      {detail.data?.evidence?.length ? <div className="evidence-grid">
+        {detail.data.evidence.map((photo, index) => <figure className="evidence-card" key={photo.id}>
+          {evidenceUrls[photo.id] ? <img src={evidenceUrls[photo.id]} alt={`Fotografía ${index + 1} del reporte`} /> : <div className="loading">Cargando fotografía…</div>}
+          <figcaption>{photo.mediaType} · {friendlyDate(photo.uploadedAt)}</figcaption>
+        </figure>)}
+      </div> : <Empty>Este reporte todavía no tiene fotografías.</Empty>}
+    </Panel>
     <Notice kind="error">{error}</Notice><Notice kind="success">{success}</Notice>
     <Panel title="Derivación sugerida" eyebrow="Cobertura y reglas">
       {suggestions.data?.exception && <Notice kind="warn">Sin cobertura sugerida. Selecciona una sede y registra el motivo de la corrección.</Notice>}
@@ -120,8 +153,8 @@ export function IncidentDetail() {
       </form>
     </Panel>
     <Panel title="Asignaciones" eyebrow="Atención multiinstitución"><div className="cards">
-      {(assignments.data ?? []).map((assignment) => <article className="mini-card" key={assignment.id}><div className="row-between"><strong>{(sites.data ?? []).find((site) => site.id === assignment.siteId)?.name ?? assignment.siteId}</strong><Pill>{assignment.status}</Pill></div><small>{friendlyDate(assignment.assignedAt)}</small>
-        {nextStatus[assignment.status] && <button className="button secondary" onClick={() => perform(`/ops/incidents/${id}/status`, { assignmentId: assignment.id, status: nextStatus[assignment.status], note: note || `Paso a ${nextStatus[assignment.status]}` }, 'PATCH')}>Pasar a {nextStatus[assignment.status]}</button>}</article>)}
+      {(assignments.data ?? []).map((assignment) => <article className="mini-card" key={assignment.id}><div className="row-between"><strong>{(sites.data ?? []).find((site) => site.id === assignment.siteId)?.name ?? assignment.siteId}</strong><Pill>{statusLabels[assignment.status] ?? assignment.status}</Pill></div><small>{friendlyDate(assignment.assignedAt)}</small>
+        {nextStatus[assignment.status] && <button className="button secondary" onClick={() => perform(`/ops/incidents/${id}/status`, { assignmentId: assignment.id, status: nextStatus[assignment.status], note: note || `Paso a ${nextStatus[assignment.status]}` }, 'PATCH')}>Pasar a {statusLabels[nextStatus[assignment.status]]}</button>}</article>)}
     </div></Panel>
     <Panel title="Historial" eyebrow="Línea de tiempo">{history.data?.length ? <ol className="timeline">{history.data.map((item) => <li key={item.id}><strong>{item.eventType}</strong><span>{item.previousValue ?? '—'} → {item.newValue ?? '—'}</span><small>{friendlyDate(item.createdAt)} · {item.note}</small></li>)}</ol> : <Empty />}</Panel>
   </div>;

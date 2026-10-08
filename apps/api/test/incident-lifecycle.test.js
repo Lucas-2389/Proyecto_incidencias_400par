@@ -122,6 +122,7 @@ integration('fallo antes de auditoría revierte estado, historial, recursos y av
   }, randomUUID());
   const [[beforeHistory]] = await pool.execute('SELECT COUNT(*) AS total FROM incident_history WHERE incident_id = ?', [receipt.id]);
   const [[beforeAudit]] = await pool.execute('SELECT COUNT(*) AS total FROM audit_logs WHERE entity_id = ? AND entity_type = ?', [receipt.id, 'incident']);
+  const [[beforeNotices]] = await pool.execute('SELECT COUNT(*) AS total FROM notifications WHERE incident_id = ?', [receipt.id]);
   const faultyPool = {
     async getConnection() {
       const connection = await pool.getConnection();
@@ -152,6 +153,6 @@ integration('fallo antes de auditoría revierte estado, historial, recursos y av
     assert.equal(storedIncident.status, 'assigned');
     assert.equal(afterHistory.total, beforeHistory.total);
     assert.equal(afterAudit.total, beforeAudit.total);
-    assert.equal(notices.total, 0);
+    assert.equal(notices.total, beforeNotices.total);
   } finally { await pool.end(); }
 });

@@ -51,6 +51,16 @@ export function createApiClient({ baseUrl = API_BASE_URL, fetchImpl = fetch, onS
         return raw(path, options, token);
       }
     },
+    getEvidence: async (incidentId, evidenceId) => {
+      const response = await fetchImpl(`${baseUrl}/incidents/${incidentId}/evidence/${evidenceId}`, {
+        headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {},
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new ApiError(response.status, body);
+      }
+      return URL.createObjectURL(await response.blob());
+    },
     public: (path, options = {}) => raw(path, options),
   };
 }

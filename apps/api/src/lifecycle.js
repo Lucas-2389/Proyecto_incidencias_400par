@@ -1,6 +1,6 @@
 async function startServer({ app, port, closePool, logger = console }) {
   const server = await new Promise((resolve, reject) => {
-    const listening = app.listen(port, () => resolve(listening));
+    const listening = app.listen(port, '0.0.0.0', () => resolve(listening));
     listening.once('error', reject);
   });
 

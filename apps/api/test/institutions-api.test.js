@@ -81,6 +81,11 @@ integration('instituciones: CRUD autorizado y rechazo de Ciudadano', async () =>
     });
     assert.equal(institutionalAdmin.status, 201);
     const institutionalAdminToken = (await login(pool, authConfig, { email: adminEmail, password })).accessToken;
+    const incidentsBase = `http://127.0.0.1:${server.address().port}/api/v1/ops/incidents`;
+    assert.equal((await fetch(incidentsBase, { headers: { authorization: `Bearer ${institutionalAdminToken}` } })).status, 200);
+    assert.equal((await fetch(`${incidentsBase}/phone`, {
+      method: 'POST', headers: { authorization: `Bearer ${institutionalAdminToken}`, 'content-type': 'application/json' }, body: '{}',
+    })).status, 403);
     const operatorEmail = `institution-operator-${randomUUID()}@example.invalid`;
     const operator = await userCall('', 'POST', institutionalAdminToken, {
       name: 'Operador local', email: operatorEmail, password, role: 'Operador',

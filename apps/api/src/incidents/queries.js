@@ -26,6 +26,7 @@ async function incidentDetail(pool, id, auth) {
     `SELECT i.id, i.reference, i.reporter_user_id AS reporterId, i.category_id AS categoryId,
      i.subcategory_id AS subcategoryId, i.description, i.affected_people AS affectedPeople,
      i.status, i.verification_status AS verificationStatus, i.priority, i.source,
+     i.caller_contact AS callerContact,
      i.occurred_at AS occurredAt, i.created_at AS createdAt,
      ST_X(l.location_point) AS latitude, ST_Y(l.location_point) AS longitude,
      l.accuracy_meters AS accuracyMeters, l.captured_at AS capturedAt, l.reference_text AS locationReference
@@ -50,6 +51,7 @@ async function incidentDetail(pool, id, auth) {
   if (auth.roles.has('Operador') || auth.roles.has('AdministradorInstitucional') || auth.roles.has('SuperAdministrador')) {
     detail.priority = row.priority;
     detail.verificationStatus = row.verificationStatus;
+    detail.callerContact = row.callerContact;
   }
   return detail;
 }

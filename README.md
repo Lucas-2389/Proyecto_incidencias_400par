@@ -71,6 +71,8 @@ La API expone `GET /api/v1/public/heatmap?from=...&to=...` sin autenticación. A
 
 `GET /api/v1/ops/map` y `GET /api/v1/ops/stats` usan los mismos filtros y requieren token de SuperAdministrador, AdministradorInstitucional u Operador. La API comprueba el ámbito de cada incidente y sede antes de entregar puntos exactos o estadísticas. Para consultar el directorio, `GET /api/v1/public/directory?districtId=...` entrega contactos locales activos de ese distrito y contactos nacionales activos; sin contactos locales sigue devolviendo los nacionales. `POST /api/v1/admin/directory` y `PATCH/DELETE /api/v1/admin/directory/{id}` exigen administrador y registran cada cambio en auditoría.
 
+En el mapa operativo, cada tipo de reporte tiene un pictograma y una etiqueta. La leyenda permite filtrar por tipo con un toque. Los puntos que se superponen se agrupan con un contador y un listado de reportes; al acercar el mapa se separan los puntos distintos. El mapa de calor público sigue usando solo celdas agregadas. El reporte ciudadano puede incluir un teléfono de contacto **opcional** para que la central devuelva la llamada. Este dato se muestra únicamente en el detalle autorizado del incidente, con acceso para llamar; no se publica en el mapa ni en el mapa de calor.
+
 Ejemplo desde PowerShell, con API en ejecución:
 
 ```powershell
@@ -84,13 +86,15 @@ Los clientes deben configurar la URL de teselas OpenStreetMap por entorno y most
 
 ## Alertas, avisos y auditoría
 
-`GET /api/v1/public/alerts?districtId=...` devuelve alertas activas y vigentes de ese distrito más las globales. Los administradores publican, corrigen o desactivan alertas mediante `/api/v1/admin/alerts`. `GET /api/v1/notifications/mine` y `PATCH /api/v1/notifications/{id}/read` permiten consultar y marcar los avisos propios. Una asignación notifica al Operador designado y un cambio de estado notifica al ciudadano que reportó; estos avisos se guardan en MySQL antes de cualquier intento push. `GET /api/v1/admin/audit` consulta eventos con límites de institución y sede.
+`GET /api/v1/public/alerts?districtId=...` devuelve alertas activas y vigentes de ese distrito más las globales. Los administradores publican, corrigen o desactivan alertas mediante `/api/v1/admin/alerts`. `GET /api/v1/notifications/mine` y `PATCH /api/v1/notifications/{id}/read` permiten consultar y marcar los avisos propios. Un reporte nuevo avisa a los administradores y miembros institucionales con cobertura y regla de derivación; una asignación avisa al Operador designado y un cambio de estado al ciudadano que reportó. Estos avisos se guardan en MySQL antes de cualquier intento push. La campana del panel consulta los avisos sin leer periódicamente y enlaza al incidente; la app ciudadana conserva sus avisos en **Mis reportes**. `GET /api/v1/admin/audit` consulta eventos con límites de institución y sede.
 
 FCM es opcional. Sin `FCM_PROJECT_ID`, la API arranca sin credenciales externas y los avisos internos funcionan. Para una prueba FCM, configurar en `apps/api/.env` un `FCM_PROJECT_ID` válido y definir `GOOGLE_APPLICATION_CREDENTIALS` en el entorno de PowerShell apuntando a un JSON de cuenta de servicio **fuera del repositorio**. El servidor usa [Firebase Admin SDK y credenciales ADC](https://firebase.google.com/docs/cloud-messaging/send/admin-sdk). Un cliente autenticado puede registrar su token mediante `POST /api/v1/notifications/devices` con `{ "token": "..." }` y desactivarlo mediante `DELETE /api/v1/notifications/devices/{id}`. La API nunca devuelve ni registra el token. Sin dispositivo registrado, o si FCM falla, la operación principal y el aviso interno permanecen guardados. El piloto limita la entrega a 20 dispositivos activos por usuario.
 
 El buzón local `DEV_MAILBOX_DIR` de `apps/api/.env` sirve solo para enlaces de recuperación en desarrollo y queda fuera de Git. No usar contraseñas, claves de servicio ni tokens reales en `.env.example`, código, logs o commits.
 
 ## Panel institucional
+
+Para arrancar en esta estación la base DEMO aislada, el panel y Android, seguir la [guía de prueba local de todos los módulos](docs/LOCAL_DEMO.md).
 
 El panel React se inicia con `npm --prefix apps/admin run dev` después de copiar `apps/admin/.env.example` a `apps/admin/.env`; consultar su [guía de instalación](apps/admin/README.md). Para la demostración local se necesitan migraciones y seed DEMO de la API en la base elegida. Los componentes y el flujo institucional se verifican con `npm --prefix apps/admin test` y `npm --prefix apps/admin run build`.
 
