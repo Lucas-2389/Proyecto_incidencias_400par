@@ -50,18 +50,23 @@ function createEvidenceRouter(pool, authConfig, evidenceStore) {
       if (!incident) throw new HttpError(404, 'NOT_FOUND', 'Reporte no encontrado');
       const [[count]] = await connection.execute('SELECT COUNT(*) AS total FROM evidence WHERE incident_id = ?', [incident.id]);
       if (count.total >= 3) throw new HttpError(409, 'CONFLICT', 'Límite de fotografías alcanzado');
-      key = await evidenceStore.put(photo.bytes, photo.mediaType);
+      let stored;
+      try { stored = await evidenceStore.put(photo.bytes, photo.mediaType); }
+      catch { throw new HttpError(503, 'EVIDENCE_UNAVAILABLE', 'Fotografías no disponibles'); }
+      key = typeof stored === 'string' ? stored : stored.key;
+      const provider = typeof stored === 'string' ? 'local' : stored.provider;
+      const secureUrl = typeof stored === 'string' ? null : stored.secureUrl;
       const id = randomUUID();
       await connection.execute(
-        'INSERT INTO evidence (id, incident_id, uploader_user_id, object_key, media_type, byte_size, sha256) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [id, incident.id, req.auth.user.id, key, photo.mediaType, photo.bytes.length, photo.sha256],
+        'INSERT INTO evidence (id, incident_id, uploader_user_id, object_key, media_type, byte_size, sha256, storage_provider, secure_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [id, incident.id, req.auth.user.id, key, photo.mediaType, photo.bytes.length, photo.sha256, provider, secureUrl],
       );
       const [[row]] = await connection.execute('SELECT id, media_type AS mediaType, created_at AS uploadedAt FROM evidence WHERE id = ?', [id]);
       saved = { id: row.id, mediaType: row.mediaType, uploadedAt: new Date(row.uploadedAt).toISOString() };
       await connection.commit();
     } catch (error) {
-      await connection.rollback();
-      if (key) await evidenceStore.remove(key).catch(() => {});
+      try { await connection.rollback(); }
+      finally { if (key) await evidenceStore.remove(key).catch(() => {}); }
       throw error;
     } finally { connection.release(); }
     res.status(201).json(saved);
@@ -69,12 +74,12 @@ function createEvidenceRouter(pool, authConfig, evidenceStore) {
   router.get('/:id/evidence/:evidenceId', ...protect, async (req, res) => {
     if (!evidenceStore) throw new HttpError(503, 'EVIDENCE_UNAVAILABLE', 'Fotografías no disponibles');
     const [[row]] = await pool.execute(
-      'SELECT id, object_key AS objectKey, media_type AS mediaType FROM evidence WHERE id = ? AND incident_id = ?',
+      'SELECT id, object_key AS objectKey, media_type AS mediaType, storage_provider AS storageProvider FROM evidence WHERE id = ? AND incident_id = ?',
       [req.params.evidenceId, req.params.id],
     );
     if (!row) throw new HttpError(404, 'NOT_FOUND', 'Fotografía no encontrada');
     let bytes;
-    try { bytes = await evidenceStore.read(row.objectKey); }
+    try { bytes = await evidenceStore.read(row.objectKey, row.mediaType, row.storageProvider); }
     catch { throw new HttpError(503, 'EVIDENCE_UNAVAILABLE', 'Fotografía no disponible'); }
     await pool.execute(
       `INSERT INTO audit_logs (actor_user_id, correlation_id, action, entity_type, entity_id)

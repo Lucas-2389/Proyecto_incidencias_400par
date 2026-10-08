@@ -7,17 +7,39 @@ const mysql = require('mysql2/promise');
 const sharp = require('sharp');
 const { createApp } = require('../src/app');
 const { createEvidenceStore } = require('../src/incidents/evidence-store');
+const { createCloudinaryEvidenceStore } = require('../src/incidents/cloudinary-store');
+const { Writable } = require('node:stream');
 const { registerCitizen } = require('../src/auth/register');
 const { login } = require('../src/auth/login');
 const { loadTestDatabaseConfig } = require('../scripts/integration-config');
 
 const integration = process.env.RUN_MYSQL_INTEGRATION === '1' ? test : test.skip;
 
-integration('fotografías privadas persisten fuera de MySQL, tienen límites y lectura auditada', async () => {
+for (const provider of ['local', 'cloudinary']) {
+integration(`fotografías privadas: ${provider === 'cloudinary' ? 'Cloudinary simulado' : 'disco local'}, límites y lectura auditada con MySQL real`, async () => {
   const pool = mysql.createPool({ ...loadTestDatabaseConfig(), connectionLimit: 3 });
   const authConfig = { jwtSecret: 'sentinel-test-secret-longer-than-thirty-two-characters' };
   const directory = path.resolve(__dirname, `../../../.local/test-evidence-${randomUUID()}`);
-  const evidenceStore = createEvidenceStore(directory);
+  const objects = new Map();
+  function makeStore() {
+    if (provider === 'local') return createEvidenceStore(directory);
+    const client = {
+      uploader: {
+        upload_stream(options, callback) {
+          const chunks = [];
+          return new Writable({ write(chunk, _encoding, done) { chunks.push(Buffer.from(chunk)); done(); },
+            final(done) { objects.set(options.public_id, Buffer.concat(chunks));
+              callback(null, { public_id: options.public_id, secure_url: `https://example.invalid/${options.public_id}` }); done(); } });
+        },
+        async destroy(key) { objects.delete(key); return { result: 'ok' }; },
+      },
+      url: (key) => `https://example.invalid/${key}`,
+    };
+    return createCloudinaryEvidenceStore({ cloud_name: 'test', api_key: 'test', api_secret: 'test' }, {
+      client, fetchImpl: async (url) => new Response(objects.get(new URL(url).pathname.slice(1))),
+    });
+  }
+  const evidenceStore = makeStore();
   const password = 'test-only-secret-value';
   const userToken = async (kind) => {
     const email = `${kind}-${randomUUID()}@example.invalid`;
@@ -71,12 +93,14 @@ integration('fotografías privadas persisten fuera de MySQL, tienen límites y l
     const detailWithPhoto = await (await fetch(`${base}/${incident.id}`, { headers: { authorization: `Bearer ${owner.token}` } })).json();
     assert.ok(detailWithPhoto.evidence.some((item) => item.id === evidence.id));
     assert.equal(detailWithPhoto.evidence[0].objectKey, undefined);
-    const [[stored]] = await pool.execute('SELECT object_key AS objectKey, byte_size AS byteSize, sha256 FROM evidence WHERE id = ?', [evidence.id]);
-    assert.ok(stored.objectKey.endsWith('.png'));
+    const [[stored]] = await pool.execute('SELECT object_key AS objectKey, byte_size AS byteSize, sha256, storage_provider AS provider, secure_url AS secureUrl FROM evidence WHERE id = ?', [evidence.id]);
+    assert.equal(stored.provider, provider);
+    if (provider === 'local') { assert.ok(stored.objectKey.endsWith('.png')); assert.equal(stored.secureUrl, null); }
+    else { assert.ok(stored.objectKey.startsWith('incidencias/')); assert.ok(stored.secureUrl.startsWith('https://')); }
     assert.ok(stored.byteSize > 0);
     assert.equal(stored.sha256.length, 64);
-    const restartedStore = createEvidenceStore(directory);
-    assert.ok((await restartedStore.read(stored.objectKey)).equals(photo));
+    const restartedStore = makeStore();
+    assert.ok((await restartedStore.read(stored.objectKey, stored.mediaType || 'image/png')).equals(photo));
     const visible = await fetch(`${base}/${incident.id}/evidence/${evidence.id}`, { headers: { authorization: `Bearer ${operatorToken}` } });
     assert.equal(visible.status, 200);
     assert.equal(visible.headers.get('content-type'), 'image/png');
@@ -95,3 +119,4 @@ integration('fotografías privadas persisten fuera de MySQL, tienen límites y l
     await fs.rm(directory, { recursive: true, force: true });
   }
 });
+}

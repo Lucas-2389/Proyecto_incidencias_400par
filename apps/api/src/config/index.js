@@ -32,16 +32,21 @@ function httpsUrl(value, name, production) {
 function loadConfig(options) {
   const raw = readRawConfig(options);
   const user = requiredText(raw.dbUser, 'DB_USER');
-  if (user.toLowerCase() === 'root') {
-    throw new Error('DB_USER no puede ser root');
+  if (['root', 'avnadmin'].includes(user.toLowerCase())) {
+    throw new Error('DB_USER debe ser una cuenta de aplicación');
   }
   requiredText(raw.dbPassword, 'DB_PASSWORD');
+  const sslValue = raw.dbSsl === undefined ? 'false' : raw.dbSsl.trim().toLowerCase();
+  if (!['true', 'false'].includes(sslValue)) throw new Error('DB_SSL debe ser true o false');
+  const ssl = sslValue === 'true';
+  const caPath = ssl ? path.resolve(__dirname, '../..', requiredText(raw.dbCaPath, 'DB_CA_PATH')) : undefined;
   if (raw.jwtSecret !== undefined && raw.jwtSecret.length < 32) {
     throw new Error('JWT_SECRET debe tener al menos 32 caracteres');
   }
   const appEnv = raw.appEnv || 'development';
   if (!['development', 'production'].includes(appEnv)) throw new Error('APP_ENV debe ser development o production');
   const production = appEnv === 'production';
+  if (production && raw.dbName !== 'incidencias') throw new Error('DB_NAME debe ser incidencias en production');
   const corsOrigins = (raw.corsOrigins || '').split(',').map((entry) => entry.trim()).filter(Boolean)
     .map((entry) => {
       const url = httpsUrl(entry, 'CORS_ORIGINS', production);
@@ -50,11 +55,16 @@ function loadConfig(options) {
     });
   const publicApiUrl = httpsUrl(raw.publicApiUrl, 'PUBLIC_API_URL', production);
   const uploadConfiguration = raw.uploadConfiguration || 'local';
-  if (uploadConfiguration !== 'local') throw new Error('UPLOAD_CONFIGURATION solo admite local en V1');
-  if (production && (!raw.jwtSecret || !publicApiUrl || !raw.evidenceDir || corsOrigins.length === 0)) {
+  if (!['local', 'cloudinary'].includes(uploadConfiguration)) throw new Error('UPLOAD_CONFIGURATION debe ser local o cloudinary');
+  const cloudinary = uploadConfiguration === 'cloudinary' ? Object.freeze({
+    cloud_name: requiredText(raw.cloudinaryCloudName, 'CLOUDINARY_CLOUD_NAME'),
+    api_key: requiredText(raw.cloudinaryApiKey, 'CLOUDINARY_API_KEY'),
+    api_secret: requiredText(raw.cloudinaryApiSecret, 'CLOUDINARY_API_SECRET'),
+  }) : undefined;
+  if (production && (!raw.jwtSecret || !publicApiUrl || (uploadConfiguration === 'local' && !raw.evidenceDir) || corsOrigins.length === 0)) {
     throw new Error('JWT_SECRET, PUBLIC_API_URL, EVIDENCE_DIR y CORS_ORIGINS son obligatorios en production');
   }
-  if (production && !path.isAbsolute(raw.evidenceDir)) throw new Error('EVIDENCE_DIR debe ser absoluto en production');
+  if (production && uploadConfiguration === 'local' && !path.isAbsolute(raw.evidenceDir)) throw new Error('EVIDENCE_DIR debe ser absoluto en production');
   if (production && raw.devMailboxDir) throw new Error('DEV_MAILBOX_DIR no está permitido en production');
 
   return Object.freeze({
@@ -65,9 +75,11 @@ function loadConfig(options) {
       database: requiredText(raw.dbName, 'DB_NAME'),
       user,
       password: raw.dbPassword,
+      ssl,
+      caPath,
     }),
     auth: Object.freeze({ jwtSecret: raw.jwtSecret, devMailboxDir: raw.devMailboxDir }),
-    evidence: Object.freeze({ directory: raw.evidenceDir, uploadConfiguration }),
+    evidence: Object.freeze({ directory: raw.evidenceDir, uploadConfiguration, cloudinary }),
   });
 }
 

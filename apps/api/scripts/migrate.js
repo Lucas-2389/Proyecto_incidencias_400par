@@ -2,6 +2,7 @@ const path = require('node:path');
 const mysql = require('mysql2/promise');
 const { loadConfig } = require('../src/config');
 const { runMigrations } = require('../src/db/migrations');
+const { createConnectionOptions } = require('../src/db/pool');
 const { loadTestDatabaseConfig } = require('./integration-config');
 
 async function main() {
@@ -9,7 +10,9 @@ async function main() {
   if (target !== 'test' && target !== 'app') {
     throw new Error('Indica --target=test o --target=app explícitamente');
   }
-  const database = target === 'test' ? loadTestDatabaseConfig() : loadConfig().database;
+  const database = target === 'test'
+    ? loadTestDatabaseConfig()
+    : createConnectionOptions(loadConfig().database);
   const pool = mysql.createPool({ ...database, connectionLimit: 2, waitForConnections: false });
   try {
     const result = await runMigrations(pool, { directory: path.join(__dirname, '../migrations') });

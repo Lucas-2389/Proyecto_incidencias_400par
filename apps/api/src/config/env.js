@@ -20,6 +20,8 @@ function readRawConfig(options) {
     dbName: env.DB_NAME,
     dbUser: env.DB_USER,
     dbPassword: env.DB_PASSWORD,
+    dbSsl: env.DB_SSL,
+    dbCaPath: env.DB_CA_PATH,
     jwtSecret: env.JWT_SECRET,
     devMailboxDir: env.DEV_MAILBOX_DIR,
     evidenceDir: env.EVIDENCE_DIR,
@@ -27,6 +29,9 @@ function readRawConfig(options) {
     corsOrigins: env.CORS_ORIGINS,
     publicApiUrl: env.PUBLIC_API_URL,
     uploadConfiguration: env.UPLOAD_CONFIGURATION,
+    cloudinaryCloudName: env.CLOUDINARY_CLOUD_NAME,
+    cloudinaryApiKey: env.CLOUDINARY_API_KEY,
+    cloudinaryApiSecret: env.CLOUDINARY_API_SECRET,
   };
 }
 

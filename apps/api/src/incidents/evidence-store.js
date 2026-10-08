@@ -13,6 +13,7 @@ function createEvidenceStore(directory) {
     return path.join(absolute, key);
   }
   return {
+    provider: 'local',
     async put(buffer, mediaType) {
       const extension = extensions[mediaType];
       if (!extension) throw new Error('Tipo de evidencia no permitido');

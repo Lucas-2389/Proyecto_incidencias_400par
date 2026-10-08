@@ -1,6 +1,8 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const mysql = require('mysql2/promise');
 const { createApp } = require('../src/app');
+const { checkDatabase } = require('../src/db/diagnostic');
 
 async function withServer(app, action) {
   const server = await new Promise((resolve) => {
@@ -90,4 +92,26 @@ test('log estructurado omite contraseña, usuario y error bruto', async () => {
   assert.equal(lines[0].includes('incidencias_app'), false);
   assert.equal(lines[0].includes('127.0.0.1'), false);
   assert.equal(lines[0].includes('password'), false);
+});
+
+test('con MySQL realmente inaccesible, health sigue 200 y database devuelve 503 seguro', async () => {
+  const pool = mysql.createPool({ host: '127.0.0.1', port: 1, user: 'incidencias_app', password: 'test-only', database: 'incidencias', connectTimeout: 500 });
+  const lines = [];
+  const app = createApp({ checkDatabase: () => checkDatabase(pool) }, { logger: { error: (line) => lines.push(line) } });
+  try {
+    await withServer(app, async (baseUrl) => {
+      const health = await fetch(`${baseUrl}/api/health`);
+      assert.equal(health.status, 200);
+      assert.deepEqual(await health.json(), { status: 'ok' });
+      const database = await fetch(`${baseUrl}/api/health/database`);
+      assert.equal(database.status, 503);
+      const body = await database.json();
+      assert.equal(body.code, 'DATABASE_UNAVAILABLE');
+      assert.equal(JSON.stringify(body).includes('127.0.0.1'), false);
+    });
+    assert.equal(lines.length, 1);
+    assert.equal(lines[0].includes('test-only'), false);
+  } finally {
+    await pool.end();
+  }
 });

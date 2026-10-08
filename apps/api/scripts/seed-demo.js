@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const { loadConfig } = require('../src/config');
 const { loadEnvironment } = require('../src/config/env');
 const { loadTestDatabaseConfig } = require('./integration-config');
+const { createConnectionOptions } = require('../src/db/pool');
 const { seedReference } = require('./seed-reference');
 
 const demoSites = [
@@ -123,7 +124,9 @@ async function main() {
   if (target !== 'test' && target !== 'app') throw new Error('Indica --target=test o --target=app explícitamente');
   const password = process.env.DEMO_PASSWORD;
   if (!password || password.length < 12) throw new Error('DEMO_PASSWORD debe tener al menos 12 caracteres');
-  const database = target === 'test' ? loadTestDatabaseConfig() : loadConfig().database;
+  const database = target === 'test'
+    ? loadTestDatabaseConfig()
+    : createConnectionOptions(loadConfig().database);
   const connection = await mysql.createConnection(database);
   try {
     const result = await seedDemo(connection, password);

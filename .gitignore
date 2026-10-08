@@ -22,3 +22,11 @@ Thumbs.db
 *.tmp
 *.temp
 .local/
+apps/api/certs/
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
+*service-account*.json
+android/local.properties

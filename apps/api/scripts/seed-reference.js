@@ -1,6 +1,7 @@
 const mysql = require('mysql2/promise');
 const { loadConfig } = require('../src/config');
 const { loadTestDatabaseConfig } = require('./integration-config');
+const { createConnectionOptions } = require('../src/db/pool');
 
 const roles = [
   ['SuperAdministrador', 'Superadministrador'],
@@ -68,7 +69,9 @@ async function seedReference(connection) {
 async function main() {
   const target = process.argv.find((arg) => arg.startsWith('--target='))?.split('=')[1];
   if (target !== 'test' && target !== 'app') throw new Error('Indica --target=test o --target=app explícitamente');
-  const database = target === 'test' ? loadTestDatabaseConfig() : loadConfig().database;
+  const database = target === 'test'
+    ? loadTestDatabaseConfig()
+    : createConnectionOptions(loadConfig().database);
   const connection = await mysql.createConnection(database);
   try {
     const result = await seedReference(connection);

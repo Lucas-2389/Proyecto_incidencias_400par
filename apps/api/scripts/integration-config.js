@@ -1,5 +1,6 @@
 const { loadConfig } = require('../src/config');
 const { loadEnvironment } = require('../src/config/env');
+const { createConnectionOptions } = require('../src/db/pool');
 
 function loadTestDatabaseConfig({ env = process.env } = {}) {
   loadEnvironment({ env });
@@ -13,7 +14,7 @@ function loadTestDatabaseConfig({ env = process.env } = {}) {
     throw new Error('DB_TEST_NAME no puede ser DB_NAME');
   }
 
-  return Object.freeze({ ...runtime, database: name });
+  return Object.freeze(createConnectionOptions({ ...runtime, database: name }));
 }
 
 module.exports = { loadTestDatabaseConfig };

@@ -12,16 +12,19 @@ Desde PowerShell, copiar `apps/api/.env.example` a `apps/api/.env` y sustituir `
 | `DB_HOST` | Host MySQL visto desde donde corre Node.js. |
 | `DB_PORT` | Puerto MySQL visto desde donde corre Node.js. |
 | `DB_NAME` | Base de datos, `incidencias` en el piloto. |
-| `DB_USER` | Usuario de aplicación, `incidencias_app`; `root` se rechaza. |
+| `DB_USER` | Usuario de aplicación, `incidencias_app`; se rechazan `root` y `avnadmin`. |
 | `DB_PASSWORD` | Contraseña de ese usuario, nunca versionada. |
+| `DB_SSL` | `false` para Docker local (valor por defecto si se omite); `true` para Aiven. Solo admite esos dos valores. |
+| `DB_CA_PATH` | Obligatoria si `DB_SSL=true`. Ruta al certificado CA de Aiven, relativa a `apps/api` o absoluta. |
 | `DB_TEST_NAME` | Base aislada para pruebas integradas, terminada en `_test`; nunca usar `DB_NAME`. |
 | `JWT_SECRET` | Secreto local aleatorio de 32 caracteres o más para firmar JWT; nunca versionarlo. Si falta, login y refresh devuelven 503. |
 | `DEV_MAILBOX_DIR` | Directorio local del buzón de recuperación en desarrollo, relativo a `apps/api`; usar `.local/mailbox` e ignorarlo en Git. Si falta, recuperación devuelve 503. |
-| `EVIDENCE_DIR` | Almacén local persistente de fotografías, relativo a `apps/api`; usar `.local/evidence` e ignorarlo en Git. Si falta, las rutas de fotos devuelven 503. |
+| `EVIDENCE_DIR` | Almacén de desarrollo local, relativo a `apps/api`; usar `.local/evidence` e ignorarlo en Git. No se necesita con Cloudinary. |
 | `APP_ENV` | `development` por defecto; `production` exige HTTPS, orígenes CORS y ruta absoluta de fotos. |
 | `CORS_ORIGINS` | Lista separada por comas de orígenes web autorizados; en producción es obligatoria. |
 | `PUBLIC_API_URL` | URL HTTPS pública de `/api/v1` para el despliegue; obligatoria en producción. |
-| `UPLOAD_CONFIGURATION` | `local` en V1; exige volumen persistente en producción. |
+| `UPLOAD_CONFIGURATION` | `local` para desarrollo o `cloudinary` para evidencias remotas sin disco persistente. |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Credenciales obligatorias cuando se usa `cloudinary`; guardar solo en `.env` o gestor de secretos. |
 
 | Ubicación de Node.js | `DB_HOST` | `DB_PORT` |
 | --- | --- | ---: |
@@ -29,6 +32,20 @@ Desde PowerShell, copiar `apps/api/.env.example` a `apps/api/.env` y sustituir `
 | Contenedor futuro en la red Compose | `mysql` | `3306` |
 
 Cambiar `DB_HOST` y `DB_PORT` en la configuración del entorno para cambiar de ubicación; el código no detecta ni fija la plataforma. Las credenciales de la API deben coincidir con las del usuario ya existente en MySQL; cambiar `MYSQL_PASSWORD` en el `.env` raíz no modifica un volumen inicializado.
+
+### Docker local y Aiven con TLS
+
+Para Docker local, configurar en el archivo ignorado `apps/api/.env` `DB_HOST=127.0.0.1`, `DB_PORT=3307`, `DB_NAME=incidencias`, `DB_USER=incidencias_app`, `DB_PASSWORD` con la clave local y `DB_SSL=false`. No se necesita `DB_CA_PATH`. El `.env` raíz corresponde solo a Docker Compose.
+
+Para Aiven, descargar el certificado CA del servicio y guardarlo, por ejemplo, en `apps/api/certs/ca.pem`. Ese directorio está ignorado por Git. Configurar en `apps/api/.env` `DB_HOST` y `DB_PORT` del servicio, `DB_NAME=incidencias`, `DB_USER=incidencias_app`, su `DB_PASSWORD`, `DB_SSL=true` y `DB_CA_PATH=./certs/ca.pem`. La cuenta `incidencias_app` y la base deben existir en Aiven y tener permisos adecuados antes de conectar la API; no usar las credenciales administrativas del servicio. Las variables de entorno del proceso prevalecen sobre el archivo. La verificación remota desde Windows puede mantener `APP_ENV=development`; al usar `APP_ENV=production` también se exigen las demás variables de producción indicadas arriba.
+
+El pool carga el CA y exige `rejectUnauthorized=true` cuando TLS está habilitado. Si el certificado falta, no se puede leer o el servidor no pasa la validación TLS, la conexión falla sin imprimir la contraseña ni el error bruto del driver. Para comprobar la identidad, base, versión y cifrado de una conexión real, ejecutar desde la raíz:
+
+```powershell
+npm --prefix apps/api run db:check
+```
+
+Este comando solo hace consultas de lectura (`CURRENT_USER()`, `DATABASE()`, `VERSION()` y `Ssl_cipher`). Debe informar `tlsActive: true` en Aiven. Después de iniciar la API con `npm --prefix apps/api start`, probar `GET /api/health` y `GET /api/health/database` como se indica abajo. Si MySQL deja de responder, el primero sigue indicando que HTTP funciona y el segundo devuelve `503` sin detalles sensibles.
 
 ## Arranque y comprobación
 
@@ -51,6 +68,18 @@ Invoke-RestMethod http://127.0.0.1:3000/api/health/database
 `/api/health` devuelve HTTP `200` y `{ "status": "ok" }` si el proceso HTTP responde. `/api/health/database` ejecuta `SELECT 1` con el pool y devuelve HTTP `200` con `{ "status": "ok", "database": "connected" }`; ante MySQL caído o credenciales incorrectas devuelve HTTP `503` con `DATABASE_UNAVAILABLE` y un `correlationId`, sin detalles de conexión. Ambas respuestas llevan `Cache-Control: no-store`. Ctrl+C cierra HTTP y el pool.
 
 ## Pruebas con base aislada
+
+### Evidencias en Cloudinary
+
+Configurar `UPLOAD_CONFIGURATION=cloudinary` y las variables `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` solo en `apps/api/.env` o en el gestor de secretos del entorno. Las plantillas contienen estas variables vacías. En este modo no se requiere `EVIDENCE_DIR`: la subida y la descarga se procesan en memoria, sin archivos temporales ni persistentes en el servidor.
+
+La migración aditiva `011_cloudinary_evidence.sql` añade `storage_provider` y `secure_url` a `evidence`; `object_key` almacena el `public_id` de Cloudinary. MySQL conserva también incidente, usuario, MIME, tamaño, hash SHA-256 y fecha. Las filas anteriores se identifican como `local`; no se trasladan ni se borran automáticamente. Aplicar la migración con el ejecutor del proyecto antes de usar esta versión de los endpoints de evidencias.
+
+Las rutas y respuestas actuales se conservan. El servidor sube recursos `authenticated` y obtiene una URL firmada internamente para servir la descarga después de comprobar los permisos y registrar la auditoría. No devuelve `secure_url`, firmas ni credenciales a los clientes. Se conservan JPEG/PNG/WebP, 5 MiB por archivo y tres fotografías por incidente, validación real del contenido y eliminación de metadatos. Si MySQL rechaza el registro después de subir, se intenta retirar únicamente la imagen recién subida. Los errores del proveedor se convierten en respuestas seguras sin imprimir sus detalles.
+
+`UPLOAD_CONFIGURATION=local` mantiene el almacenamiento de desarrollo. Si se configura un `EVIDENCE_DIR` con archivos anteriores, el servidor puede leer esas evidencias mientras las nuevas se guardan en Cloudinary. Las fotos locales anteriores necesitan una migración explícita a almacenamiento remoto antes de retirar ese disco; este cambio no las migra.
+
+Pruebas sin credenciales reales: `node --test test/cloudinary-store.test.js test/config.test.js`. La prueba de integración `test/evidence-api.test.js` usa MySQL real en la base aislada y prueba ambos proveedores; Cloudinary está simulado explícitamente. Una prueba real de Cloudinary requiere las tres credenciales y no se considera aprobada por esas simulaciones.
 
 El archivo local `apps/api/.env` puede definir `DB_TEST_NAME=incidencias_test`. La configuración de pruebas rechaza nombres sin sufijo `_test`, la misma base indicada por `DB_NAME` y el usuario `root`. Las pruebas unitarias no modifican MySQL:
 

@@ -48,6 +48,8 @@ test('valida y centraliza la configuración antes del arranque', () => {
   assert.equal(config.database.port, 3307);
   assert.equal(config.database.user, 'incidencias_app');
   assert.equal(config.database.password, validEnv.DB_PASSWORD);
+  assert.equal(config.database.ssl, false);
+  assert.equal(config.database.caPath, undefined);
   assert.equal(Object.isFrozen(config.database), true);
 });
 
@@ -62,7 +64,7 @@ test('rechaza cada variable faltante sin mostrar el secreto', () => {
   }
 });
 
-test('rechaza puertos inválidos y el usuario root', () => {
+test('rechaza puertos inválidos y usuarios administrativos', () => {
   for (const name of ['PORT', 'DB_PORT']) {
     for (const value of ['0', '65536', 'abc', '3307.5']) {
       assert.throws(
@@ -71,12 +73,24 @@ test('rechaza puertos inválidos y el usuario root', () => {
       );
     }
   }
-  for (const user of ['root', 'ROOT']) {
+  for (const user of ['root', 'ROOT', 'avnadmin', 'AVNADMIN']) {
     assert.throws(
       () => loadConfig({ env: { ...validEnv, DB_USER: user }, filePath: 'archivo-inexistente.env' }),
-      /DB_USER no puede ser root/,
+      /DB_USER debe ser una cuenta de aplicación/,
     );
   }
+});
+
+test('DB_SSL exige un booleano y CA; resuelve rutas relativas desde apps/api', () => {
+  for (const value of ['yes', '1', '']) {
+    assert.throws(() => loadConfig({ env: { ...validEnv, DB_SSL: value }, filePath: 'archivo-inexistente.env' }), /DB_SSL/);
+  }
+  assert.throws(() => loadConfig({ env: { ...validEnv, DB_SSL: 'true' }, filePath: 'archivo-inexistente.env' }), /DB_CA_PATH/);
+  const config = loadConfig({ env: { ...validEnv, DB_SSL: 'true', DB_CA_PATH: './certs/ca.pem' }, filePath: 'archivo-inexistente.env' });
+  assert.equal(config.database.ssl, true);
+  assert.equal(config.database.caPath, path.resolve(__dirname, '../certs/ca.pem'));
+  const local = loadConfig({ env: { ...validEnv, DB_SSL: 'false', DB_CA_PATH: 'no-existe.pem' }, filePath: 'archivo-inexistente.env' });
+  assert.equal(local.database.caPath, undefined);
 });
 
 test('production exige HTTPS, origen explícito, JWT y almacenamiento de fotos', () => {
@@ -97,6 +111,7 @@ test('production exige HTTPS, origen explícito, JWT y almacenamiento de fotos',
     { CORS_ORIGINS: undefined },
     { UPLOAD_CONFIGURATION: 'memory' },
     { DEV_MAILBOX_DIR: '.local/mailbox' },
+    { DB_NAME: 'incidencias_remote_test' },
   ]) assert.throws(() => loadConfig({ env: { ...environment, ...invalid }, filePath: 'archivo-inexistente.env' }));
 });
 
@@ -108,6 +123,20 @@ test('rechaza root antes de abrir el servidor HTTP', () => {
     timeout: 3000,
   });
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /DB_USER no puede ser root/);
+  assert.match(result.stderr, /DB_USER debe ser una cuenta de aplicación/);
   assert.equal(result.stderr.includes(validEnv.DB_PASSWORD), false);
+});
+
+test('Cloudinary exige las tres credenciales y permite production sin EVIDENCE_DIR', () => {
+  const environment = { ...validEnv, APP_ENV: 'production', JWT_SECRET: 'x'.repeat(40),
+    PUBLIC_API_URL: 'https://api.example.invalid/api/v1', CORS_ORIGINS: 'https://admin.example.invalid',
+    UPLOAD_CONFIGURATION: 'cloudinary', CLOUDINARY_CLOUD_NAME: 'example',
+    CLOUDINARY_API_KEY: 'test-key', CLOUDINARY_API_SECRET: 'sentinel-cloud-secret' };
+  const config = loadConfig({ env: environment, filePath: 'archivo-inexistente.env' });
+  assert.equal(config.evidence.directory, undefined);
+  assert.equal(config.evidence.cloudinary.cloud_name, 'example');
+  for (const key of ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET']) {
+    assert.throws(() => loadConfig({ env: { ...environment, [key]: '' }, filePath: 'archivo-inexistente.env' }),
+      error => error.message.includes(key) && !error.message.includes(environment.CLOUDINARY_API_SECRET));
+  }
 });
