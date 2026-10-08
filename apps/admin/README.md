@@ -22,6 +22,10 @@ Ejecutar migraciones y `db:seed:demo:test` o `db:seed:demo:app` de la API en una
 
 ### Usabilidad del panel
 
+La raíz `/` muestra una presentación pública con ilustración original generada por IA (`public/community-hero.png`), explicación en tres pasos y acceso al login. Con sesión activa, la misma raíz muestra el centro de operaciones. `/login` conserva el formulario institucional y permite volver a la presentación. La portada se adapta a móvil y no consulta datos privados ni ofrece descarga de un APK inexistente en el servidor.
+
+La portada utiliza fondos verdes y cálidos, cabecera y pie de contraste, y tarjetas telefónicas: Policía 105, Bomberos 116, SAMU 106 y Línea 100. Son referencias oficiales enlazadas a Gob.pe (consulta: 2026-10-08), independientes del directorio DEMO. `tel:` abre el marcador del dispositivo; no se realizan llamadas automáticas. Serenazgo depende de la municipalidad: no se inventa un número nacional. Mantener estas referencias actualizadas con fuentes oficiales.
+
 La portada ofrece accesos directos a reportes y mapa. Estados y prioridades se presentan en español; el historial permite seleccionar institución y tipo de registro por nombre, con identificadores técnicos desplegables. El directorio selecciona distritos por nombre. Los formularios de recursos explican su identificación, bloquean el guardado sin sede y muestran el progreso; desactivar recursos o contactos requiere confirmación. Estos cambios conservan los valores del contrato HTTP y los permisos del backend.
 
 Las pruebas de interfaz verifican que cancelar una desactivación no envía una petición y que los filtros del historial se pueden elegir y limpiar sin escribir identificadores internos.

@@ -88,6 +88,88 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #40
 @media(max-width:600px){.topbar-actions{gap:6px}.notification-button{padding:5px 7px}.notification-button>span:nth-child(2){display:none}}
 @media(max-width:600px){.notification-popover{width:min(320px,calc(100vw - 214px))}}
 
+.welcome-page{background:#fafbf7;color:#183e41;min-height:100vh}
+.welcome-header,.welcome-page main,.welcome-footer{width:min(1240px,100%);margin:auto;padding:24px 40px}
+.welcome-header{display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid #e3e9df}
+.welcome-brand{display:flex;align-items:center;gap:12px;font-weight:800;color:#183e41;text-decoration:none}
+.welcome-brand img{width:46px;height:46px;object-fit:contain}
+.welcome-brand small{display:block;font-size:11px;font-weight:400;margin-top:4px}
+.welcome-header nav{display:flex;align-items:center;gap:28px;font-size:13px;font-weight:700}
+.welcome-hero{display:grid;grid-template-columns:1fr 1.05fr;gap:42px;align-items:center;padding:48px 0 60px}
+.welcome-tag{display:inline-block;padding:8px 12px;border-radius:20px;background:#e4f0e4;color:#286451;font-size:10px;font-weight:800;letter-spacing:.1em}
+.welcome-copy h1{font-size:clamp(32px,3.5vw,49px);line-height:1.15;margin:24px 0;font-weight:800;letter-spacing:-.045em}
+.welcome-copy em{font-style:normal;color:#19816c}
+.welcome-copy>p{font-size:16px;line-height:1.8;color:#58716c;max-width:490px}
+.welcome-actions{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 18px}
+.welcome-actions .button,.welcome-access .button{min-height:46px;font-size:13px}
+.welcome-copy>small{display:block;font-size:12px;line-height:1.6;color:#58716c}
+.welcome-partners{display:flex;flex-wrap:wrap;gap:8px;margin-top:25px}
+.welcome-partners span{border:1px solid #d6e3d9;border-radius:20px;padding:6px 11px;font-size:11px;color:#45645a;background:#fff}
+.welcome-art{margin:0;position:relative;padding-bottom:18px}
+.welcome-art>img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover;border-radius:28px 28px 90px 28px;box-shadow:0 18px 48px #264c3820}
+.welcome-art figcaption{position:relative;width:90%;margin:-24px auto 0;background:#fff;border:1px solid #e0e9de;border-radius:14px;padding:17px;font-size:12px;box-shadow:0 8px 25px #17383b12}
+.welcome-art figcaption span{color:#168570;font-size:18px;margin-right:8px}
+.welcome-how{text-align:center;padding:36px 0;scroll-margin-top:20px}
+.welcome-how h2{font-size:29px;margin:12px 0 30px}
+.welcome-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;text-align:left}
+.welcome-steps article{padding:25px;border:1px solid #e0e7dc;border-radius:18px;background:#fff}
+.step-number{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#e7f2e7;color:#19735e;font-size:13px;font-weight:800}
+.welcome-steps h3{font-size:16px;margin:20px 0 10px}
+.welcome-steps p{font-size:14px;line-height:1.7;color:#59716b;margin:0}
+.welcome-access{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:30px;margin:30px 0;border-radius:18px;background:#e8f2e7}
+.welcome-access h2{margin-bottom:10px;font-size:21px}
+.welcome-access p{margin:0;font-size:14px;color:#4e6a5f;line-height:1.6}
+.welcome-access .button{flex-shrink:0}
+.welcome-footer{border-top:1px solid #e0e7dc;text-align:center;font-size:12px;color:#5e756b}
+.welcome-footer p{margin:8px 0;line-height:1.6}
+.login-back{display:inline-block;margin-bottom:24px}
+@media(max-width:900px){.welcome-hero{grid-template-columns:1fr;gap:32px;padding-top:32px}.welcome-copy>p{max-width:none}.welcome-art{max-width:650px;margin:auto}.welcome-steps{grid-template-columns:1fr}.welcome-access{align-items:flex-start;flex-direction:column}}
+@media(max-width:600px){.welcome-header,.welcome-page main,.welcome-footer{padding:20px}.welcome-header{flex-wrap:wrap;gap:18px}.welcome-header nav{width:100%;justify-content:space-between;gap:12px}.welcome-copy h1{font-size:34px}.welcome-hero{padding-bottom:20px}.welcome-art figcaption{width:94%;font-size:11px}.welcome-actions .button{width:100%}.welcome-access{padding:24px}.welcome-brand{font-size:14px}}
+
+/* Portada: comunidad, contraste y teléfonos oficiales de referencia. */
+.welcome-page{background:radial-gradient(ellipse at 90% 18%,#b7ddca80,transparent 43%),linear-gradient(145deg,#e8f2df 0%,#f5e9d5 45%,#dceee5 100%)}
+.welcome-header{width:100%;padding:20px max(24px,calc((100vw - 1160px)/2));background:#143f40;border-bottom:3px solid #e3b562;box-shadow:0 5px 24px #123b3a20}
+.welcome-brand,.welcome-header nav>a:not(.button){color:#f2f8ed}
+.welcome-brand small{color:#c4dad1}
+.welcome-header .button.primary{background:#e8bc72;border-color:#e8bc72;color:#203d35}
+.welcome-header .button.primary:hover{background:#f2cc8d;color:#14362e;border-color:#f7d49c}
+.welcome-art>img{border:5px solid #fff8e9;box-shadow:12px 16px 0 #21827325,0 20px 45px #244d3725}
+.welcome-tag{background:#c8e6cf;color:#23563e;border:1px solid #91bfa2}
+.welcome-partners span{background:#e8f1df;border-color:#a8c8ae;color:#2c5c45}
+.welcome-how{margin-top:30px}
+.welcome-steps article:nth-child(1){background:#e1eee1;border-color:#a4c6ae}
+.welcome-steps article:nth-child(2){background:#f6e6cc;border-color:#ddbf89}
+.welcome-steps article:nth-child(3){background:#dfecee;border-color:#9ec4c7}
+.welcome-steps article{box-shadow:0 7px 20px #254d3b0a;border-top-width:4px}
+.welcome-access{background:linear-gradient(115deg,#174c47,#226858);color:#fff;border:1px solid #3b7d66;box-shadow:0 12px 28px #194b3a20}
+.welcome-access p{color:#d3e6dd}
+.welcome-access .button.primary{background:#f0c583;color:#214036;border-color:#f0c583}
+.welcome-access .button.primary:hover{background:#ffdaa1;color:#15352b;border-color:#ffdaa1}
+.welcome-footer{max-width:none;width:100%;background:#153f3b;color:#d4e6db;border-color:#537c63}
+.welcome-footer strong{color:#f1d29a}
+.welcome-emergencies{padding:30px;background:#f6f9f1d9;border:1px solid #c2d6bf;border-radius:22px;box-shadow:0 10px 28px #244f3910}
+.emergency-heading{display:flex;justify-content:space-between;align-items:center;gap:18px}
+.emergency-heading h2{font-size:25px;line-height:1.35;margin:10px 0;max-width:650px}
+.welcome-emergencies>p{font-size:14px;line-height:1.7;color:#4d685a}
+.emergency-badge{background:#dcebd4;padding:8px 12px;border-radius:20px;color:#34583b;font-size:11px;white-space:nowrap}
+.emergency-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:24px 0 18px}
+.emergency-card{--contact:#275b83;--contact-bg:#e3edf5;display:flex;flex-direction:column;align-items:flex-start;padding:20px;background:var(--contact-bg);color:var(--contact);border:1px solid color-mix(in srgb,var(--contact),transparent 65%);border-top:4px solid var(--contact);border-radius:15px;transition:box-shadow .16s ease,border-color .16s ease}
+.emergency-card.fire{--contact:#a3402c;--contact-bg:#f9e7dc}
+.emergency-card.medical{--contact:#1e6a52;--contact-bg:#e1f0e4}
+.emergency-card.support{--contact:#70478a;--contact-bg:#eee5f4}
+.emergency-card:hover{border-color:var(--contact);box-shadow:0 6px 18px #244f3920;text-decoration:none}
+.emergency-card:active{box-shadow:inset 0 2px 8px #244f3925}
+.emergency-icon svg{width:28px;height:28px}
+.emergency-number{font:800 42px/1.2 Manrope,sans-serif;margin:12px 0 5px;letter-spacing:-.04em}
+.emergency-card h3{font-size:15px;margin:5px 0 8px}
+.emergency-card p{font-size:12px;line-height:1.6;margin-bottom:18px}
+.emergency-call{margin-top:auto;border-top:1px solid currentColor;padding-top:12px;width:100%;display:flex;justify-content:space-between;font-size:12px;font-weight:800}
+.emergency-sources{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;font-size:11px;line-height:1.7;color:#516b5c}
+.emergency-sources a{text-decoration:underline;text-underline-offset:3px}
+@media(max-width:900px){.emergency-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.emergency-heading{align-items:flex-start;flex-direction:column}}
+@media(max-width:600px){.welcome-emergencies{padding:20px}.emergency-heading h2{font-size:22px}.emergency-grid{gap:10px}.emergency-card{padding:14px}.emergency-number{font-size:36px}.emergency-card h3{font-size:14px}.emergency-badge{white-space:normal}}
+@media(prefers-reduced-motion:reduce){.emergency-card{transition:none}}
+
 /* Respuesta visual compartida: reposo, foco, selección y pulsación. */
 .button,.text-button,.suggestion,.nav-item,.segmented button,.map-legend-item,.quick-actions a,.notification-button{
   transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .12s ease;

@@ -63,6 +63,7 @@ it('el panel muestra avisos y el contacto solo en el detalle autorizado', async 
   notifications = [{ id: 'notice-1', incidentId: incident.id, title: 'Nuevo reporte',
     message: 'El reporte DEMO-AY-001 requiere revisión.', createdAt: new Date().toISOString() }];
   render(<App Router={MemoryRouter} />);
+  fireEvent.click(screen.getByRole('link', { name: /Entrar al panel institucional/ }));
   fireEvent.change(screen.getByLabelText('Correo institucional'), { target: { value: 'operator@demo.invalid' } });
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
@@ -76,6 +77,7 @@ afterEach(() => { vi.unstubAllGlobals(); });
 
 it('dashboard conserva el intervalo de consulta tras recibir estadísticas', async () => {
   render(<App Router={MemoryRouter} />);
+  fireEvent.click(screen.getByRole('link', { name: /Entrar al panel institucional/ }));
   fireEvent.change(screen.getByLabelText('Correo institucional'), { target: { value: 'operator@demo.invalid' } });
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
@@ -87,6 +89,7 @@ it('dashboard conserva el intervalo de consulta tras recibir estadísticas', asy
 
 it('administrador institucional ve la bandeja sin la acción de registrar llamada', async () => {
   render(<App Router={MemoryRouter} />);
+  fireEvent.click(screen.getByRole('link', { name: /Entrar al panel institucional/ }));
   fireEvent.change(screen.getByLabelText('Correo institucional'), { target: { value: 'admin@demo.invalid' } });
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
@@ -98,6 +101,7 @@ it('administrador institucional ve la bandeja sin la acción de registrar llamad
 
 it('operador hace login, abre bandeja, asigna sede y avanza estado sin ver administración', async () => {
   render(<App Router={MemoryRouter} />);
+  fireEvent.click(screen.getByRole('link', { name: /Entrar al panel institucional/ }));
   fireEvent.change(screen.getByLabelText('Correo institucional'), { target: { value: 'operator@demo.invalid' } });
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
@@ -118,6 +122,7 @@ it('operador hace login, abre bandeja, asigna sede y avanza estado sin ver admin
 
 it('superadministrador confirma dos instituciones sobre el mismo accidente', async () => {
   render(<App Router={MemoryRouter} />);
+  fireEvent.click(screen.getByRole('link', { name: /Entrar al panel institucional/ }));
   fireEvent.change(screen.getByLabelText('Correo institucional'), { target: { value: 'super@demo.invalid' } });
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useSession } from '../session';
 import { Field, Notice } from '../ui';
 
@@ -17,6 +17,7 @@ export default function Login() {
     finally { setBusy(false); }
   }
   return <div className="login-page"><div className="login-card">
+    <Link className="text-link login-back" to="/">← Volver a la presentación</Link>
     <div className="brand-mark"><img src="/logo.png" alt="Logo de la plataforma" /></div><span className="eyebrow">Plataforma de gestión de incidencias</span>
     <h1>Centro de operaciones</h1><p>Ingresa con tu cuenta institucional para coordinar la atención del piloto.</p>
     <form onSubmit={submit} className="stack">

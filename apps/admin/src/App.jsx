@@ -3,6 +3,7 @@ import { BrowserRouter, Link, Navigate, NavLink, Route, Routes } from 'react-rou
 import { SessionProvider, hasRole, useSession } from './session';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
+import Welcome from './pages/Welcome';
 import { IncidentDetail, IncidentList } from './pages/Incidents';
 import { Organization, Resources } from './pages/Resources';
 import Directory from './pages/Directory';
@@ -41,10 +42,11 @@ function Shell({ children }) {
 }
 
 function AppRoutes() {
+  const { session } = useSession();
   const secure = (roles, node) => <Restricted roles={roles}><Shell>{node}</Shell></Restricted>;
   return <Routes>
     <Route path="/login" element={<Login />} />
-    <Route path="/" element={secure(operational, <Dashboard />)} />
+    <Route path="/" element={session ? secure(operational, <Dashboard />) : <Welcome />} />
     <Route path="/incidentes" element={secure(operational, <IncidentList />)} />
     <Route path="/incidentes/:id" element={secure(operational, <IncidentDetail />)} />
     <Route path="/mapa" element={secure(operational, <Suspense fallback={<div className="loading">Cargando mapa…</div>}><MapView /></Suspense>)} />
