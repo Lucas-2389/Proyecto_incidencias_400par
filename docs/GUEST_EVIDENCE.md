@@ -20,3 +20,9 @@ Implementa el flujo de reporte preliminar sin cuenta con foto opcional (RF-02 y 
 Publicar el backend antes de utilizar la nueva subida en producción. El APK 1.0.2+3 apunta a Render por HTTPS; un backend anterior no emite el permiso y la foto queda pendiente, sin perder el reporte.
 
 Pruebas locales: backend 54 aprobadas, 0 fallidas, 22 integraciones MySQL omitidas. Flutter analyze sin incidencias; 10 pruebas aprobadas, prueba remota optativa omitida. La prueba HTTP con almacenamiento simulado valida subida sin cuenta, permiso ausente/falsificado, aislamiento entre reportes y rechazo de lectura. La suite Flutter valida que el servicio no exige sesión para enviar la foto. Registrar por separado el build, instalación y prueba remota; estos resultados no certifican aún una toma manual de cámara.
+
+### APK instalado
+
+Build release completado; firma APK verificada. Instalación mediante `adb install -r` en TECNO KJ6 completada sin desinstalar: versionName 1.0.2, versionCode 3. La actividad inicia y el proceso permanece activo. No se certifica una captura manual de cámara.
+
+Backend publicado en main: `ab3f903`. La primera comprobación remota posterior al push todavía devuelve `UNAUTHORIZED` para el permiso de invitado inválido, comportamiento de la versión anterior; la validación de subida real queda pendiente de que Render termine el despliegue automático.
