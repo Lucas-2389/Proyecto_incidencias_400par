@@ -38,6 +38,14 @@ Android declara permisos `INTERNET`, `ACCESS_FINE_LOCATION` y `ACCESS_COARSE_LOC
 
 ## Validación contra Render (2026-10-08)
 
+### Fotos sin sesión (1.0.2+3)
+
+Cámara y galería están disponibles también al invitado. La API debe tener publicada la funcionalidad de [evidencia de invitado](../../docs/GUEST_EVIDENCE.md): permiso privado de subida válido 24 horas, guardado en almacenamiento seguro. La foto es opcional; un fallo de foto no elimina el reporte confirmado. El login sigue siendo necesario para consultar reportes personales y no se habilita lectura anónima de fotografías.
+
+### Actualización Android (2026-10-09)
+
+Versión `1.0.1+2`: APK release regenerado con la configuración HTTPS de Render centralizada existente. Aiven respondió a SELECT 1 y los health checks remotos devolvieron 200 antes de compilar. `flutter pub get` correcto, `flutter analyze` sin incidencias y 9 pruebas locales aprobadas (prueba remota optativa omitida). Firma verificada con apksigner; `adb install -r` completó correctamente la actualización en TECNO KJ6 (Android 13), conservando los datos. Android confirmó versionName 1.0.1/versionCode 2 y aceptó el inicio de MainActivity. No se ejecutó un recorrido manual de login/GPS/cámara en esta actualización ni se añadieron funciones nuevas. La portada React pertenece al panel web. APK: `build/app/outputs/flutter-apk/app-release.apk`; firma de prueba, no Google Play.
+
 - `flutter pub get`: correcto.
 - `flutter analyze`: sin incidencias.
 - `flutter test`: 9 pruebas aprobadas; 1 prueba remota omitida intencionalmente.

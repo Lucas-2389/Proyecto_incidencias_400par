@@ -82,9 +82,6 @@ class SubmissionService {
       final confirmed = PendingReport(clientRequestId: report.clientRequestId,
         body: report.body, photoPath: report.photoPath, receipt: receipt);
       await repository.save(confirmed);
-      if (!api.signedIn) {
-        return SubmissionResult(receipt: receipt, photoError: 'Inicia sesión para reintentar la foto.');
-      }
       try {
         await api.uploadPhoto(receipt['id'] as String, report.photoPath!);
         await File(report.photoPath!).delete().catchError((_) => File(report.photoPath!));

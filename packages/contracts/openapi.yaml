@@ -267,7 +267,8 @@ paths:
       tags: [Incidents]
       summary: Adjuntar fotografía al reporte
       operationId: uploadIncidentEvidence
-      security: [{ bearerAuth: [] }]
+      description: Hasta 3 fotos de 5 MB. El invitado usa el permiso de subida de su comprobante, válido 24 horas desde crear el reporte. No permite leer evidencias ni acceder a otros reportes.
+      security: [{ bearerAuth: [] }, { guestEvidence: [] }]
       parameters:
         - $ref: '#/components/parameters/IncidentId'
       requestBody:
@@ -1428,6 +1429,10 @@ paths:
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
 components:
   securitySchemes:
+    guestEvidence:
+      type: apiKey
+      in: header
+      name: X-Evidence-Token
     bearerAuth:
       type: http
       scheme: bearer
@@ -1901,6 +1906,9 @@ components:
         verified: { type: boolean }
         source: { type: string, enum: [MOBILE_APP, PHONE] }
         createdAt: { type: string, format: date-time }
+        guestEvidenceToken:
+          type: string
+          description: Permiso privado emitido solo al invitado; guardar en almacenamiento seguro, nunca en logs ni URLs. Caduca 24 horas después de crear el reporte.
     IncidentSummary:
       allOf:
         - $ref: '#/components/schemas/IncidentReceipt'

@@ -481,7 +481,6 @@ class _ReportScreenState extends State<ReportScreen> {
                       ),
                     ),
                   ),
-                  if (widget.api.signedIn)
                     OutlinedButton.icon(
                       onPressed: () => showModalBottomSheet<void>(
                         context: context,
@@ -518,9 +517,8 @@ class _ReportScreenState extends State<ReportScreen> {
                             : 'Cambiar foto',
                       ),
                     ),
-                  if (!widget.api.signedIn)
                     const Text(
-                      'Para adjuntar fotos, inicia sesión. Puedes reportar como invitado.',
+                      'La foto es opcional. Puedes tomarla y enviar tu reporte sin iniciar sesión.',
                       style: TextStyle(fontSize: 12),
                     ),
                   const SizedBox(height: 18),

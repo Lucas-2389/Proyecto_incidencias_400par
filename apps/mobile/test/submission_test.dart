@@ -19,9 +19,10 @@ class FakeApi extends ApiClient {
   FakeApi() : super(baseUrl: 'http://example.invalid/api/v1');
   bool offline = false;
   bool failPhoto = false;
+  bool authenticated = true;
   final keys = <String>[];
   @override
-  bool get signedIn => true;
+  bool get signedIn => authenticated;
   @override
   Future<Map<String, dynamic>> submitReport(Map<String, dynamic> body, String clientRequestId) async {
     keys.add(clientRequestId);
@@ -35,6 +36,18 @@ class FakeApi extends ApiClient {
 }
 
 void main() {
+  test('invitado envía foto sin exigir inicio de sesión', () async {
+    final api = FakeApi()..authenticated = false;
+    final pending = MemoryPending();
+    final directory = await Directory.systemTemp.createTemp('guest-photo-test');
+    final photo = await File('${directory.path}/photo.jpg').writeAsBytes([1, 2]);
+    try {
+      final result = await SubmissionService(api, pending).submit(PendingReport(clientRequestId: 'guest-photo', body: {'categoryId': 1}, photoPath: photo.path));
+      expect(result.receipt?['reference'], 'AYA-1');
+      expect(result.photoError, isNull);
+      expect(await pending.all(), isEmpty);
+    } finally { api.dispose(); await directory.delete(recursive: true); }
+  });
   test('guarda el reporte sin red y reintenta con el mismo identificador', () async {
     final api = FakeApi()..offline = true;
     final pending = MemoryPending();

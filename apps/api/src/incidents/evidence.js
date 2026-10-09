@@ -4,6 +4,8 @@ const multer = require('multer');
 const sharp = require('sharp');
 const { HttpError } = require('../http/errors');
 const { requireAuthentication, requireIncidentScope } = require('../auth/authorization');
+const { createRateLimit } = require('../auth/rate-limit');
+const { guestEvidenceAuthorization } = require('./guest-evidence');
 
 const maxPhotoBytes = 5 * 1024 * 1024;
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: maxPhotoBytes, files: 1 } });
@@ -38,7 +40,12 @@ async function cleanPhoto(file) {
 function createEvidenceRouter(pool, authConfig, evidenceStore) {
   const router = express.Router();
   const protect = [requireAuthentication(pool, authConfig), requireIncidentScope(pool)];
-  router.post('/:id/evidence', ...protect, uploadPhoto, async (req, res) => {
+  const authorizeGuest = guestEvidenceAuthorization(authConfig);
+  const limitGuest = createRateLimit(pool, 'guest_evidence', { limit: 10 });
+  router.post('/:id/evidence', (req, res, next) => {
+    if (req.get('Authorization')) return protect[0](req, res, (error) => error ? next(error) : protect[1](req, res, next));
+    authorizeGuest(req, res, (error) => error ? next(error) : limitGuest(req, res, next));
+  }, uploadPhoto, async (req, res) => {
     if (!evidenceStore) throw new HttpError(503, 'EVIDENCE_UNAVAILABLE', 'Fotografías no disponibles');
     const photo = await cleanPhoto(req.file);
     const connection = await pool.getConnection();
@@ -46,8 +53,9 @@ function createEvidenceRouter(pool, authConfig, evidenceStore) {
     let saved;
     try {
       await connection.beginTransaction();
-      const [[incident]] = await connection.execute('SELECT id FROM incidents WHERE id = ? FOR UPDATE', [req.params.id]);
+      const [[incident]] = await connection.execute('SELECT id, reporter_user_id AS reporterUserId FROM incidents WHERE id = ? FOR UPDATE', [req.params.id]);
       if (!incident) throw new HttpError(404, 'NOT_FOUND', 'Reporte no encontrado');
+      if (req.guestEvidence && incident.reporterUserId) throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
       const [[count]] = await connection.execute('SELECT COUNT(*) AS total FROM evidence WHERE incident_id = ?', [incident.id]);
       if (count.total >= 3) throw new HttpError(409, 'CONFLICT', 'Límite de fotografías alcanzado');
       let stored;
@@ -59,7 +67,7 @@ function createEvidenceRouter(pool, authConfig, evidenceStore) {
       const id = randomUUID();
       await connection.execute(
         'INSERT INTO evidence (id, incident_id, uploader_user_id, object_key, media_type, byte_size, sha256, storage_provider, secure_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [id, incident.id, req.auth.user.id, key, photo.mediaType, photo.bytes.length, photo.sha256, provider, secureUrl],
+        [id, incident.id, req.auth?.user.id || null, key, photo.mediaType, photo.bytes.length, photo.sha256, provider, secureUrl],
       );
       const [[row]] = await connection.execute('SELECT id, media_type AS mediaType, created_at AS uploadedAt FROM evidence WHERE id = ?', [id]);
       saved = { id: row.id, mediaType: row.mediaType, uploadedAt: new Date(row.uploadedAt).toISOString() };

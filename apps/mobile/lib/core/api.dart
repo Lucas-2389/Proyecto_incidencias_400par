@@ -102,15 +102,23 @@ class ApiClient extends ChangeNotifier {
   Future<Map<String, dynamic>> submitReport(Map<String, dynamic> body, String clientRequestId) async {
     final result = await request('POST', '/incidents', body: {...body, 'clientRequestId': clientRequestId},
         headers: {'Idempotency-Key': clientRequestId});
-    return Map<String, dynamic>.from(result as Map);
+    final receipt = Map<String, dynamic>.from(result as Map);
+    final permission = receipt.remove('guestEvidenceToken');
+    if (permission is String) {
+      await _storage.write(key: 'guestEvidence:${receipt['id']}', value: permission);
+    }
+    return receipt;
   }
 
   Future<void> uploadPhoto(String incidentId, String filePath) async {
-    if (_accessToken == null) throw ApiException(401, 'Inicia sesión para adjuntar una foto');
+    final permission = await _storage.read(key: 'guestEvidence:$incidentId');
+    if (_accessToken == null && permission == null) {
+      throw ApiException(401, 'No se recibió el permiso para la foto. El reporte ya está confirmado.');
+    }
     final extension = filePath.split('.').last.toLowerCase();
     final mime = switch (extension) { 'png' => 'image/png', 'webp' => 'image/webp', _ => 'image/jpeg' };
     final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/incidents/$incidentId/evidence'))
-      ..headers['Authorization'] = 'Bearer $_accessToken'
+      ..headers.addAll(permission != null ? {'X-Evidence-Token': permission} : {'Authorization': 'Bearer $_accessToken'})
       ..files.add(await http.MultipartFile.fromPath('photo', filePath, contentType: MediaType.parse(mime)));
     final response = await _client.send(request).then(http.Response.fromStream);
     if (response.statusCode >= 400) {

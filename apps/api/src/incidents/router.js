@@ -6,6 +6,7 @@ const { requireAuthentication, requireRoles, requireIncidentScope, hasInstitutio
 const { createRateLimit } = require('../auth/rate-limit');
 const { createReport, requestKey } = require('./report');
 const { listMine, incidentDetail } = require('./queries');
+const { issueGuestEvidenceToken } = require('./guest-evidence');
 
 function createIncidentsRouter(pool, authConfig, notificationSender = null) {
   const router = express.Router();
@@ -28,7 +29,8 @@ function createIncidentsRouter(pool, authConfig, notificationSender = null) {
       source: 'MOBILE_APP', reporterUserId: req.auth?.user.id || null,
       scopeType, scopeId, key, locationRequired: true, notificationSender,
     });
-    res.status(result.repeated ? 200 : 201).json(result.receipt);
+    const uploadPermission = req.auth ? {} : { guestEvidenceToken: issueGuestEvidenceToken(result.receipt, authConfig) };
+    res.status(result.repeated ? 200 : 201).json({ ...result.receipt, ...uploadPermission });
   });
   router.get('/mine', authenticate, requireRoles('Ciudadano'), async (req, res) => {
     res.json(await listMine(pool, req.auth.user.id, req.query));
