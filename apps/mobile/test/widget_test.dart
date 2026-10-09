@@ -5,28 +5,18 @@ import 'package:incidencias_mobile/core/api.dart';
 import 'package:incidencias_mobile/core/pending.dart';
 
 class DemoApi extends ApiClient {
-  DemoApi() : super(baseUrl: 'http://example.invalid/api/v1');
-  @override
-  Future<List<Map<String, dynamic>>> list(String path, {bool auth = false}) async => [];
-}
-
-class SignedInApi extends DemoApi {
-  @override
-  bool get signedIn => true;
+  DemoApi() : super(baseUrl: 'https://example.invalid/api/v1');
+  final requests = <String>[];
   @override
   Future<List<Map<String, dynamic>>> list(String path, {bool auth = false}) async {
-    if (path == '/incidents/mine') { return [{'id': 'own-1', 'reference': 'AYA-TEST',
-      'status': 'assigned', 'createdAt': '2026-01-01T00:00:00Z'}]; }
-    if (path == '/notifications/mine') { return [{'id': 'notice-1', 'title': 'Atención iniciada',
-      'message': 'Tu reporte cambió de estado', 'readAt': null}]; }
+    requests.add(path);
     return [];
   }
+}
+
+class OfflineApi extends DemoApi {
   @override
-  Future<dynamic> request(String method, String path, {Object? body, bool auth = true, bool retry = true,
-      Map<String, String>? headers}) async => {
-    'id': 'own-1', 'reference': 'AYA-TEST', 'status': 'assigned',
-    'createdAt': '2026-01-01T00:00:00Z', 'description': 'Incendio DEMO',
-  };
+  Future<List<Map<String, dynamic>>> list(String path, {bool auth = false}) async => throw Exception('offline');
 }
 
 class EmptyPending implements PendingRepository {
@@ -39,34 +29,39 @@ class EmptyPending implements PendingRepository {
 }
 
 void main() {
-  testWidgets('navega y oculta reportes privados al invitado', (tester) async {
+  testWidgets('el invitado reporta sin login y no ve pantallas privadas', (tester) async {
     final api = DemoApi();
     await tester.pumpWidget(IncidenciasApp(api: api, pending: EmptyPending(), watchConnectivity: false));
     await tester.pumpAndSettle();
-    expect(find.text('Inicio'), findsWidgets);
-    await tester.tap(find.text('Mis reportes').first);
+    expect(find.text('Sin cuenta'), findsOneWidget);
+    await tester.tap(find.text('Crear reporte'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Los reportes de invitado no muestran historial privado'), findsOneWidget);
+    expect(api.requests, contains('/catalog/categories'));
+    expect(find.text('Iniciar sesión'), findsNothing);
     tester.state<ScaffoldState>(find.byType(Scaffold).first).openDrawer();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Alertas').last);
+    expect(find.text('Perfil'), findsNothing);
+    expect(find.text('Mis reportes'), findsNothing);
+    await tester.ensureVisible(find.text('Conoce la app').last);
     await tester.pumpAndSettle();
-    expect(find.text('Alertas vigentes'), findsOneWidget);
+    await tester.tap(find.text('Conoce la app').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Tu comunidad cuenta contigo'), findsOneWidget);
+    expect(api.requests.any((path) => path.contains('/mine') || path.contains('/auth/')), isFalse);
     await tester.pumpWidget(const SizedBox.shrink());
     api.dispose();
   });
 
-  testWidgets('cuenta ciudadana ve estado propio y notificación', (tester) async {
-    final api = SignedInApi();
+  testWidgets('los contactos oficiales siguen visibles sin Internet', (tester) async {
+    final api = OfflineApi();
     await tester.pumpWidget(IncidenciasApp(api: api, pending: EmptyPending(), watchConnectivity: false));
-    await tester.tap(find.text('Mis reportes').first);
+    await tester.tap(find.text('Contactos').first);
     await tester.pumpAndSettle();
-    expect(find.text('AYA-TEST'), findsOneWidget);
-    expect(find.textContaining('assigned'), findsOneWidget);
-    expect(find.text('Atención iniciada'), findsOneWidget);
-    await tester.tap(find.text('AYA-TEST'));
-    await tester.pumpAndSettle();
-    expect(find.text('Estado actual: assigned'), findsOneWidget);
+    for (final number in ['105', '116', '106', '100']) {
+      expect(find.text('Llamar al $number'), findsOneWidget);
+    }
+    expect(find.text('Iniciar sesión'), findsNothing);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     api.dispose();
   });

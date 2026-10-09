@@ -2,7 +2,7 @@
 
 ## Entrar al sistema
 
-Panel institucional: https://gestion-incidencias-200e.onrender.com/login
+Panel institucional: https://gestionincidencias.cfd/login
 
 Las cuentas siguientes son DEMO. La contraseña es la definida al ejecutar el seed correspondiente; solicitarla al responsable por un canal privado. No está en Git, no se incluye en esta guía y no se debe volver a sembrar la base para intentar corregir un login.
 
@@ -14,7 +14,7 @@ Las cuentas siguientes son DEMO. La contraseña es la definida al ejecutar el se
 | Administración SAMU | `admin-samu@demo.invalid` | Gestión institucional de SAMU. |
 | Administración Bomberos | `admin-bomberos@demo.invalid` | Gestión institucional de Bomberos. |
 | Operación institucional | `operator-municipalidad@demo.invalid`, `operator-pnp@demo.invalid`, `operator-samu@demo.invalid`, `operator-bomberos@demo.invalid` | Atención operativa limitada por institución y sede. |
-| Ciudadano (Android) | `citizen@demo.invalid` | Reportar, consultar reportes propios y adjuntar fotos. También puede registrar una cuenta ciudadana desde Perfil. |
+| Ciudadano (Android) | Sin cuenta | Reporte preliminar, foto opcional, referencia de recepción y contactos. La cuenta ciudadana anterior se conserva en la API, fuera de la navegación actual. |
 
 Los permisos se comprueban en la API. La visibilidad de un menú no concede acceso a información de otra institución. Las cuentas disponibles dependen del seed aplicado a la base del ambiente elegido.
 
@@ -37,12 +37,12 @@ Operadores acceden a Dashboard, Incidentes y Mapa. Administradores acceden tambi
 ## Recorrido de demostración
 
 1. Instalar el APK descrito en [la guía móvil](../apps/mobile/README.md). Producción conecta a Render sin depender del PC.
-2. Abrir **Perfil**, ingresar como ciudadano y entrar a **Reportar**.
+2. Abrir la app y entrar directamente a **Reportar**, sin registro ni contraseña.
 3. Elegir categoría, describir un caso claramente ficticio y escribir una referencia de calle/lugar. Usar ubicación actual o seleccionar el punto en el mapa; el teléfono de contacto es opcional.
 4. Enviar y conservar la referencia. Adjuntar una foto de prueba sin datos personales. Si falta conexión, distinguir el envío pendiente de la confirmación del servidor.
 5. Entrar al panel con la institución que corresponda al reporte y su cobertura. Revisar **Incidentes**, detalle, foto y ubicación. Un incidente fuera de cobertura puede no aparecer para esa cuenta.
 6. Usar los recursos disponibles para una asignación y avanzar mediante los estados que habilite el detalle. Revisar los avisos y el historial autorizado.
-7. Volver a **Mis reportes** en Android y comprobar el estado y avisos. El mapa público entrega datos agregados, por lo que un reporte nuevo no tiene por qué aparecer como punto exacto.
+7. Conservar la referencia de recepción en Android. Revisar Alertas y Contactos sin cuenta. El estado privado se consulta desde el panel institucional autorizado; el mapa público entrega datos agregados.
 
 La subida de foto y el flujo HTTP se probaron contra Render. La comprobación física de cámara, galería, GPS y recorrido completo Android → panel → Android debe registrarse por separado; no equivale a la suite automatizada.
 
@@ -52,7 +52,7 @@ La subida de foto y el flujo HTTP se probaron contra Render. La comprobación f�
 | --- | --- |
 | Credenciales inválidas | Ambiente elegido, correo y contraseña vigente del seed; evitar espacios añadidos. |
 | No aparecen incidentes | Institución/sede, cobertura y filtros de fecha/estado. |
-| Foto pendiente | Sesión activa, conectividad y confirmación del reporte; revisar el reintento de la app. |
+| Foto pendiente | Conectividad, confirmación del reporte y vigencia del permiso de invitado; revisar el reintento de la app. No requiere login. |
 | GPS denegado | Conceder permiso o seleccionar manualmente el lugar en el mapa. |
 | API no disponible | Revisar `/api/health` y `/api/health/database`; comunicar hora y mensaje sin tokens ni contraseñas. |
 

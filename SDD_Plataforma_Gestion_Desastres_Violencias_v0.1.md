@@ -868,3 +868,7 @@ Cada solicitud a la IA debe contener: módulo objetivo, requisitos RF/RNF aplica
 
 | Nota de diseño: Este documento es suficientemente específico para iniciar implementación. Antes de programar cada módulo, convertir sus requisitos en historias/tareas pequeñas y generar primero migraciones, contratos API y pruebas. Evitar incorporar microservicios, IA predictiva o integraciones institucionales reales hasta tener el flujo base medido y estable. |
 |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+
+## Decisión de interfaz vigente — 2026-10-09
+
+Por decisión del responsable del proyecto, Android 1.0.4 prioriza RF-02 y RF-08: reporte preliminar y foto opcional sin cuenta, con contactos oficiales y presentación accesibles. Login, registro e historial privado no se exponen en esta navegación móvil; sus capacidades previas permanecen en la API. RF-03 y RF-42 siguen protegiendo el panel institucional y la lectura de evidencias. La portada web se orienta a entidades; los accesos de llamada ciudadana pasan a Android. No cambia RN-01/RN-02 ni se elimina información. Diseño, seguridad, criterios y resultados en [Flujo ciudadano](docs/CITIZEN_EMERGENCY_FLOW.md).

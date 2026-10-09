@@ -45,3 +45,5 @@ El historial archivado y las migraciones se conservan. [DEPLOYMENT_V1.md](DEPLOY
 Versionar código, pruebas, contratos, migraciones, lockfiles, plantillas `.env.example` sin secretos y documentación vigente. Mantener privados `.env`, certificados, credenciales, datos locales y cuentas de servicio. APK, `build`, `dist` y dependencias se generan y quedan ignorados.
 
 Antes de eliminar un archivo, comprobar referencias y si tiene valor histórico. No borrar volúmenes, evidencias, migraciones ni archivos privados para limpiar el repositorio. Esta revisión retiró solamente dos `.gitkeep` de carpetas OpenSpec que ya contienen archivos versionados.
+
+- [Flujo de emergencia sin login y seguridad institucional](CITIZEN_EMERGENCY_FLOW.md): decisión vigente para Android 1.0.4 y portada web.

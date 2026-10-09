@@ -18,7 +18,7 @@ Future<void> main() async {
     return;
   }
   final api = ApiClient(baseUrl: apiBaseUrl);
-  await api.restore();
+  // El flujo de emergencia no restaura sesiones ni exige una cuenta.
   final preferences = await SharedPreferences.getInstance();
   final pending = SharedPendingRepository(preferences);
   runApp(IncidenciasApp(api: api, pending: pending));

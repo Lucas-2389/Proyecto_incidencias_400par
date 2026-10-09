@@ -101,7 +101,7 @@ class ApiClient extends ChangeNotifier {
 
   Future<Map<String, dynamic>> submitReport(Map<String, dynamic> body, String clientRequestId) async {
     final result = await request('POST', '/incidents', body: {...body, 'clientRequestId': clientRequestId},
-        headers: {'Idempotency-Key': clientRequestId});
+        headers: {'Idempotency-Key': clientRequestId}, auth: false);
     final receipt = Map<String, dynamic>.from(result as Map);
     final permission = receipt.remove('guestEvidenceToken');
     if (permission is String) {

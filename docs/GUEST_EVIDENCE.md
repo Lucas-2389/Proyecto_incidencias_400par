@@ -26,3 +26,7 @@ Pruebas locales: backend 54 aprobadas, 0 fallidas, 22 integraciones MySQL omitid
 Build release completado; firma APK verificada. Instalación mediante `adb install -r` en TECNO KJ6 completada sin desinstalar: versionName 1.0.2, versionCode 3. La actividad inicia y el proceso permanece activo. No se certifica una captura manual de cámara.
 
 Backend publicado en main: `ab3f903`. La primera comprobación remota posterior al push todavía devuelve `UNAUTHORIZED` para el permiso de invitado inválido, comportamiento de la versión anterior; la validación de subida real queda pendiente de que Render termine el despliegue automático.
+
+## Interfaz vigente 1.0.4+5
+
+La app ciudadana actual no ofrece login; usa el flujo de invitado para todas las nuevas solicitudes, incluso si una versión anterior había guardado una sesión. Las capacidades autenticadas de la API permanecen protegidas para compatibilidad y operación institucional. La prueba remota actual verifica creación y foto como invitado, sin contraseña.

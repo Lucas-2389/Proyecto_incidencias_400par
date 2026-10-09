@@ -122,3 +122,7 @@ El cambio OpenSpec `operational-mvp` mantiene pendiente su recorrido visual comp
 ## Iteraciones
 
 La secuencia vigente se encuentra en la sección 21 del SDD. Cada iteración debe actualizar el contrato y registrar sus criterios de aceptación antes de implementar endpoints o clientes que dependan de ellos.
+
+## Flujo ciudadano actual
+
+Android 1.0.4 permite reportes y fotos sin cuenta, contactos oficiales y presentación. El login queda en el panel institucional. Ver [decisión SDD y seguridad](docs/CITIZEN_EMERGENCY_FLOW.md).

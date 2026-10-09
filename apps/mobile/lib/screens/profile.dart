@@ -43,7 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListView(children: [ScreenPadding(child: Form(key: form, child: Column(
       crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(register ? 'Crear cuenta' : 'Iniciar sesión', style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 8), const Text('Puedes reportar como invitado. Para consultar tus reportes y adjuntar fotos, inicia sesión.'),
+        const SizedBox(height: 8), const Text('Puedes reportar como invitado. También puedes adjuntar fotos sin cuenta. Inicia sesión para consultar el historial de tus reportes.'),
         const SizedBox(height: 18), if (register) TextFormField(controller: name, decoration: const InputDecoration(labelText: 'Nombre'),
           validator: (value) => value == null || value.trim().isEmpty ? 'Escribe tu nombre' : null),
         TextFormField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Correo'),

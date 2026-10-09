@@ -12,15 +12,12 @@ class _RealHttpOverrides extends HttpOverrides {}
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const enabled = bool.fromEnvironment('RUN_LIVE_API');
-  test('Render real: login ciudadano, información pública, reporte y foto', () => HttpOverrides.runWithHttpOverrides(() async {
-    final password = Platform.environment['MOBILE_DEMO_PASSWORD'];
-    if (password == null || password.isEmpty) throw StateError('Falta credencial privada de prueba');
+  test('Render real: invitado, información pública, reporte y foto sin login', () => HttpOverrides.runWithHttpOverrides(() async {
     FlutterSecureStorage.setMockInitialValues({});
     final api = ApiClient(baseUrl: AppConfig.apiBaseUrl);
     final temporary = await Directory.systemTemp.createTemp('incidencias-live-');
     try {
-      await api.login('citizen@demo.invalid', password);
-      expect(api.signedIn, isTrue);
+      expect(api.signedIn, isFalse);
       final categories = await api.list('/catalog/categories');
       expect(categories, isNotEmpty);
       await api.list('/public/alerts');
@@ -35,7 +32,8 @@ void main() {
         'location': {'latitude': -13.16, 'longitude': -74.22, 'reference': 'DEMO técnico Ayacucho'},
       }, key);
       final id = report['id'] as String;
-      expect((await api.list('/incidents/mine', auth: true)).any((item) => item['id'] == id), isTrue);
+      expect(report['reference'], isNotEmpty);
+      expect(report.containsKey('guestEvidenceToken'), isFalse);
       final recorder = ui.PictureRecorder();
       ui.Canvas(recorder).drawColor(const ui.Color(0xFF168577), ui.BlendMode.src);
       final picture = recorder.endRecording();
@@ -46,10 +44,9 @@ void main() {
       image.dispose();
       picture.dispose();
       await api.uploadPhoto(id, photo.path);
-      final detail = await api.request('GET', '/incidents/$id') as Map;
-      expect((detail['evidence'] as List), hasLength(1));
+      await expectLater(api.request('GET', '/incidents/$id'),
+        throwsA(isA<ApiException>().having((error) => error.status, 'status', 401)));
       // Keep the clearly labeled technical report for review; never delete domain data here.
-      await api.logout();
       expect(api.signedIn, isFalse);
     } finally {
       api.dispose();
