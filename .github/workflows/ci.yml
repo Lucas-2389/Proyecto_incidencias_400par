@@ -1,0 +1,44 @@
+name: Repository checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-and-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            apps/api/package-lock.json
+            apps/admin/package-lock.json
+      - name: Install locked dependencies
+        run: |
+          npm ci --prefix apps/api --include=dev
+          npm ci --prefix apps/admin --include=dev
+      - name: Build React before static-serving tests
+        run: npm run build --prefix apps/admin
+      - name: Backend tests (no production database)
+        run: npm test --prefix apps/api
+      - name: OpenAPI contract
+        run: npm run contract:check --prefix apps/api
+      - name: React tests
+        run: npm test --prefix apps/admin
+      - name: Whitespace validation
+        run: git diff --check

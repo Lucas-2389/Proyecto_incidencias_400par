@@ -4,6 +4,8 @@ Monorepo del piloto DEMO de Ayacucho descrito en el [SDD](SDD_Plataforma_Gestion
 
 ## Empieza aquí
 
+- [Instalación para un compañero](docs/COLLABORATION.md): clonar, crear configuración privada y ejecutar en otra computadora.
+- [Cómo contribuir](CONTRIBUTING.md): ramas, Pull Requests, SDD y comprobaciones antes de integrar.
 - [Abrir panel y login](https://gestion-incidencias-200e.onrender.com/login).
 - [Guía de usuarios y módulos](docs/USER_GUIDE.md): cuentas DEMO, permisos y recorrido de prueba.
 - [Índice de documentación](docs/README.md): instalación, arquitectura, colaboración y validación SDD/OpenSpec.
@@ -49,7 +51,7 @@ El volumen `gestion-incidencias_mysql_data` se conserva. No usar `docker compose
 
 ## API técnica
 
-Node.js 20 o posterior. Desde otra terminal PowerShell en la raíz del repositorio:
+Node.js 22.12 o posterior dentro de la rama 22, compartida en `.nvmrc`. Desde otra terminal PowerShell en la raíz del repositorio:
 
 ```powershell
 Copy-Item apps/api/.env.example apps/api/.env
@@ -95,7 +97,7 @@ Los clientes deben configurar la URL de teselas OpenStreetMap por entorno y most
 
 ## Alertas, avisos y auditoría
 
-`GET /api/v1/public/alerts?districtId=...` devuelve alertas activas y vigentes de ese distrito más las globales. Los administradores publican, corrigen o desactivan alertas mediante `/api/v1/admin/alerts`. `GET /api/v1/notifications/mine` y `PATCH /api/v1/notifications/{id}/read` permiten consultar y marcar los avisos propios. Un reporte nuevo avisa a los administradores y miembros institucionales con cobertura y regla de derivación; una asignación avisa al Operador designado y un cambio de estado al ciudadano que reportó. Estos avisos se guardan en MySQL antes de cualquier intento push. La campana del panel consulta los avisos sin leer periódicamente y enlaza al incidente; la app ciudadana conserva sus avisos en **Mis reportes**. `GET /api/v1/admin/audit` consulta eventos con límites de institución y sede.
+`GET /api/v1/public/alerts?districtId=...` devuelve alertas activas y vigentes de ese distrito más las globales. Los administradores publican, corrigen o desactivan alertas mediante `/api/v1/admin/alerts`. `GET /api/v1/notifications/mine` y `PATCH /api/v1/notifications/{id}/read` permiten consultar y marcar los avisos propios de cuentas autenticadas. Un reporte nuevo avisa a los administradores y miembros institucionales con cobertura y regla de derivación; una asignación avisa al Operador designado y un cambio de estado al ciudadano autenticado que reportó, cuando existe. Estos avisos se guardan en MySQL antes de cualquier intento push. La campana del panel consulta los avisos sin leer periódicamente y enlaza al incidente. La app actual reporta sin cuenta y no ofrece historial ni avisos privados; sí muestra alertas públicas. `GET /api/v1/admin/audit` consulta eventos con límites de institución y sede.
 
 FCM es opcional. Sin `FCM_PROJECT_ID`, la API arranca sin credenciales externas y los avisos internos funcionan. Para una prueba FCM, configurar en `apps/api/.env` un `FCM_PROJECT_ID` válido y definir `GOOGLE_APPLICATION_CREDENTIALS` en el entorno de PowerShell apuntando a un JSON de cuenta de servicio **fuera del repositorio**. El servidor usa [Firebase Admin SDK y credenciales ADC](https://firebase.google.com/docs/cloud-messaging/send/admin-sdk). Un cliente autenticado puede registrar su token mediante `POST /api/v1/notifications/devices` con `{ "token": "..." }` y desactivarlo mediante `DELETE /api/v1/notifications/devices/{id}`. La API nunca devuelve ni registra el token. Sin dispositivo registrado, o si FCM falla, la operación principal y el aviso interno permanecen guardados. El piloto limita la entrega a 20 dispositivos activos por usuario.
 
@@ -113,7 +115,7 @@ Abrir la URL que imprima Vite, normalmente `http://127.0.0.1:5173/login`. Las cu
 
 La app Flutter Android vive en `apps/mobile`. Su [guía de instalación y prueba](apps/mobile/README.md) describe permisos, URL de API por `--dart-define`, emulador Android, GPS manual, fotos, reintentos y las siete vistas ciudadanas. En `apps/mobile`, ejecutar `flutter pub get`, `flutter analyze` y `flutter test` antes de iniciar un dispositivo.
 
-En Android, abrir **Perfil** para crear una cuenta ciudadana o iniciar sesión. La cuenta permite ver **Mis reportes** y adjuntar fotos; un invitado puede enviar un reporte preliminar. Las otras vistas son Inicio, Reportar, Mapa, Alertas y Directorio. La configuración única está en `apps/mobile/lib/core/config.dart`: producción usa Render por defecto. Desarrollo exige `APP_ENV=development` y una `API_BASE_URL` explícita; consultar la guía móvil. No se incorporan contraseñas al APK.
+En Android, abrir directamente **Reportar** sin crear cuenta ni iniciar sesión. La foto es opcional y se envía con permiso temporal limitado al reporte. La app ofrece Inicio, Reportar, Mapa, Contactos, Alertas y Conoce la app; no expone historial privado. La configuración única está en `apps/mobile/lib/core/config.dart`: producción usa Render por defecto. Desarrollo exige `APP_ENV=development` y una `API_BASE_URL` explícita; consultar la guía móvil. No se incorporan contraseñas al APK.
 
 ## Estado y despliegue
 

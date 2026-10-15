@@ -1,5 +1,7 @@
 # Colaboración y preparación de Render
 
+Para empezar a desarrollar en otra computadora, usar [COLLABORATION.md](COLLABORATION.md) y [CONTRIBUTING.md](../CONTRIBUTING.md). Esta guía conserva el historial de configuración de Render; no se necesitan sus secretos ni accesos de producción para clonar y ejecutar localmente.
+
 ## Estado actual y acceso (2026-10-08)
 
 Panel y API desplegados, según la validación del propietario y las pruebas remotas de Flutter:

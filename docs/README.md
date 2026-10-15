@@ -1,5 +1,8 @@
 # Documentación del proyecto
 
+- [Instalación y trabajo con un compañero](COLLABORATION.md): copia reproducible y preparación del próximo change de escalamiento.
+- [Contribuir al repositorio](../CONTRIBUTING.md): ramas, revisión y validaciones.
+
 ## Elegir una guía
 
 | Necesidad | Documento |
