@@ -76,7 +76,7 @@ npm run db:migrate:app --prefix apps/api
 npm run db:seed:demo:app --prefix apps/api
 ```
 
-Son los scripts existentes del proyecto; no se improvisa SQL ni se usan credenciales administrativas desde Node. El seed crea datos ficticios de Municipalidad, PNP, SAMU y Bomberos. Leer `DEMO_PASSWORD` en el `.env` propio para las cuentas de [la guía de usuarios](USER_GUIDE.md); no pegarlo en chats, capturas ni PR. Repetir el seed no restablece contraseñas existentes.
+Son los scripts existentes del proyecto; no se improvisa SQL ni se usan credenciales administrativas desde Node. El seed crea datos ficticios de Municipalidad, PNP, SAMU y Bomberos. Leer `DEMO_PASSWORD` en el `.env` propio para las cuentas de [la guía de usuarios](USUARIOS.md); no pegarlo en chats, capturas ni PR. Repetir el seed no restablece contraseñas existentes.
 
 Si Docker ya tenía un volumen de este proyecto, las variables nuevas no cambian las cuentas existentes. No borrar ni recrear volúmenes para corregirlo. Revisar la configuración previa con su responsable.
 
@@ -107,7 +107,7 @@ Para detener: Ctrl+C en API y panel; `docker compose down` conserva la base. No 
 
 ## 6. Android y pruebas
 
-Android reporta como invitado, sin login. La documentación vigente es [la guía móvil](../apps/mobile/README.md); las guías antiguas de instalación de esta estación no son un requisito para el compañero. El APK release apunta a Render si no se selecciona explícitamente desarrollo. Para desarrollar contra tu API, usar `APP_ENV=development` y una URL alcanzable desde el dispositivo.
+Android reporta como invitado, sin login. La documentación vigente es [la guía móvil](../../apps/mobile/README.md); las guías antiguas de instalación de esta estación no son un requisito para el compañero. El APK release apunta a Render si no se selecciona explícitamente desarrollo. Para desarrollar contra tu API, usar `APP_ENV=development` y una URL alcanzable desde el dispositivo.
 
 ```powershell
 Set-Location apps/mobile
@@ -118,7 +118,7 @@ flutter test
 flutter run --dart-define=APP_ENV=development --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
 ```
 
-Las comprobaciones backend/web y ramas están en [CONTRIBUTING.md](../CONTRIBUTING.md). El CI compila React antes del test de servidor y no necesita secretos. No ejecuta integraciones MySQL ni pruebas remotas que escriban datos. Para integraciones, provisionar una base aislada terminada en `_test`, con permisos de la cuenta de aplicación, y usar los scripts `*:test`. No usar `incidencias` operativa ni Aiven de producción como base de pruebas.
+Las comprobaciones backend/web y ramas están en [CONTRIBUTING.md](../../CONTRIBUTING.md). El CI compila React antes del test de servidor y no necesita secretos. No ejecuta integraciones MySQL ni pruebas remotas que escriban datos. Para integraciones, provisionar una base aislada terminada en `_test`, con permisos de la cuenta de aplicación, y usar los scripts `*:test`. No usar `incidencias` operativa ni Aiven de producción como base de pruebas.
 
 ## 7. Revisión y entrega
 

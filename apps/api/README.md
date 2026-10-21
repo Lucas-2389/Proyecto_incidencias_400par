@@ -1,6 +1,6 @@
 # API técnica
 
-Este paquete inicia el backend Node.js + Express. Implementa las rutas técnicas y funcionales del piloto descritas en [OpenAPI](../../packages/contracts/openapi.yaml). La preparación de producción V1 está en [DEPLOYMENT_V1.md](../../docs/DEPLOYMENT_V1.md).
+Este paquete inicia el backend Node.js + Express. Implementa las rutas técnicas y funcionales del piloto descritas en [OpenAPI](../../packages/contracts/openapi.yaml). El diseño vigente está en el [SDD](../../docs/01-entrega/SDD.md) y el procedimiento del servicio publicado en [operación Render](../../docs/02-guias/OPERACION_RENDER.md). El plan V1 original se conserva únicamente como antecedente histórico.
 
 ## Configuración de la API
 

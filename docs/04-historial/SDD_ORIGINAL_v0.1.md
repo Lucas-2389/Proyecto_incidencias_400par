@@ -1,3 +1,5 @@
+> **Documento histórico del 05 de octubre de 2026.** Conservado como antecedente; mezcla requisitos y planificación de la versión original. Para la entrega vigente consultar [SRS](../01-entrega/SRS.md), [SDD](../01-entrega/SDD.md) y [plan de verificación](../01-entrega/PLAN_Y_VERIFICACION.md). Las decisiones de hosting, acceso móvil y escalamiento aquí descritas no certifican el estado actual.
+
 # SOFTWARE DESIGN DESCRIPTION (SDD)
 
 ## Plataforma móvil para la gestión de desastres, emergencias y violencias
@@ -871,4 +873,4 @@ Cada solicitud a la IA debe contener: módulo objetivo, requisitos RF/RNF aplica
 
 ## Decisión de interfaz vigente — 2026-10-09
 
-Por decisión del responsable del proyecto, Android 1.0.4 prioriza RF-02 y RF-08: reporte preliminar y foto opcional sin cuenta, con contactos oficiales y presentación accesibles. Login, registro e historial privado no se exponen en esta navegación móvil; sus capacidades previas permanecen en la API. RF-03 y RF-42 siguen protegiendo el panel institucional y la lectura de evidencias. La portada web se orienta a entidades; los accesos de llamada ciudadana pasan a Android. No cambia RN-01/RN-02 ni se elimina información. Diseño, seguridad, criterios y resultados en [Flujo ciudadano](docs/CITIZEN_EMERGENCY_FLOW.md).
+Por decisión del responsable del proyecto, Android 1.0.4 prioriza RF-02 y RF-08: reporte preliminar y foto opcional sin cuenta, con contactos oficiales y presentación accesibles. Login, registro e historial privado no se exponen en esta navegación móvil; sus capacidades previas permanecen en la API. RF-03 y RF-42 siguen protegiendo el panel institucional y la lectura de evidencias. La portada web se orienta a entidades; los accesos de llamada ciudadana pasan a Android. No cambia RN-01/RN-02 ni se elimina información. Diseño, seguridad, criterios y resultados en [Flujo ciudadano](EVOLUCION_MOVIL.md).

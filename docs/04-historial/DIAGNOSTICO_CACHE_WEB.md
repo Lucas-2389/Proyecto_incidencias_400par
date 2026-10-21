@@ -1,3 +1,5 @@
+> **Registro histórico.** Describe una estación o diagnóstico anterior; para instalar hoy usar la [guía de colaboración](../02-guias/COLABORACION.md).
+
 # Diagnóstico de pantalla blanca — 2026-10-08
 
 ## Causa confirmada posteriormente (16:24 UTC)

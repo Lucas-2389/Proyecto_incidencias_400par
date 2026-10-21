@@ -36,7 +36,7 @@ Operadores acceden a Dashboard, Incidentes y Mapa. Administradores acceden tambi
 
 ## Recorrido de demostración
 
-1. Instalar el APK descrito en [la guía móvil](../apps/mobile/README.md). Producción conecta a Render sin depender del PC.
+1. Instalar el APK descrito en [la guía móvil](../../apps/mobile/README.md). Producción conecta a Render sin depender del PC.
 2. Abrir la app y entrar directamente a **Reportar**, sin registro ni contraseña.
 3. Elegir categoría, describir un caso claramente ficticio y escribir una referencia de calle/lugar. Usar ubicación actual o seleccionar el punto en el mapa; el teléfono de contacto es opcional.
 4. Enviar y conservar la referencia. Adjuntar una foto de prueba sin datos personales. Si falta conexión, distinguir el envío pendiente de la confirmación del servidor.

@@ -1,6 +1,6 @@
 # Despliegue funcional V1 — plan histórico
 
-> Documento histórico conservado para trazabilidad SDD. La propuesta VM + Cloudflare Pages + disco persistente que sigue no es la infraestructura actual. El despliegue vigente utiliza Render (Express + React), Aiven MySQL con TLS y Cloudinary. Seguir [la guía vigente de Render](RENDER_COLLABORATION.md). Las afirmaciones sobre ausencia de TLS y despliegue en las secciones siguientes corresponden al estado de esa propuesta inicial.
+> Documento histórico conservado para trazabilidad SDD. La propuesta VM + Cloudflare Pages + disco persistente que sigue no es la infraestructura actual. El despliegue vigente utiliza Render (Express + React), Aiven MySQL con TLS y Cloudinary. Seguir [la guía vigente de Render](../02-guias/OPERACION_RENDER.md). Las afirmaciones sobre ausencia de TLS y despliegue en las secciones siguientes corresponden al estado de esa propuesta inicial.
 
 Estado: **plan de primera instalación controlada; no desplegado**. El dominio, el servidor, las claves y los servicios Cloudflare aún deben ser elegidos y configurados por el propietario. Este documento usa `example.com` como marcador, nunca como URL real. El piloto DEMO de Ayacucho no sirve para atención de emergencias reales. El recorrido físico Android→panel→Android de OpenSpec aún tiene pasos pendientes; no publicar hasta cerrarlo o acordar expresamente una demostración limitada.
 
@@ -87,3 +87,37 @@ Capturar: árbol DNS y estado proxied, dominio personalizado de Pages, configura
 ## 9. Riesgos y decisiones pendientes
 
 Faltan dominio y cuenta Cloudflare, VM/almacenamiento persistente, certificado de origen, cuentas no DEMO para la prueba pública, transporte de recuperación de contraseña, verificación de respaldo/restauración y cierre del recorrido E2E físico de `operational-mvp` (tarea 12.3). La topología de una VM tiene un único punto de fallo; el escalamiento horizontal y las pruebas de miles de usuarios quedan para una fase posterior. Las reglas de AI bots y caché se aplicarán solo tras comprobar que no afectan la API móvil. No hay publicación real ni URL final asignada en este cambio.
+
+
+---
+
+# Anexo: registros de la transición posterior a Render
+
+Estos resultados del 08 de octubre se trasladaron de la guía operativa para separar procedimientos de evidencias históricas. No describen una comprobación realizada hoy.
+
+## Estado actual y acceso (2026-10-08)
+
+Panel y API desplegados, según la validación del propietario y las pruebas remotas de Flutter:
+
+- Panel/login: https://gestion-incidencias-200e.onrender.com/login
+- API funcional: https://gestion-incidencias-200e.onrender.com/api/v1
+- Salud HTTP: `/api/health`; conexión MySQL: `/api/health/database`.
+- Aiven: MySQL 8.4.8, base `incidencias`, usuario `incidencias_app`, TLS con CA y validación de certificado.
+- Evidencias nuevas: Cloudinary; migración 011 aplicada.
+- Flutter: configuración de producción centralizada, APK release de prueba generado y pruebas remotas de login, reporte y fotografía aprobadas. Commit `a20ac4c` publicado en `main`.
+
+Las secciones de resultados anteriores se conservan como registros fechados; sus pendientes de publicación y configuración no representan el estado actual. No ejecutar seeds ni migraciones al iniciar Render. Para uso y cuentas, consultar [la guía de usuarios](../02-guias/USUARIOS.md).
+
+## Publicación del panel mejorado (2026-10-08)
+
+Se publica el panel con logo, avisos internos, mapa con pictogramas y agrupaciones, etiquetas en español, contacto telefónico autorizado y estilos. Incluye las dependencias de notificaciones del backend y el contrato actualizado. Flutter conserva cambios locales pendientes fuera de esta publicación.
+
+Verificación del conjunto: 9 pruebas frontend aprobadas y build correcto en copia aislada del índice; 53 pruebas backend locales aprobadas (22 integraciones omitidas en esa ejecución); 5 comprobaciones adicionales con Aiven en incidencias_remote_test aprobadas, sin omisiones: ciclo multiinstitución, rollback, teléfono, reportes/idempotencia/notificaciones y permisos institucionales. Auditoría: 248 archivos actuales y 400 blobs históricos, 0 hallazgos. git diff --cached --check correcto. Las pruebas no escribieron en incidencias.
+
+La publicación por GitHub activa el autodeploy configurado por el propietario en Render. El estado anterior descrito abajo corresponde a la preparación inicial.
+
+## Estado verificado (2026-10-08)
+
+Sin despliegue, push ni commits automáticos. Auditoría local: 241 archivos actuales y 385 blobs históricos alcanzables, 0 hallazgos; también se revisó el índice. La búsqueda compara secretos locales conocidos y patrones de claves privadas, tokens y URI con credenciales. No garantiza detectar secretos desconocidos, objetos inalcanzables ni referencias remotas que no estén disponibles localmente.
+
+Backend: 49 aprobadas, 0 fallidas, 22 integraciones MySQL omitidas en esta ejecución. Frontend: 7 aprobadas, build correcto. Prueba HTTP del build: raíz, login, ruta profunda y asset correctos; API desconocida devuelve JSON 404; asset inexistente devuelve 404. Aiven: incidencias_app, incidencias, MySQL 8.4.8, TLS activo. Validación production correcta con JWT temporal y URLs HTTPS de prueba, sin escribir datos. Falta proporcionar JWT_SECRET definitivo y URLs reales en Render. Flutter conserva cambios anteriores, no modificados ni revalidados en esta preparación.

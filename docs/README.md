@@ -1,52 +1,41 @@
 # Documentación del proyecto
 
-- [Instalación y trabajo con un compañero](COLLABORATION.md): copia reproducible y preparación del próximo change de escalamiento.
-- [Contribuir al repositorio](../CONTRIBUTING.md): ramas, revisión y validaciones.
+## Entrega académica — leer en este orden
 
-## Elegir una guía
+| Orden | Documento | Pregunta que responde |
+| --- | --- | --- |
+| 1 | [SRS — Requisitos](01-entrega/SRS.md) | ¿Qué debe resolver el sistema? |
+| 2 | [SDD — Diseño de software](01-entrega/SDD.md) | ¿Cómo está diseñada la solución? |
+| 3 | [Plan y verificación](01-entrega/PLAN_Y_VERIFICACION.md) | ¿Cómo se organiza y comprueba el trabajo? |
 
-| Necesidad | Documento |
-| --- | --- |
-| Entender requisitos, arquitectura e iteraciones | [SDD v0.1](../SDD_Plataforma_Gestion_Desastres_Violencias_v0.1.md) |
-| Probar cuentas, módulos y flujo ciudadano → institución | [Guía de usuarios](USER_GUIDE.md) |
-| Instalar el monorepo | [README principal](../README.md) |
-| Arrancar los módulos con datos locales existentes | [DEMO local](LOCAL_DEMO.md) |
-| Configurar API, TLS, evidencias y comprobaciones | [API](../apps/api/README.md) |
-| Desarrollar el panel | [React](../apps/admin/README.md) |
-| Compilar e instalar Android | [Flutter](../apps/mobile/README.md) |
-| Colaborar y mantener el despliegue vigente | [Render y Git](RENDER_COLLABORATION.md) |
-| Revisar contrato HTTP | [OpenAPI](../packages/contracts/openapi.yaml) |
-| Consultar resultados y pendientes de aceptación | [Validación del piloto](pilot-validation.md) |
-| Revisar migraciones remotas | [Informe Aiven](AIVEN_SCHEMA_MIGRATION_REPORT.md) |
-| Seguir convenciones de desarrollo | [Convenciones](conventions.md) |
+Esta es la ruta principal para el docente. El SDD contiene arquitectura, datos, componentes e interfaz; las tablas de requisitos y el trabajo pendiente se consultan por separado. Los documentos están preparados para revisión, sin afirmar aprobación académica.
 
-## Arquitectura vigente
+## Organización
 
-```mermaid
-flowchart LR
-  ciudadano[Android Flutter] -->|HTTPS /api/v1| api[Render: Node.js / Express]
-  navegador[Navegador institucional] -->|HTTPS| panel[Render: React estático]
-  panel -->|mismo origen /api/v1| api
-  api -->|MySQL con TLS| db[Aiven: incidencias]
-  api -->|evidencias| fotos[Cloudinary]
+```text
+docs/
+  01-entrega/       SRS, SDD y plan/verificación
+  02-guias/         Instalación, usuarios, convenciones y operación
+  03-validacion/    Evidencias fechadas e informe de esta revisión
+  04-historial/     Antecedentes que no describen necesariamente la versión actual
 ```
 
-Las credenciales de base de datos, JWT y Cloudinary pertenecen al backend. El navegador y el APK contienen únicamente configuración pública.
+## Guías de uso y desarrollo
 
-## Trabajo según SDD y OpenSpec
+- [Clonar y trabajar con un compañero](02-guias/COLABORACION.md).
+- [Usuarios, acceso y módulos](02-guias/USUARIOS.md).
+- [Convenciones de implementación](02-guias/CONVENCIONES.md).
+- [Operación y preparación de Render](02-guias/OPERACION_RENDER.md): revisar las fechas de sus comprobaciones.
+- Guías específicas: [API](../apps/api/README.md), [React](../apps/admin/README.md), [Android](../apps/mobile/README.md) y [migraciones](../apps/api/migrations/README.md).
+- [Contribuir](../CONTRIBUTING.md) y [contrato HTTP](../packages/contracts/openapi.yaml).
 
-1. Consultar el SDD y el contrato antes de cambiar comportamiento.
-2. Para una capacidad nueva, documentar el change en `openspec/changes`: propuesta, specs verificables, diseño y tareas.
-3. Implementar el alcance acordado; marcar tareas solamente después de verificarlas.
-4. Registrar pruebas ejecutadas, omisiones y limitaciones; actualizar contrato y guías afectadas.
-5. Validar OpenSpec antes de cerrar; archivar únicamente cuando los criterios estén cumplidos.
+## Validación y antecedentes
 
-El historial archivado y las migraciones se conservan. [DEPLOYMENT_V1.md](DEPLOYMENT_V1.md) es un plan histórico de VM/Cloudflare, no una instrucción para modificar la infraestructura vigente.
+- [Validación del piloto](03-validacion/PILOTO.md).
+- [Informe del esquema Aiven](03-validacion/MIGRACIONES_AIVEN.md).
+- [Revisión documental de esta entrega](03-validacion/REVISION_DOCUMENTAL.md).
+- [Índice histórico](04-historial/README.md).
 
-## Mantenimiento de archivos
+Los changes y sus tareas se mantienen en [OpenSpec](../openspec/), en su estructura original para conservar la trazabilidad y compatibilidad con la herramienta. No son documentos adicionales que el docente necesite leer para comprender el SDD.
 
-Versionar código, pruebas, contratos, migraciones, lockfiles, plantillas `.env.example` sin secretos y documentación vigente. Mantener privados `.env`, certificados, credenciales, datos locales y cuentas de servicio. APK, `build`, `dist` y dependencias se generan y quedan ignorados.
-
-Antes de eliminar un archivo, comprobar referencias y si tiene valor histórico. No borrar volúmenes, evidencias, migraciones ni archivos privados para limpiar el repositorio. Esta revisión retiró solamente dos `.gitkeep` de carpetas OpenSpec que ya contienen archivos versionados.
-
-- [Flujo de emergencia sin login y seguridad institucional](CITIZEN_EMERGENCY_FLOW.md): decisión vigente para Android 1.0.4 y portada web.
+El sistema es un piloto académico; no sustituye los canales oficiales de emergencia. No incluir `.env`, certificados, credenciales, APK ni dependencias en el paquete documental.
