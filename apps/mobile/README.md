@@ -35,8 +35,7 @@ Permisos Android existentes: Internet, red y ubicación. Cámara/galería se abr
 
 ## Documentación vigente
 
-- [Decisión y trazabilidad SDD](../../docs/CITIZEN_EMERGENCY_FLOW.md).
-- [Diseño visual móvil](../../docs/MOBILE_INTERFACE.md).
-- [Permiso seguro de fotos de invitado](../../docs/GUEST_EVIDENCE.md).
+- [Diseño vigente: flujo, interfaz y fotos de invitado](../../docs/01-entrega/SDD.md).
+- [Antecedentes y resultados por versión](../../docs/04-historial/EVOLUCION_MOVIL.md).
 
 Las guías anteriores de login ciudadano describen versiones previas. Esta versión sustituye ese recorrido.

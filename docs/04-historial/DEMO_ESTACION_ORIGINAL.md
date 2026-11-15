@@ -1,6 +1,8 @@
+> **Registro histórico.** Describe una estación o diagnóstico anterior; para instalar hoy usar la [guía de colaboración](../02-guias/COLABORACION.md).
+
 # Prueba local de todos los módulos
 
-Para un clon en otra computadora, comenzar por [Instalación para un compañero](COLLABORATION.md). Los archivos `.local` mencionados aquí son particulares de la estación del propietario y no se descargan con Git. La navegación móvil vigente es sin login, según [la guía Android](../apps/mobile/README.md).
+Para un clon en otra computadora, comenzar por [Instalación para un compañero](../02-guias/COLABORACION.md). Los archivos `.local` mencionados aquí son particulares de la estación del propietario y no se descargan con Git. La navegación móvil vigente es sin login, según [la guía Android](../../apps/mobile/README.md).
 
 Esta guía usa datos ficticios de Ayacucho. En esta estación ya existe la base aislada `incidencias_e2e2_test` con PNP, SAMU, Bomberos y Municipalidad. No se necesita volver a sembrarla para iniciar el panel. La base operativa `incidencias` queda separada.
 

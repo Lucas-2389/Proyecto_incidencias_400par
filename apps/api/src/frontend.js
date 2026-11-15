@@ -12,7 +12,16 @@ function mountFrontend(app, { logger = console, directory = frontendDirectory } 
     logger.error(JSON.stringify({ expectedPath: index }));
     return false;
   }
-  app.use(express.static(directory, { index: false }));
+  app.use(express.static(directory, {
+    index: false,
+    setHeaders(res, file) {
+      if (path.extname(file).toLowerCase() === '.html') {
+        res.setHeader('Cache-Control', 'no-cache');
+      } else if (path.relative(directory, file).split(path.sep)[0] === 'assets' && /-[A-Za-z0-9_-]{8,}\.(js|css)$/.test(file)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
+  }));
   app.get('/{*path}', (req, res, next) => {
     // Also guard here so the SPA cannot absorb API routes if mount order changes.
     if (req.path === '/api' || req.path.startsWith('/api/') || path.extname(req.path) || !req.accepts('html')) return next();

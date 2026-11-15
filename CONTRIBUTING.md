@@ -4,7 +4,7 @@ Repositorio: https://github.com/Lucas-2389/Proyecto_incidencias_400par
 
 ## Clonar y ejecutar
 
-Sigue [la instalación para un compañero](docs/COLLABORATION.md). Cada desarrollador usa sus propios `.env`, MySQL local y contraseñas. No necesitas acceso a Render, Aiven ni Cloudinary de producción para comenzar. No hay `package.json` raíz: ejecuta npm con `--prefix` para cada aplicación.
+Sigue [la instalación para un compañero](docs/02-guias/COLABORACION.md). Cada desarrollador usa sus propios `.env`, MySQL local y contraseñas. No necesitas acceso a Render, Aiven ni Cloudinary de producción para comenzar. No hay `package.json` raíz: ejecuta npm con `--prefix` para cada aplicación.
 
 ## Una rama por cambio
 
@@ -29,7 +29,7 @@ Abrir un Pull Request hacia `main` y pedir revisión al compañero. No usar `git
 
 ## SDD y OpenSpec
 
-Leer primero el [SDD](SDD_Plataforma_Gestion_Desastres_Violencias_v0.1.md), el [contrato](packages/contracts/openapi.yaml) y las specs del cambio seleccionado. Registrar requisitos, comportamiento verificable y diseño antes de implementar nuevas capacidades. Generar tareas y marcar únicamente trabajo ejecutado y comprobado. No archivar cambios pendientes.
+Leer primero el [SRS](docs/01-entrega/SRS.md), después el [SDD](docs/01-entrega/SDD.md), el [contrato](packages/contracts/openapi.yaml) y las specs del cambio seleccionado. Registrar requisitos, comportamiento verificable y diseño antes de implementar nuevas capacidades. Las tareas pertenecen a OpenSpec, fuera del SDD: marcar únicamente trabajo ejecutado y comprobado. No archivar cambios pendientes.
 
 ```powershell
 openspec list --json
@@ -37,7 +37,7 @@ openspec status --change <nombre>
 openspec validate <nombre> --strict
 ```
 
-No iniciar todavía el escalamiento como parte de esta preparación. Las áreas que deberán diseñarse y repartirse están en [la guía de colaboración](docs/COLLABORATION.md#preparación-del-escalamiento-horizontal).
+No iniciar todavía el escalamiento como parte de esta preparación. Las áreas que deberán diseñarse y repartirse están en [la guía de colaboración](docs/02-guias/COLABORACION.md#preparación-del-escalamiento-horizontal).
 
 ## Comprobaciones del PR
 

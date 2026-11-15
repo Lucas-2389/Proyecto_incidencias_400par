@@ -1,33 +1,16 @@
-# Colaboración y preparación de Render
+# Operación del piloto en Render
 
-Para empezar a desarrollar en otra computadora, usar [COLLABORATION.md](COLLABORATION.md) y [CONTRIBUTING.md](../CONTRIBUTING.md). Esta guía conserva el historial de configuración de Render; no se necesitan sus secretos ni accesos de producción para clonar y ejecutar localmente.
+Procedimiento documental del servicio único React + API. Para desarrollar localmente consultar [colaboración](COLABORACION.md); para comprender la arquitectura, el [SDD](../01-entrega/SDD.md). Los resultados de preparación del 08 de octubre están en el [historial de despliegue](../04-historial/PLAN_DESPLIEGUE_INICIAL.md).
 
-## Estado actual y acceso (2026-10-08)
+## Acceso y dependencias
 
-Panel y API desplegados, según la validación del propietario y las pruebas remotas de Flutter:
+- Panel: https://gestionincidencias.cfd/login; origen Render: https://gestion-incidencias-200e.onrender.com/login.
+- API: `/api/v1`; salud HTTP: `/api/health`; salud MySQL: `/api/health/database`.
+- Base operativa: Aiven `incidencias`, usuario de aplicación y TLS verificado. Base de pruebas separada.
+- Fotos nuevas: Cloudinary privado, sin dependencia de disco persistente.
+- Android reporta sin login; el panel exige autenticación institucional. Consultar [usuarios](USUARIOS.md).
 
-- Panel/login: https://gestion-incidencias-200e.onrender.com/login
-- API funcional: https://gestion-incidencias-200e.onrender.com/api/v1
-- Salud HTTP: `/api/health`; conexión MySQL: `/api/health/database`.
-- Aiven: MySQL 8.4.8, base `incidencias`, usuario `incidencias_app`, TLS con CA y validación de certificado.
-- Evidencias nuevas: Cloudinary; migración 011 aplicada.
-- Flutter: configuración de producción centralizada, APK release de prueba generado y pruebas remotas de login, reporte y fotografía aprobadas. Commit `a20ac4c` publicado en `main`.
-
-Las secciones de resultados anteriores se conservan como registros fechados; sus pendientes de publicación y configuración no representan el estado actual. No ejecutar seeds ni migraciones al iniciar Render. Para uso y cuentas, consultar [la guía de usuarios](USER_GUIDE.md).
-
-## Publicación del panel mejorado (2026-10-08)
-
-Se publica el panel con logo, avisos internos, mapa con pictogramas y agrupaciones, etiquetas en español, contacto telefónico autorizado y estilos. Incluye las dependencias de notificaciones del backend y el contrato actualizado. Flutter conserva cambios locales pendientes fuera de esta publicación.
-
-Verificación del conjunto: 9 pruebas frontend aprobadas y build correcto en copia aislada del índice; 53 pruebas backend locales aprobadas (22 integraciones omitidas en esa ejecución); 5 comprobaciones adicionales con Aiven en incidencias_remote_test aprobadas, sin omisiones: ciclo multiinstitución, rollback, teléfono, reportes/idempotencia/notificaciones y permisos institucionales. Auditoría: 248 archivos actuales y 400 blobs históricos, 0 hallazgos. git diff --cached --check correcto. Las pruebas no escribieron en incidencias.
-
-La publicación por GitHub activa el autodeploy configurado por el propietario en Render. El estado anterior descrito abajo corresponde a la preparación inicial.
-
-## Estado verificado (2026-10-08)
-
-Sin despliegue, push ni commits automáticos. Auditoría local: 241 archivos actuales y 385 blobs históricos alcanzables, 0 hallazgos; también se revisó el índice. La búsqueda compara secretos locales conocidos y patrones de claves privadas, tokens y URI con credenciales. No garantiza detectar secretos desconocidos, objetos inalcanzables ni referencias remotas que no estén disponibles localmente.
-
-Backend: 49 aprobadas, 0 fallidas, 22 integraciones MySQL omitidas en esta ejecución. Frontend: 7 aprobadas, build correcto. Prueba HTTP del build: raíz, login, ruta profunda y asset correctos; API desconocida devuelve JSON 404; asset inexistente devuelve 404. Aiven: incidencias_app, incidencias, MySQL 8.4.8, TLS activo. Validación production correcta con JWT temporal y URLs HTTPS de prueba, sin escribir datos. Falta proporcionar JWT_SECRET definitivo y URLs reales en Render. Flutter conserva cambios anteriores, no modificados ni revalidados en esta preparación.
+Esta revisión no modifica el servicio ni comprueba su disponibilidad en vivo. No ejecutar seeds o migraciones durante el arranque normal. No compartir secretos de producción con quien solo necesite un entorno local.
 
 ## Servicio único Render (Node nativo)
 
@@ -89,32 +72,11 @@ Privados: apps/api/.env, .env de Compose, otros .env locales, certs/ca.pem, .loc
 
 Si aparece un secreto en Git: detener publicación, revocarlo/rotarlo; quitarlo del índice con git rm --cached -- <archivo>, mantener regla ignore y sanear el historial coordinadamente antes de publicar. No reescribir historial compartido sin coordinarlo. Un commit que elimina un secreto no lo elimina de commits anteriores.
 
-## Comandos de preparación de commits
+## Publicar cambios mediante revisión
 
-Desde la raíz, revisar cada grupo antes de confirmar. No usar git add .; los directorios siguientes se revisaron y las exclusiones protegen los archivos locales. Estos comandos incluyen trabajo anterior, separado por módulo.
+Seguir [CONTRIBUTING](../../CONTRIBUTING.md): revisar el diff, seleccionar archivos concretos y abrir un pull request. Los comandos de commits propuestos en octubre para agrupar trabajo ya publicado se retiraron de esta guía porque no corresponden a cambios nuevos. No volver a ejecutar seeds ni migraciones como parte del arranque o de una limpieza documental.
 
-```sh
-git add -- .gitignore .env.example README.md apps/api docs/AIVEN_SCHEMA_MIGRATION_REPORT.md
-git diff --cached --check
-git diff --cached --stat
-git commit -m "feat(api): prepare Aiven TLS Cloudinary and Render web hosting"
-
-git add -- apps/admin packages/contracts/openapi.yaml docs/LOCAL_DEMO.md
-git diff --cached --check
-git diff --cached --stat
-git commit -m "feat(admin): improve incident maps notifications and reporting"
-
-# Cambios Flutter anteriores: revisar y ejecutar flutter test antes de este commit.
-git add -- apps/mobile/README.md apps/mobile/android/gradle/wrapper/gradle-wrapper.properties apps/mobile/lib/screens/report.dart apps/mobile/test/report_test.dart
-git diff --cached --check
-git commit -m "feat(mobile): improve citizen incident reporting"
-
-git add -- docs/RENDER_COLLABORATION.md
-git commit -m "docs: document collaboration and Render configuration"
-git status
-```
-
-Los commits API y admin forman un conjunto: el primero integra React cuyo build se entrega con el segundo. Publicar ambos conjuntamente después de revisar. No subir automáticamente. Para colaborar, invitar al compañero desde GitHub Settings → Collaborators, desarrollar en ramas y usar pull requests; no compartir credenciales personales de GitHub o Render.
+Un push o integración en la rama conectada puede activar el despliegue automático de Render. Coordinar la publicación; no compartir credenciales personales. El compañero puede desarrollar con su propia base local siguiendo [colaboración](COLABORACION.md).
 
 ## Validación reproducible
 
