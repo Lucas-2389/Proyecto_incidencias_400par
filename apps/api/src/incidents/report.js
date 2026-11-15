@@ -47,7 +47,7 @@ function validateReport(body, { locationRequired = true } = {}) {
     || callerContact.replace(/\D/g, '').length < 7 || callerContact.replace(/\D/g, '').length > 15)) {
     throw new HttpError(422, 'VALIDATION_ERROR', 'Teléfono de contacto inválido');
   }
-  return {
+  const report = {
     categoryId: parsePositiveId(input.categoryId, 'categoryId'),
     subcategoryId: input.subcategoryId == null ? null : parsePositiveId(input.subcategoryId, 'subcategoryId'),
     description: requireText(input.description, 'description', { max: 2000 }),
@@ -56,6 +56,13 @@ function validateReport(body, { locationRequired = true } = {}) {
     location: validateLocation(input.location, { required: locationRequired }),
     callerContact,
   };
+  // Unknown observations keep the historical idempotency payload unchanged.
+  for (const field of ['isConscious', 'isBreathing', 'hasBleeding']) {
+    if (input[field] == null) continue;
+    if (typeof input[field] !== 'boolean') throw new HttpError(422, 'VALIDATION_ERROR', `Campo inválido: ${field}`);
+    report[field] = input[field];
+  }
+  return report;
 }
 
 function requestKey(header, body) {
@@ -137,10 +144,12 @@ async function createReport(pool, body, { source, reporterUserId = null, creator
     await connection.beginTransaction();
     await connection.execute(
       `INSERT INTO incidents (id, reference, reporter_user_id, created_by_user_id, category_id, subcategory_id,
-       source, description, affected_people, occurred_at, priority, caller_contact)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       source, description, affected_people, occurred_at, priority, caller_contact,
+       is_conscious, is_breathing, has_bleeding)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, reference, reporterUserId, creatorUserId, input.categoryId, input.subcategoryId,
-        source, input.description, input.affectedPeople, mysqlDate(input.occurredAt ?? new Date().toISOString()), category.defaultPriority, input.callerContact],
+        source, input.description, input.affectedPeople, mysqlDate(input.occurredAt ?? new Date().toISOString()), category.defaultPriority, input.callerContact,
+        input.isConscious ?? null, input.isBreathing ?? null, input.hasBleeding ?? null],
     );
     if (input.location) {
       await connection.execute(

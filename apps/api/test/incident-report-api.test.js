@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { randomUUID } = require('node:crypto');
+const { randomUUID, createHash } = require('node:crypto');
 const test = require('node:test');
 const mysql = require('mysql2/promise');
 const { createApp } = require('../src/app');
@@ -13,6 +13,19 @@ test('teléfono de contacto opcional acepta números y rechaza texto libre', () 
   assert.equal(validateReport(report).callerContact, null);
   assert.equal(validateReport({ ...report, callerContact: '+51 999 111 222' }).callerContact, '+51 999 111 222');
   assert.throws(() => validateReport({ ...report, callerContact: 'llamar por chat' }), /Teléfono de contacto inválido/);
+});
+
+test('observaciones clínicas admiten booleanos y desconocidos sin alterar el contenido legado', () => {
+  const report = { categoryId: 1, description: 'Prueba', location: { latitude: -13.16, longitude: -74.22 } };
+  const legacy = validateReport(report);
+  assert.deepEqual(validateReport({ ...report, isConscious: null, isBreathing: null, hasBleeding: null }), legacy);
+  for (const field of ['isConscious', 'isBreathing', 'hasBleeding']) {
+    assert.equal(validateReport({ ...report, [field]: false })[field], false);
+    assert.equal(validateReport({ ...report, [field]: true })[field], true);
+    for (const invalid of [0, 1, '', 'false', [], {}]) {
+      assert.throws(() => validateReport({ ...report, [field]: invalid }), /Campo inválido/);
+    }
+  }
 });
 
 const integration = process.env.RUN_MYSQL_INTEGRATION === '1' ? test : test.skip;
@@ -32,7 +45,7 @@ integration('reportes móvil, invitado y telefónico validan GPS, fuente e idemp
   const operatorEmail = `report-operator-${randomUUID()}@example.invalid`;
   const operator = await registerCitizen(pool, { name: 'Operador reportante', email: operatorEmail, password, acceptedTerms: true });
   const [[operatorRole]] = await pool.execute("SELECT id FROM roles WHERE code = 'Operador'");
-  const [[site]] = await pool.execute("SELECT s.id, s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.type = 'pnp' AND i.is_demo = TRUE LIMIT 1");
+  const [[site]] = await pool.execute("SELECT s.id, s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.type = 'pnp' AND i.is_demo = TRUE AND s.name IN ('DEMO Comisaría PNP Ayacucho A', 'DEMO SAMU Ayacucho', 'DEMO Compañía de Bomberos Ayacucho n.º 63', 'DEMO Base Serenazgo Huamanga') LIMIT 1");
   await pool.execute('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [operator.id, operatorRole.id]);
   await pool.execute('INSERT INTO institution_memberships (user_id, institution_id, site_id, role_id) VALUES (?, ?, ?, ?)',
     [operator.id, site.institutionId, site.id, operatorRole.id]);
@@ -50,7 +63,9 @@ integration('reportes móvil, invitado y telefónico validan GPS, fuente e idemp
         ...(key ? { 'Idempotency-Key': key } : {}),
         ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body),
     });
-    const report = { categoryId: category.id, description: 'Incendio de prueba', source: 'PHONE', callerContact: '+51 999 111 222',
+    const report = { categoryId: category.id, description: 'Tres afectados. Persona principal: conductor del vehículo rojo.',
+      affectedPeople: 3, isConscious: false, isBreathing: true, hasBleeding: true,
+      source: 'PHONE', callerContact: '+51 999 111 222',
       location: { latitude: -13.16, longitude: -74.22, accuracyMeters: 8.5,
         capturedAt: new Date(Date.now() - 60000).toISOString(), reference: 'Marcador final corregido' } };
     const bad = await post('/incidents', { ...report, location: { latitude: 91, longitude: -74.22 } }, randomUUID(), citizenToken);
@@ -85,10 +100,18 @@ integration('reportes móvil, invitado y telefónico validan GPS, fuente e idemp
       headers: { authorization: `Bearer ${citizenToken}` },
     })).json();
     assert.equal(Object.hasOwn(ownDetail, 'callerContact'), false);
+    assert.equal(ownDetail.affectedPeople, 3);
+    assert.equal(ownDetail.description, report.description);
+    assert.equal(ownDetail.isConscious, false);
+    assert.equal(ownDetail.isBreathing, true);
+    assert.equal(ownDetail.hasBleeding, true);
     const operatorDetail = await (await fetch(`${base}/incidents/${first.id}`, {
       headers: { authorization: `Bearer ${superToken}` },
     })).json();
     assert.equal(operatorDetail.callerContact, '+51 999 111 222');
+    assert.equal(operatorDetail.isConscious, false);
+    assert.equal(operatorDetail.isBreathing, true);
+    assert.equal(operatorDetail.hasBleeding, true);
     const [[notice]] = await pool.execute(
       "SELECT id, user_id AS userId FROM notifications WHERE incident_id = ? AND type = 'incident_created' AND user_id = ?",
       [first.id, superUser.id],
@@ -103,6 +126,26 @@ integration('reportes móvil, invitado y telefónico validan GPS, fuente e idemp
     );
     assert.equal(noticeCount.total, 1);
     assert.equal((await post('/incidents', { ...report, description: 'Contenido alterado' }, key, citizenToken)).status, 409);
+    assert.equal((await post('/incidents', { ...report, isConscious: true }, key, citizenToken)).status, 409);
+    const legacyBody = { ...report };
+    delete legacyBody.isConscious;
+    delete legacyBody.isBreathing;
+    delete legacyBody.hasBleeding;
+    const legacyKey = randomUUID();
+    const legacyReceipt = await (await post('/incidents', legacyBody, legacyKey, citizenToken)).json();
+    const legacyInput = { categoryId: category.id, subcategoryId: null, description: legacyBody.description,
+      affectedPeople: 3, occurredAt: null, location: { ...legacyBody.location }, callerContact: legacyBody.callerContact };
+    const legacyHash = createHash('sha256').update(JSON.stringify({ source: 'MOBILE_APP', input: legacyInput })).digest('hex');
+    await pool.execute('UPDATE client_requests SET request_hash=? WHERE incident_id=?', [legacyHash, legacyReceipt.id]);
+    const legacyRetry = await post('/incidents', { ...legacyBody, isConscious: null, isBreathing: null, hasBleeding: null }, legacyKey, citizenToken);
+    assert.equal(legacyRetry.status, 200);
+    assert.equal((await legacyRetry.json()).id, legacyReceipt.id);
+    assert.equal((await post('/incidents', { ...legacyBody, hasBleeding: false }, legacyKey, citizenToken)).status, 409);
+    const legacyDetail = await (await fetch(`${base}/incidents/${legacyReceipt.id}`, { headers: { authorization: `Bearer ${citizenToken}` } })).json();
+    assert.equal(legacyDetail.isConscious, null);
+    assert.equal(legacyDetail.isBreathing, null);
+    assert.equal(legacyDetail.hasBleeding, null);
+    assert.equal((await post('/incidents', { ...report, isBreathing: 1 }, randomUUID(), citizenToken)).status, 422);
     const concurrencyKey = randomUUID();
     const [a, b] = await Promise.all([post('/incidents', report, concurrencyKey, citizenToken), post('/incidents', report, concurrencyKey, citizenToken)]);
     assert.deepEqual([a.status, b.status].sort(), [200, 201]);
@@ -113,13 +156,21 @@ integration('reportes móvil, invitado y telefónico validan GPS, fuente e idemp
     const [[guestStored]] = await pool.execute('SELECT reporter_user_id AS reporterId, verification_status AS verification FROM incidents WHERE id = ?', [guestReceipt.id]);
     assert.equal(guestStored.reporterId, null);
     assert.equal(guestStored.verification, 'unverified');
+    const guestDetail = await (await fetch(`${base}/incidents/${guestReceipt.id}`, { headers: { authorization: `Bearer ${superToken}` } })).json();
+    assert.equal(guestDetail.hasBleeding, true);
     const phone = await post('/ops/incidents/phone', { categoryId: category.id, description: 'Llamada de prueba',
+      isConscious: true, isBreathing: false, hasBleeding: null,
       institutionId: site.institutionId, siteId: site.id, source: 'MOBILE_APP' }, randomUUID(), operatorToken);
     assert.equal(phone.status, 201);
     const phoneReceipt = await phone.json();
     assert.equal(phoneReceipt.source, 'PHONE');
     const [[phoneStored]] = await pool.execute('SELECT created_by_user_id AS creator FROM incidents WHERE id = ?', [phoneReceipt.id]);
     assert.equal(phoneStored.creator, operator.id);
+    const phoneDetail = await (await fetch(`${base}/incidents/${phoneReceipt.id}`, { headers: { authorization: `Bearer ${superToken}` } })).json();
+    assert.equal(phoneDetail.isConscious, true);
+    assert.equal(phoneDetail.isBreathing, false);
+    assert.equal(phoneDetail.hasBleeding, null);
+    assert.equal((await fetch(`${base}/incidents/${phoneReceipt.id}`, { headers: { authorization: `Bearer ${citizenToken}` } })).status, 403);
     const [[phoneLocation]] = await pool.execute('SELECT incident_id FROM incident_locations WHERE incident_id = ?', [phoneReceipt.id]);
     assert.equal(phoneLocation, undefined);
     assert.equal((await post('/ops/incidents/phone', { categoryId: category.id, description: 'Ajeno',

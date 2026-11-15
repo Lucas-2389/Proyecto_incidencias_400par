@@ -20,7 +20,7 @@ integration('derivación múltiple, corrección auditada y reserva concurrente s
   await pool.execute('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [actor.id, role.id]);
   const token = (await login(pool, authConfig, { email, password })).accessToken;
   const [[category]] = await pool.execute("SELECT id FROM incident_categories WHERE code = 'traffic_accident'");
-  const [siteRows] = await pool.execute('SELECT s.id, s.institution_id AS institutionId, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND s.is_demo = TRUE');
+  const [siteRows] = await pool.execute("SELECT s.id, s.institution_id AS institutionId, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND s.name IN ('DEMO Comisaría PNP Ayacucho A', 'DEMO SAMU Ayacucho', 'DEMO Compañía de Bomberos Ayacucho n.º 63', 'DEMO Base Serenazgo Huamanga') AND s.is_demo = TRUE");
   const sites = new Map(siteRows.map((row) => [row.type, row]));
   for (const type of ['pnp', 'samu', 'bomberos', 'municipalidad']) assert.ok(sites.has(type));
   const [fireRules] = await pool.execute("SELECT id FROM routing_rules WHERE category_id = ? AND institution_type = 'bomberos' AND active = TRUE", [category.id]);
@@ -58,7 +58,14 @@ integration('derivación múltiple, corrección auditada y reserva concurrente s
       const site = sites.get(type);
       const response = await post(first.id, { institutionId: site.institutionId, siteId: site.id });
       assert.equal(response.status, 201);
-      assert.equal((await response.json()).corrected, false);
+      const assigned = await response.json();
+      assert.equal(assigned.corrected, false);
+      assert.deepEqual(assigned.unitIds, []);
+      assert.deepEqual(assigned.personnelIds, []);
+      const [[reserves]] = await pool.execute(
+        'SELECT (SELECT COUNT(*) FROM unit_assignments WHERE institution_assignment_id=?) + (SELECT COUNT(*) FROM personnel_assignments WHERE institution_assignment_id=?) AS total',
+        [assigned.id, assigned.id]);
+      assert.equal(reserves.total, 0);
     }
     const [[assignmentCount]] = await pool.execute('SELECT COUNT(*) AS total FROM institution_assignments WHERE incident_id = ?', [first.id]);
     assert.equal(assignmentCount.total, 3);
@@ -92,6 +99,34 @@ integration('derivación múltiple, corrección auditada y reserva concurrente s
     assert.equal(activePeople.total, 1);
     const [[assignedUnit]] = await pool.execute('SELECT status FROM units WHERE id = ?', [unitId]);
     assert.equal(assignedUnit.status, 'assigned');
+    for (const resources of [{ unitIds: [], personnelIds: [] }, { unitIds: [unitId] }, { personnelIds: [personnelId] }]) {
+      const incident = await makeIncident();
+      const request = { institutionId: pnp.institutionId, siteId: pnp.id, ...resources };
+      // Single-resource cases get their own available resource.
+      if (resources.unitIds?.length) {
+        const availableUnit = randomUUID();
+        await pool.execute("INSERT INTO units (id, institution_id, site_id, code, type) VALUES (?, ?, ?, ?, 'Patrullero')", [availableUnit, pnp.institutionId, pnp.id, `TEST-${randomUUID()}`]);
+        request.unitIds = [availableUnit];
+      }
+      if (resources.personnelIds?.length) {
+        const availablePerson = randomUUID();
+        await pool.execute('INSERT INTO personnel (id, institution_id, site_id, code, name) VALUES (?, ?, ?, ?, ?)', [availablePerson, pnp.institutionId, pnp.id, `TEST-${randomUUID()}`, 'Prueba individual']);
+        request.personnelIds = [availablePerson];
+      }
+      const response = await post(incident.id, request);
+      assert.equal(response.status, 201);
+      const assigned = await response.json();
+      assert.deepEqual(assigned.unitIds, request.unitIds ?? []);
+      assert.deepEqual(assigned.personnelIds, request.personnelIds ?? []);
+    }
+    const invalidIncident = await makeIncident();
+    for (const field of ['unitIds', 'personnelIds']) {
+      for (const invalid of [null, 'invalid', [unitId, unitId], ['invalid'], Array.from({ length: 31 }, () => randomUUID())]) {
+        assert.equal((await post(invalidIncident.id, { institutionId: pnp.institutionId, siteId: pnp.id, [field]: invalid })).status, 422);
+      }
+    }
+    const [[invalidAssignments]] = await pool.execute('SELECT COUNT(*) AS total FROM institution_assignments WHERE incident_id=?', [invalidIncident.id]);
+    assert.equal(invalidAssignments.total, 0);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await pool.end();

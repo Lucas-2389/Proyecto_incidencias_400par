@@ -25,7 +25,7 @@ integration('verificación, estados multiinstitución, duplicados e historial co
   await pool.execute('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [actor.id, role.id]);
   const token = (await login(pool, authConfig, { email: superEmail, password })).accessToken;
   const [[category]] = await pool.execute("SELECT id FROM incident_categories WHERE code = 'traffic_accident'");
-  const [sites] = await pool.execute("SELECT s.id, s.institution_id AS institutionId, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND s.is_demo = TRUE AND i.type IN ('pnp','samu')");
+  const [sites] = await pool.execute("SELECT s.id, s.institution_id AS institutionId, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND s.name IN ('DEMO Comisaría PNP Ayacucho A', 'DEMO SAMU Ayacucho', 'DEMO Compañía de Bomberos Ayacucho n.º 63', 'DEMO Base Serenazgo Huamanga') AND s.is_demo = TRUE AND i.type IN ('pnp','samu')");
   const pnp = sites.find((row) => row.type === 'pnp');
   const samu = sites.find((row) => row.type === 'samu');
   const makeIncident = async () => (await createReport(pool, { categoryId: category.id, description: 'Incidente de ciclo',
@@ -109,7 +109,7 @@ integration('fallo antes de auditoría revierte estado, historial, recursos y av
   const [[role]] = await pool.execute("SELECT id FROM roles WHERE code = 'SuperAdministrador'");
   await pool.execute('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [actor.id, role.id]);
   const [[category]] = await pool.execute("SELECT id FROM incident_categories WHERE code = 'traffic_accident'");
-  const [[site]] = await pool.execute("SELECT s.id, s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.type = 'pnp' AND i.is_demo = TRUE LIMIT 1");
+  const [[site]] = await pool.execute("SELECT s.id, s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.type = 'pnp' AND i.is_demo = TRUE AND s.name IN ('DEMO Comisaría PNP Ayacucho A', 'DEMO SAMU Ayacucho', 'DEMO Compañía de Bomberos Ayacucho n.º 63', 'DEMO Base Serenazgo Huamanga') LIMIT 1");
   const receipt = (await createReport(pool, { categoryId: category.id, description: 'Rollback de estado',
     location: { latitude: -13.16, longitude: -74.22 } }, { source: 'MOBILE_APP', reporterUserId: actor.id,
     scopeType: 'user', scopeId: actor.id, key: randomUUID() })).receipt;

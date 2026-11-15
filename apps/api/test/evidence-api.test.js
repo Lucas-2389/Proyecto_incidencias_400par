@@ -50,7 +50,7 @@ integration(`fotografías privadas: ${provider === 'cloudinary' ? 'Cloudinary si
   const other = await userToken('evidence-other');
   const operator = await userToken('evidence-operator');
   const [[operatorRole]] = await pool.execute("SELECT id FROM roles WHERE code = 'Operador'");
-  const [[site]] = await pool.execute("SELECT s.id, s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.type = 'pnp' AND i.is_demo = TRUE LIMIT 1");
+  const [[site]] = await pool.execute("SELECT s.id, s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.type = 'pnp' AND i.is_demo = TRUE AND s.name IN ('DEMO Comisaría PNP Ayacucho A', 'DEMO SAMU Ayacucho', 'DEMO Compañía de Bomberos Ayacucho n.º 63', 'DEMO Base Serenazgo Huamanga') LIMIT 1");
   await pool.execute('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [operator.user.id, operatorRole.id]);
   await pool.execute('INSERT INTO institution_memberships (user_id, institution_id, site_id, role_id) VALUES (?, ?, ?, ?)',
     [operator.user.id, site.institutionId, site.id, operatorRole.id]);

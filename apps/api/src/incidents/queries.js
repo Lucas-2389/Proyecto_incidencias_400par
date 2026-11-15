@@ -25,6 +25,7 @@ async function incidentDetail(pool, id, auth) {
   const [[row]] = await pool.execute(
     `SELECT i.id, i.reference, i.reporter_user_id AS reporterId, i.category_id AS categoryId,
      i.subcategory_id AS subcategoryId, i.description, i.affected_people AS affectedPeople,
+     i.is_conscious AS isConscious, i.is_breathing AS isBreathing, i.has_bleeding AS hasBleeding,
      i.status, i.verification_status AS verificationStatus, i.priority, i.source,
      i.caller_contact AS callerContact,
      i.occurred_at AS occurredAt, i.created_at AS createdAt,
@@ -37,6 +38,9 @@ async function incidentDetail(pool, id, auth) {
   const detail = {
     id: row.id, reference: row.reference, categoryId: row.categoryId, subcategoryId: row.subcategoryId,
     description: row.description, affectedPeople: row.affectedPeople, status: row.status,
+    isConscious: row.isConscious === null ? null : Boolean(row.isConscious),
+    isBreathing: row.isBreathing === null ? null : Boolean(row.isBreathing),
+    hasBleeding: row.hasBleeding === null ? null : Boolean(row.hasBleeding),
     verified: row.verificationStatus === 'verified', source: row.source,
     occurredAt: new Date(row.occurredAt).toISOString(), createdAt: new Date(row.createdAt).toISOString(),
     location: row.latitude === null ? null : {

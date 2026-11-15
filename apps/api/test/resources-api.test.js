@@ -17,7 +17,7 @@ integration('personal y unidades respetan sede, unicidad, disponibilidad y trans
   const password = 'test-only-secret-value';
   const user = await registerCitizen(pool, { name: 'Admin recursos', email, password, acceptedTerms: true });
   const [[role]] = await pool.execute("SELECT id FROM roles WHERE code = 'AdministradorInstitucional'");
-  const [sites] = await pool.execute("SELECT s.id, s.institution_id AS institutionId, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE");
+  const [sites] = await pool.execute("SELECT s.id, s.institution_id AS institutionId, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND s.name IN ('DEMO Comisaría PNP Ayacucho A', 'DEMO SAMU Ayacucho', 'DEMO Compañía de Bomberos Ayacucho n.º 63', 'DEMO Base Serenazgo Huamanga')");
   const pnp = sites.find((site) => site.type === 'pnp');
   const fire = sites.find((site) => site.type === 'bomberos');
   assert.ok(pnp && fire);
