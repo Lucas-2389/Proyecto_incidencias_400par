@@ -30,6 +30,60 @@ tags:
   - name: Catalog
   - name: Public
 paths:
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Consultar perfil propio
+      operationId: getOwnProfile
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Perfil propio
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnProfile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Auth]
+      summary: Editar nombre y teléfono propios
+      operationId: updateOwnProfile
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                name: { type: string, minLength: 1, maxLength: 150 }
+                phone: { type: string, maxLength: 20, nullable: true, description: Vacío o null elimina el teléfono. Omitir conserva el valor. }
+      responses:
+        '200':
+          description: Perfil guardado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnProfile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /auth/password/change:
+    post:
+      tags: [Auth]
+      summary: Cambiar contraseña propia e invalidar sesiones
+      operationId: changeOwnPassword
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordChangeRequest' }
+      responses:
+        '204': { description: Contraseña actualizada y sesiones revocadas }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /api/health:
     servers:
       - url: http://localhost:3000
@@ -1836,6 +1890,21 @@ components:
         code: { type: string, example: VALIDATION_ERROR }
         message: { type: string }
         correlationId: { type: string }
+    OwnProfile:
+      type: object
+      additionalProperties: false
+      required: [id, name, email, phone]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email, readOnly: true }
+        phone: { type: string, nullable: true, maxLength: 20 }
+    PasswordChangeRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string, format: password }
+        newPassword: { type: string, format: password, minLength: 12, maxLength: 128 }
     RegisterRequest:
       type: object
       required: [name, email, password, acceptedTerms]
@@ -1962,6 +2031,16 @@ components:
             location: { allOf: [{ $ref: '#/components/schemas/Coordinates' }], nullable: true }
             callerContact: { type: string, nullable: true, description: Solo para roles institucionales autorizados }
             evidence: { type: array, items: { $ref: '#/components/schemas/EvidenceMetadata' } }
+            history: { type: array, items: { $ref: '#/components/schemas/CitizenHistoryEvent' } }
+    CitizenHistoryEvent:
+      type: object
+      additionalProperties: false
+      required: [eventType, previousValue, newValue, createdAt]
+      properties:
+        eventType: { type: string, enum: [created, status.changed] }
+        previousValue: { type: string, nullable: true, enum: [reported, verifying, assigned, en_route, attending, resolved, closed, null] }
+        newValue: { type: string, enum: [reported, verifying, assigned, en_route, attending, resolved, closed] }
+        createdAt: { type: string, format: date-time }
     EvidenceMetadata:
       type: object
       required: [id, mediaType, uploadedAt]

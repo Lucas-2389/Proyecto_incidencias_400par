@@ -105,6 +105,35 @@ integration('reportes móvil, invitado y telefónico validan GPS, fuente e idemp
     assert.equal(ownDetail.isConscious, false);
     assert.equal(ownDetail.isBreathing, true);
     assert.equal(ownDetail.hasBleeding, true);
+    assert.equal(ownDetail.history.length, 1);
+    assert.equal(ownDetail.history[0].eventType, 'created');
+    assert.deepEqual(Object.keys(ownDetail.history[0]).sort(), ['createdAt', 'eventType', 'newValue', 'previousValue']);
+    // Insert out of chronological order, including two events with the same timestamp.
+    for (const [previous, next, date] of [
+      ['verifying', 'assigned', '2030-01-02 12:00:00'],
+      ['reported', 'verifying', '2030-01-01 12:00:00'],
+      ['assigned', 'en_route', '2030-01-02 12:00:00'],
+    ]) {
+      await pool.execute(`INSERT INTO incident_history
+        (incident_id, actor_user_id, event_type, previous_value, new_value, note, created_at)
+        VALUES (?, ?, 'status.changed', ?, ?, 'Nota interna privada', ?)`,
+      [first.id, superUser.id, previous, next, date]);
+    }
+    const timeline = await (await fetch(`${base}/incidents/${first.id}`, {
+      headers: { authorization: `Bearer ${citizenToken}` },
+    })).json();
+    assert.deepEqual(timeline.history.map((event) => event.newValue), ['reported', 'verifying', 'assigned', 'en_route']);
+    for (const event of timeline.history) {
+      assert.deepEqual(Object.keys(event).sort(), ['createdAt', 'eventType', 'newValue', 'previousValue']);
+    }
+    assert.equal(JSON.stringify(timeline.history).includes('Nota interna'), false);
+    assert.equal((await fetch(`${base}/incidents/${first.id}`)).status, 401);
+    const strangerEmail = `stranger-${randomUUID()}@example.invalid`;
+    await registerCitizen(pool, { name: 'Otro ciudadano', email: strangerEmail, password, acceptedTerms: true });
+    const strangerToken = (await login(pool, authConfig, { email: strangerEmail, password })).accessToken;
+    const denied = await fetch(`${base}/incidents/${first.id}`, { headers: { authorization: `Bearer ${strangerToken}` } });
+    assert.equal(denied.status, 403);
+    assert.equal(Object.hasOwn(await denied.json(), 'history'), false);
     const operatorDetail = await (await fetch(`${base}/incidents/${first.id}`, {
       headers: { authorization: `Bearer ${superToken}` },
     })).json();
@@ -145,6 +174,11 @@ integration('reportes móvil, invitado y telefónico validan GPS, fuente e idemp
     assert.equal(legacyDetail.isConscious, null);
     assert.equal(legacyDetail.isBreathing, null);
     assert.equal(legacyDetail.hasBleeding, null);
+    await pool.execute('DELETE FROM incident_history WHERE incident_id = ?', [legacyReceipt.id]);
+    const withoutHistory = await (await fetch(`${base}/incidents/${legacyReceipt.id}`, {
+      headers: { authorization: `Bearer ${citizenToken}` },
+    })).json();
+    assert.deepEqual(withoutHistory.history, []);
     assert.equal((await post('/incidents', { ...report, isBreathing: 1 }, randomUUID(), citizenToken)).status, 422);
     const concurrencyKey = randomUUID();
     const [a, b] = await Promise.all([post('/incidents', report, concurrencyKey, citizenToken), post('/incidents', report, concurrencyKey, citizenToken)]);

@@ -112,6 +112,11 @@ async function advanceIncident(pool, incidentId, actor, body, correlationId, not
     let notification = null;
     if (globalStatus !== incident.status) {
       await connection.execute('UPDATE incidents SET status = ? WHERE id = ?', [globalStatus, incidentId]);
+      await connection.execute(
+        `INSERT INTO incident_history (incident_id, actor_user_id, event_type, previous_value, new_value)
+         VALUES (?, ?, 'status.changed', ?, ?)`,
+        [incidentId, actor.user.id, incident.status, globalStatus],
+      );
       notification = await notifyReporter(connection, incidentId, incident.reporterId, globalStatus);
     }
     await connection.execute(

@@ -84,6 +84,11 @@ async function createAssignment(pool, incidentId, actor, body, correlationId, no
     await reserveResources(connection, id, input, actor.user.id);
     if (incident.status === 'reported' || incident.status === 'verifying') {
       await connection.execute("UPDATE incidents SET status = 'assigned' WHERE id = ?", [incidentId]);
+      await connection.execute(
+        `INSERT INTO incident_history (incident_id, actor_user_id, event_type, previous_value, new_value)
+         VALUES (?, ?, 'status.changed', ?, 'assigned')`,
+        [incidentId, actor.user.id, incident.status],
+      );
     }
     await connection.execute(
       `INSERT INTO incident_history (incident_id, institution_assignment_id, actor_user_id, event_type, previous_value, new_value, note)

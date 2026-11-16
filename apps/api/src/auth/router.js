@@ -4,9 +4,22 @@ const { login } = require('./login');
 const { refreshSession, logout } = require('./session');
 const { requestPasswordReset, confirmPasswordReset } = require('./recovery');
 const { createRateLimit } = require('./rate-limit');
+const { requireAuthentication } = require('./authorization');
+const { readProfile, updateProfile, changePassword } = require('./profile');
 
 function createAuthRouter(pool, authConfig, mailbox) {
   const router = express.Router();
+  const authenticate = requireAuthentication(pool, authConfig);
+  router.get('/me', authenticate, async (req, res) => {
+    res.json(await readProfile(pool, req.auth.user.id));
+  });
+  router.patch('/me', authenticate, async (req, res) => {
+    res.json(await updateProfile(pool, req.auth.user.id, req.body));
+  });
+  router.post('/password/change', authenticate, createRateLimit(pool, 'password_change', { limit: 5 }), async (req, res) => {
+    await changePassword(pool, req.auth.user.id, req.body);
+    res.status(204).end();
+  });
   router.post('/register', async (req, res) => {
     const user = await registerCitizen(pool, req.body);
     res.status(201).json(user);

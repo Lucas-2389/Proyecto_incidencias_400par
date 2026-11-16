@@ -95,6 +95,12 @@ integration('verificación, estados multiinstitución, duplicados e historial co
     assert.equal(citizenDetail.operatorUserId, undefined);
     assert.equal(citizenDetail.personnelIds, undefined);
     assert.equal(citizenDetail.priority, undefined);
+    assert.equal(citizenDetail.status, 'closed');
+    assert.deepEqual(citizenDetail.history.map((event) => event.newValue),
+      ['reported', 'verifying', 'assigned', 'en_route', 'attending', 'resolved', 'closed']);
+    for (const event of citizenDetail.history) {
+      assert.deepEqual(Object.keys(event).sort(), ['createdAt', 'eventType', 'newValue', 'previousValue']);
+    }
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await pool.end();

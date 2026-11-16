@@ -13,9 +13,12 @@ test('OpenAPI declara las rutas, métodos, solicitudes y respuestas de autentica
     '/logout': { status: '204', request: 'RefreshRequest' },
     '/password-reset/request': { status: '202', request: 'PasswordResetRequest' },
     '/password-reset/confirm': { status: '200', request: 'PasswordResetConfirm' },
+    '/password/change': { status: '204', request: 'PasswordChangeRequest' },
   };
   const actualPaths = router.stack.filter((layer) => layer.route).map((layer) => layer.route.path).sort();
-  assert.deepEqual(actualPaths, Object.keys(expected).sort());
+  assert.deepEqual(actualPaths, [...Object.keys(expected), '/me', '/me'].sort());
+  assert.ok(contract.paths['/auth/me'].get.responses['200']);
+  assert.equal(contract.paths['/auth/me'].patch.requestBody.content['application/json'].schema.additionalProperties, false);
   for (const [path, { status, request }] of Object.entries(expected)) {
     const operation = contract.paths[`/auth${path}`]?.post;
     assert.ok(operation, `Falta POST /auth${path}`);

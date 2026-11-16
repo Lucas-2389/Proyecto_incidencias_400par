@@ -3,6 +3,7 @@ const { HttpError } = require('../http/errors');
 const { requireObject, requireText, requireInteger } = require('../http/validation');
 const { parseCoordinate, resolvePoint } = require('../territory/router');
 const { sendBestEffort } = require('../notifications/sender');
+const { optionalPhone } = require('../http/phone');
 
 function optionalDate(value, name, { defaultNow = false } = {}) {
   if (value === undefined || value === null) return defaultNow ? new Date().toISOString() : null;
@@ -41,12 +42,7 @@ function validateLocation(value, { required = true } = {}) {
 
 function validateReport(body, { locationRequired = true } = {}) {
   const input = requireObject(body);
-  const callerContact = input.callerContact == null || input.callerContact === ''
-    ? null : requireText(input.callerContact, 'callerContact', { max: 20 });
-  if (callerContact && (!/^\+?[0-9 ()-]{7,20}$/.test(callerContact)
-    || callerContact.replace(/\D/g, '').length < 7 || callerContact.replace(/\D/g, '').length > 15)) {
-    throw new HttpError(422, 'VALIDATION_ERROR', 'Teléfono de contacto inválido');
-  }
+  const callerContact = optionalPhone(input.callerContact, 'callerContact');
   const report = {
     categoryId: parsePositiveId(input.categoryId, 'categoryId'),
     subcategoryId: input.subcategoryId == null ? null : parsePositiveId(input.subcategoryId, 'subcategoryId'),

@@ -34,6 +34,20 @@ async function incidentDetail(pool, id, auth) {
      FROM incidents i LEFT JOIN incident_locations l ON l.incident_id = i.id WHERE i.id = ?`, [id],
   );
   if (!row) throw new HttpError(404, 'NOT_FOUND', 'Reporte no encontrado');
+  if (auth.roles.has('Ciudadano') && !auth.roles.has('Operador')
+      && !auth.roles.has('AdministradorInstitucional') && !auth.roles.has('SuperAdministrador')
+      && row.reporterId !== auth.user.id) {
+    throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
+  }
+  const [history] = await pool.execute(
+    `SELECT event_type AS eventType, previous_value AS previousValue,
+     new_value AS newValue, created_at AS createdAt FROM incident_history
+     WHERE incident_id = ? AND event_type IN ('created', 'status.changed')
+     AND new_value IN ('reported', 'verifying', 'assigned', 'en_route', 'attending', 'resolved', 'closed')
+     AND (previous_value IS NULL OR previous_value IN
+       ('reported', 'verifying', 'assigned', 'en_route', 'attending', 'resolved', 'closed'))
+     ORDER BY created_at, id`, [id],
+  );
   const [evidence] = await pool.execute('SELECT id, media_type AS mediaType, created_at AS uploadedAt FROM evidence WHERE incident_id = ? ORDER BY created_at', [id]);
   const detail = {
     id: row.id, reference: row.reference, categoryId: row.categoryId, subcategoryId: row.subcategoryId,
@@ -51,6 +65,9 @@ async function incidentDetail(pool, id, auth) {
     },
     evidence: evidence.map((photo) => ({ id: photo.id, mediaType: photo.mediaType,
       uploadedAt: new Date(photo.uploadedAt).toISOString() })),
+    history: history.map((event) => ({ eventType: event.eventType,
+      previousValue: event.previousValue, newValue: event.newValue,
+      createdAt: new Date(event.createdAt).toISOString() })),
   };
   if (auth.roles.has('Operador') || auth.roles.has('AdministradorInstitucional') || auth.roles.has('SuperAdministrador')) {
     detail.priority = row.priority;
