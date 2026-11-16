@@ -15,17 +15,18 @@ class _MineScreenState extends State<MineScreen> {
   Future<List<Map<String, dynamic>>>? notices;
   @override
   void initState() { super.initState(); refresh(); }
-  void refresh() {
+  Future<void> refresh() async {
     if (!widget.api.signedIn) { return; }
     setState(() { reports = widget.api.list('/incidents/mine', auth: true);
       notices = widget.api.list('/notifications/mine', auth: true); });
+    try { await Future.wait([reports!, notices!]); } catch (_) { /* Los builders muestran el error. */ }
   }
   @override
   Widget build(BuildContext context) {
     if (!widget.api.signedIn) { return const ScreenPadding(child: MessageCard(
       message: 'Inicia sesión en Perfil para ver solo tus reportes y notificaciones. Los reportes de invitado no muestran historial privado.',
       icon: Icons.lock_outline)); }
-    return RefreshIndicator(onRefresh: () async { refresh(); await reports; }, child: ListView(children: [
+    return RefreshIndicator(onRefresh: refresh, child: ListView(physics: const AlwaysScrollableScrollPhysics(), children: [
       ScreenPadding(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Mis reportes', style: Theme.of(context).textTheme.headlineSmall),
         FutureBuilder<List<Map<String, dynamic>>>(future: reports, builder: (context, snapshot) {
@@ -34,7 +35,7 @@ class _MineScreenState extends State<MineScreen> {
           if (snapshot.data!.isEmpty) return const MessageCard(message: 'Aún no tienes reportes confirmados.');
           return Column(children: snapshot.data!.map((item) => Card(child: ListTile(
             title: Text(item['reference']?.toString() ?? 'Reporte'),
-            subtitle: Text('${item['status']} · ${formatDate(item['createdAt'])}'),
+            subtitle: Text('${incidentStatus(item['status'])} · ${formatDate(item['createdAt'])}'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ReportDetail(api: widget.api, id: item['id'] as String))),
           ))).toList());
@@ -54,22 +55,58 @@ class _MineScreenState extends State<MineScreen> {
   }
 }
 
-class ReportDetail extends StatelessWidget {
+String incidentStatus(dynamic value) => switch (value) {
+  'reported' => 'Reportado',
+  'verifying' => 'En verificación',
+  'assigned' => 'Asignado',
+  'en_route' => 'Unidad en camino',
+  'attending' => 'En atención',
+  'resolved' => 'Resuelto',
+  'closed' => 'Cerrado',
+  _ => value?.toString().replaceAll('_', ' ') ?? 'Sin estado',
+};
+
+class ReportDetail extends StatefulWidget {
   const ReportDetail({super.key, required this.api, required this.id});
   final ApiClient api;
   final String id;
   @override
+  State<ReportDetail> createState() => _ReportDetailState();
+}
+
+class _ReportDetailState extends State<ReportDetail> {
+  late Future<dynamic> report;
+  @override
+  void initState() {
+    super.initState();
+    report = widget.api.request('GET', '/incidents/${widget.id}');
+  }
+  Future<void> refresh() async {
+    setState(() { report = widget.api.request('GET', '/incidents/${widget.id}'); });
+    try { await report; } catch (_) { /* El builder muestra el error. */ }
+  }
+  @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Seguimiento')),
-    body: FutureBuilder<dynamic>(future: api.request('GET', '/incidents/$id'), builder: (context, snapshot) {
-      if (snapshot.hasError) return MessageCard(message: snapshot.error.toString());
-      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+    body: RefreshIndicator(onRefresh: refresh, child: FutureBuilder<dynamic>(future: report, builder: (context, snapshot) {
+      if (snapshot.hasError || !snapshot.hasData) {
+        return ListView(physics: const AlwaysScrollableScrollPhysics(), children: [
+          ScreenPadding(child: snapshot.hasError ? MessageCard(message: snapshot.error.toString()) : const Center(child: CircularProgressIndicator())),
+        ]);
+      }
       final incident = Map<String, dynamic>.from(snapshot.data as Map);
-      return ListView(children: [ScreenPadding(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      final history = (incident['history'] as List?) ?? [];
+      return ListView(physics: const AlwaysScrollableScrollPhysics(), children: [ScreenPadding(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(incident['reference'] as String, style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 12), MessageCard(message: 'Estado actual: ${incident['status']}'),
+        const SizedBox(height: 12), MessageCard(message: 'Estado actual: ${incidentStatus(incident['status'])}'),
         Card(child: ListTile(title: const Text('Descripción'), subtitle: Text(incident['description']?.toString() ?? '—'))),
         Card(child: ListTile(title: const Text('Fecha de reporte'), subtitle: Text(formatDate(incident['createdAt'])))),
-        const Text('La institución actualiza el estado durante la atención.'),
+        Text('Línea de tiempo', style: Theme.of(context).textTheme.titleLarge),
+        if (history.isEmpty) const MessageCard(message: 'Aún no hay eventos disponibles.'),
+        ...history.map((event) => ListTile(leading: const Icon(Icons.timeline),
+          title: Text(event['eventType'] == 'created' ? 'Reporte creado' :
+            '${incidentStatus(event['previousValue'])} → ${incidentStatus(event['newValue'])}'),
+          subtitle: Text(formatDate(event['createdAt'])),
+        )),
       ]))]);
-    }));
+    })));
 }

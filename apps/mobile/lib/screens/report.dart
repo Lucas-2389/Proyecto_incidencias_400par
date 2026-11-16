@@ -85,8 +85,26 @@ class _ReportScreenState extends State<ReportScreen> {
   String? photoError;
   bool pending = false;
   bool busy = false;
+  bool contactEdited = false;
+  String? contactIdentity;
+  @override
+  void initState() {
+    super.initState();
+    widget.api.addListener(syncContact);
+    syncContact();
+  }
+  void syncContact() {
+    final identity = widget.api.signedIn ? (widget.api.user?['id']?.toString()) : null;
+    if (identity != contactIdentity) {
+      contactIdentity = identity;
+      contactEdited = false;
+      contactPhone.clear();
+    }
+    if (!contactEdited) contactPhone.text = identity == null ? '' : widget.api.user?['phone']?.toString() ?? '';
+  }
   @override
   void dispose() {
+    widget.api.removeListener(syncContact);
     description.dispose();
     contactPhone.dispose();
     locationReference.dispose();
@@ -197,6 +215,8 @@ class _ReportScreenState extends State<ReportScreen> {
           form.currentState?.reset();
           description.clear();
           contactPhone.clear();
+          contactEdited = false;
+          syncContact();
           categoryId = null;
           point = null;
           locationReference.clear();
@@ -349,6 +369,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   TextFormField(
                     key: const Key('contactPhone'),
                     controller: contactPhone,
+                    onChanged: (_) => contactEdited = true,
                     keyboardType: TextInputType.phone,
                     autofillHints: const [AutofillHints.telephoneNumber],
                     maxLength: 20,

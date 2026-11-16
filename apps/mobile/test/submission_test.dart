@@ -21,11 +21,13 @@ class FakeApi extends ApiClient {
   bool failPhoto = false;
   bool authenticated = true;
   final keys = <String>[];
+  final bodies = <Map<String, dynamic>>[];
   @override
   bool get signedIn => authenticated;
   @override
   Future<Map<String, dynamic>> submitReport(Map<String, dynamic> body, String clientRequestId) async {
     keys.add(clientRequestId);
+    bodies.add(Map<String, dynamic>.from(body));
     if (offline) throw http.ClientException('offline');
     return {'id': 'incident-1', 'reference': 'AYA-1', 'status': 'reported'};
   }
@@ -54,13 +56,16 @@ void main() {
     final service = SubmissionService(api, pending);
     final report = PendingReport(clientRequestId: 'stable-uuid', body: {
       'categoryId': 1, 'description': 'Prueba', 'location': {'latitude': -13.16, 'longitude': -74.22},
+      'callerContact': '999111222',
     });
     expect((await service.submit(report)).pending, isTrue);
     expect((await pending.all()).single.clientRequestId, 'stable-uuid');
     api.offline = false;
+    api.user = {'phone': '999333444'};
     final result = (await service.retryPending()).single;
     expect(result.receipt?['reference'], 'AYA-1');
     expect(api.keys, ['stable-uuid', 'stable-uuid']);
+    expect(api.bodies.map((body) => body['callerContact']), ['999111222', '999111222']);
     expect(await pending.all(), isEmpty);
     api.dispose();
   });
