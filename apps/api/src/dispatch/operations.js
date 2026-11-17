@@ -1,7 +1,7 @@
 const express = require('express');
 const { HttpError } = require('../http/errors');
 const { requireObject, requireText } = require('../http/validation');
-const { requireAuthentication, requireRoles, requireIncidentScope, hasIncidentScope } = require('../auth/authorization');
+const { requireAuthentication, requireRoles, requireIncidentScope, hasIncidentScope, hasInstitutionScope } = require('../auth/authorization');
 const { verifyIncident, advanceIncident } = require('./lifecycle');
 const { suggestSites } = require('./suggestions');
 
@@ -64,6 +64,28 @@ function createOperationsRouter(pool, authConfig, notificationSender = null) {
   const router = express.Router();
   router.use(requireAuthentication(pool, authConfig), requireRoles('SuperAdministrador', 'AdministradorInstitucional', 'Operador'));
   router.get('/', async (req, res) => { res.json(await listOperational(pool, req.auth, req.query)); });
+  router.get('/:id/operators', requireIncidentScope(pool), async (req, res) => {
+    const siteId = req.query.siteId;
+    if (typeof siteId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(siteId)) {
+      throw new HttpError(422, 'VALIDATION_ERROR', 'Sede inválida');
+    }
+    const [[incident]] = await pool.execute('SELECT id FROM incidents WHERE id = ?', [req.params.id]);
+    if (!incident) throw new HttpError(404, 'NOT_FOUND', 'Reporte no encontrado');
+    const [[site]] = await pool.execute(
+      `SELECT s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id
+       WHERE s.id = ? AND s.active = TRUE AND i.active = TRUE`, [siteId],
+    );
+    if (!site) throw new HttpError(404, 'NOT_FOUND', 'Sede activa no encontrada');
+    if (!hasInstitutionScope(req.auth, site.institutionId, siteId)) throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
+    const [operators] = await pool.execute(
+      `SELECT DISTINCT u.id, u.name FROM users u
+       JOIN institution_memberships m ON m.user_id = u.id
+       JOIN roles r ON r.id = m.role_id
+       WHERE u.status = 'active' AND m.active = TRUE AND r.code = 'Operador'
+         AND m.institution_id = ? AND m.site_id = ? ORDER BY u.name, u.id`, [site.institutionId, siteId],
+    );
+    res.json(operators);
+  });
   router.patch('/:id/verification', requireIncidentScope(pool), async (req, res) => {
     res.json(await verifyIncident(pool, req.params.id, req.auth, req.body, req.correlationId));
   });

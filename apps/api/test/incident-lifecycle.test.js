@@ -52,8 +52,18 @@ integration('verificación, estados multiinstitución, duplicados e historial co
     assert.equal(verified.status, 200);
     assert.equal((await verified.json()).priority, 'critical');
     const pnpAssignment = await (await call(`/ops/incidents/${incident.id}/assignments`, 'POST', { institutionId: pnp.institutionId, siteId: pnp.id, unitIds: [unitId] })).json();
+    for (const status of ['en_route', 'attending']) {
+      const advanced = await call(`/ops/incidents/${incident.id}/status`, 'PATCH', { assignmentId: pnpAssignment.id, status, note: 'Atención antes del refuerzo' });
+      assert.equal(advanced.status, 200);
+    }
     const samuAssignment = await (await call(`/ops/incidents/${incident.id}/assignments`, 'POST', { institutionId: samu.institutionId, siteId: samu.id })).json();
-    for (const status of ['en_route', 'attending', 'resolved']) {
+    const [[afterReinforcement]] = await pool.execute('SELECT status FROM incidents WHERE id = ?', [incident.id]);
+    assert.equal(afterReinforcement.status, 'assigned');
+    const [[preserved]] = await pool.execute('SELECT status FROM institution_assignments WHERE id = ?', [pnpAssignment.id]);
+    assert.equal(preserved.status, 'attending');
+    const [[regression]] = await pool.execute("SELECT COUNT(*) AS total FROM incident_history WHERE incident_id = ? AND event_type = 'status.changed' AND previous_value = 'attending' AND new_value = 'assigned'", [incident.id]);
+    assert.equal(regression.total, 1);
+    for (const status of ['resolved']) {
       const changed = await call(`/ops/incidents/${incident.id}/status`, 'PATCH', { assignmentId: pnpAssignment.id, status, note: `Hito ${status}` });
       assert.equal(changed.status, 200);
       assert.equal((await changed.json()).status, 'assigned');
@@ -64,6 +74,9 @@ integration('verificación, estados multiinstitución, duplicados e historial co
     for (const status of ['en_route', 'attending', 'resolved', 'closed']) {
       const changed = await call(`/ops/incidents/${incident.id}/status`, 'PATCH', { assignmentId: samuAssignment.id, status, note: `SAMU ${status}` });
       assert.equal(changed.status, 200);
+      if (status === 'resolved' || status === 'closed') {
+        assert.equal((await call(`/ops/incidents/${incident.id}/assignments`, 'POST', { institutionId: pnp.institutionId, siteId: pnp.id })).status, 409);
+      }
     }
     [[global]] = await pool.execute('SELECT status, priority, verification_status AS verificationStatus FROM incidents WHERE id = ?', [incident.id]);
     assert.equal(global.status, 'closed');
@@ -97,7 +110,7 @@ integration('verificación, estados multiinstitución, duplicados e historial co
     assert.equal(citizenDetail.priority, undefined);
     assert.equal(citizenDetail.status, 'closed');
     assert.deepEqual(citizenDetail.history.map((event) => event.newValue),
-      ['reported', 'verifying', 'assigned', 'en_route', 'attending', 'resolved', 'closed']);
+      ['reported', 'verifying', 'assigned', 'en_route', 'attending', 'assigned', 'en_route', 'attending', 'resolved', 'closed']);
     for (const event of citizenDetail.history) {
       assert.deepEqual(Object.keys(event).sort(), ['createdAt', 'eventType', 'newValue', 'previousValue']);
     }

@@ -542,6 +542,36 @@ paths:
               schema: { $ref: '#/components/schemas/SuggestionResult' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /ops/incidents/{id}/operators:
+    get:
+      tags: [Operations]
+      summary: Consultar operadores activos de una sede autorizada
+      operationId: listDispatchOperators
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IncidentId'
+        - name: siteId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Operadores elegibles sin duplicados, ordenados por nombre
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [id, name]
+                  properties:
+                    id: { type: string, format: uuid }
+                    name: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
   /ops/incidents/{id}/verification:
     patch:
       tags: [Operations]

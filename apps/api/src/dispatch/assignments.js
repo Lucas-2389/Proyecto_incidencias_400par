@@ -5,6 +5,7 @@ const { requireObject, requireText } = require('../http/validation');
 const { requireAuthentication, requireRoles, requireIncidentScope, hasInstitutionScope } = require('../auth/authorization');
 const { suggestSites } = require('./suggestions');
 const { sendBestEffort } = require('../notifications/sender');
+const { aggregateStatus } = require('./stages');
 
 function ids(value, name) {
   if (value === undefined) return [];
@@ -82,12 +83,14 @@ async function createAssignment(pool, incidentId, actor, body, correlationId, no
       [id, incidentId, input.institutionId, input.siteId, input.operatorUserId, input.reason],
     );
     await reserveResources(connection, id, input, actor.user.id);
-    if (incident.status === 'reported' || incident.status === 'verifying') {
-      await connection.execute("UPDATE incidents SET status = 'assigned' WHERE id = ?", [incidentId]);
+    const [assignments] = await connection.execute('SELECT status FROM institution_assignments WHERE incident_id = ?', [incidentId]);
+    const globalStatus = aggregateStatus(assignments);
+    if (incident.status !== globalStatus) {
+      await connection.execute('UPDATE incidents SET status = ? WHERE id = ?', [globalStatus, incidentId]);
       await connection.execute(
         `INSERT INTO incident_history (incident_id, actor_user_id, event_type, previous_value, new_value)
-         VALUES (?, ?, 'status.changed', ?, 'assigned')`,
-        [incidentId, actor.user.id, incident.status],
+         VALUES (?, ?, 'status.changed', ?, ?)`,
+        [incidentId, actor.user.id, incident.status, globalStatus],
       );
     }
     await connection.execute(

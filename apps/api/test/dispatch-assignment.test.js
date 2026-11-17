@@ -6,6 +6,7 @@ const { createApp } = require('../src/app');
 const { registerCitizen } = require('../src/auth/register');
 const { login } = require('../src/auth/login');
 const { createReport } = require('../src/incidents/report');
+const { createAssignment } = require('../src/dispatch/assignments');
 const { loadTestDatabaseConfig } = require('../scripts/integration-config');
 
 const integration = process.env.RUN_MYSQL_INTEGRATION === '1' ? test : test.skip;
@@ -74,6 +75,74 @@ integration('derivación múltiple, corrección auditada y reserva concurrente s
       siteId: sites.get('pnp').id, operatorUserId: operator.id }, operatorToken);
     assert.equal(operatorAssignment.status, 201);
     assert.equal((await operatorAssignment.json()).operatorUserId, operator.id);
+    const getOperators = (siteId, bearer = operatorToken, incidentId = first.id) => fetch(`${base}/${incidentId}/operators?siteId=${siteId}`, {
+      headers: { authorization: `Bearer ${bearer}` },
+    });
+    const eligible = await getOperators(sites.get('pnp').id);
+    assert.equal(eligible.status, 200);
+    const eligiblePeople = await eligible.json();
+    assert.ok(eligiblePeople.some((person) => person.id === operator.id));
+    for (const person of eligiblePeople) assert.deepEqual(Object.keys(person).sort(), ['id', 'name']);
+    assert.equal((await getOperators(sites.get('samu').id)).status, 403);
+    assert.equal((await getOperators('invalid', token)).status, 422);
+    assert.equal((await getOperators(randomUUID(), token)).status, 404);
+    assert.equal((await getOperators(sites.get('pnp').id, token, randomUUID())).status, 404);
+    assert.equal((await getOperators(sites.get('pnp').id, token)).status, 200);
+    const emptySiteId = randomUUID();
+    await pool.execute('INSERT INTO sites (id, institution_id, name, location) SELECT ?, institution_id, ?, location FROM sites WHERE id = ?',
+      [emptySiteId, 'DEMO Sede vacía de prueba', sites.get('pnp').id]);
+    assert.deepEqual(await (await getOperators(emptySiteId, token)).json(), []);
+    await pool.execute('UPDATE sites SET active = FALSE WHERE id = ?', [emptySiteId]);
+    assert.equal((await getOperators(emptySiteId, token)).status, 404);
+    const [[adminRole]] = await pool.execute("SELECT id FROM roles WHERE code = 'AdministradorInstitucional'");
+    await pool.execute('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [operator.id, adminRole.id]);
+    await pool.execute('UPDATE institution_memberships SET role_id = ? WHERE user_id = ?', [adminRole.id, operator.id]);
+    const adminToken = (await login(pool, authConfig, { email: operatorEmail, password })).accessToken;
+    assert.equal((await getOperators(sites.get('pnp').id, adminToken)).status, 200);
+    await pool.execute('UPDATE institution_memberships SET role_id = ? WHERE user_id = ?', [operatorRole.id, operator.id]);
+    await pool.execute('DELETE FROM user_roles WHERE user_id = ? AND role_id = ?', [operator.id, adminRole.id]);
+    await pool.execute("UPDATE users SET status = 'inactive' WHERE id = ?", [operator.id]);
+    const inactiveList = await (await getOperators(sites.get('pnp').id, token)).json();
+    assert.equal(inactiveList.some((person) => person.id === operator.id), false);
+    await pool.execute("UPDATE users SET status = 'active' WHERE id = ?", [operator.id]);
+    const concurrentIncident = await makeIncident();
+    const concurrent = await Promise.all(['pnp', 'samu'].map((type) => {
+      const site = sites.get(type);
+      return post(concurrentIncident.id, { institutionId: site.institutionId, siteId: site.id });
+    }));
+    assert.deepEqual(concurrent.map((response) => response.status), [201, 201]);
+    const duplicateIncident = await makeIncident();
+    const pnpBody = { institutionId: sites.get('pnp').institutionId, siteId: sites.get('pnp').id };
+    const duplicateResponses = await Promise.all([post(duplicateIncident.id, pnpBody), post(duplicateIncident.id, pnpBody)]);
+    assert.deepEqual(duplicateResponses.map((response) => response.status).sort(), [201, 409]);
+    const [[duplicateCount]] = await pool.execute('SELECT COUNT(*) AS total FROM institution_assignments WHERE incident_id = ?', [duplicateIncident.id]);
+    assert.equal(duplicateCount.total, 1);
+    const rollbackIncident = await makeIncident();
+    const rollbackAuth = { user: { id: actor.id }, roles: new Set(['SuperAdministrador']), memberships: [] };
+    const faultyPool = {
+      execute: pool.execute.bind(pool),
+      async getConnection() {
+        const connection = await pool.getConnection();
+        return new Proxy(connection, {
+          get(target, property) {
+            if (property === 'execute') return (sql, args) => {
+              if (sql.includes('INSERT INTO audit_logs')) throw new Error('Fallo de confirmación inyectado');
+              return target.execute(sql, args);
+            };
+            const value = target[property];
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        });
+      },
+    };
+    const [[historyBefore]] = await pool.execute('SELECT COUNT(*) AS total FROM incident_history WHERE incident_id = ?', [rollbackIncident.id]);
+    await assert.rejects(createAssignment(faultyPool, rollbackIncident.id, rollbackAuth, pnpBody, randomUUID()), /Fallo de confirmación/);
+    const [[rolledBack]] = await pool.execute('SELECT status FROM incidents WHERE id = ?', [rollbackIncident.id]);
+    const [[historyAfter]] = await pool.execute('SELECT COUNT(*) AS total FROM incident_history WHERE incident_id = ?', [rollbackIncident.id]);
+    const [[assignmentsAfter]] = await pool.execute('SELECT COUNT(*) AS total FROM institution_assignments WHERE incident_id = ?', [rollbackIncident.id]);
+    assert.equal(rolledBack.status, 'reported');
+    assert.equal(historyAfter.total, historyBefore.total);
+    assert.equal(assignmentsAfter.total, 0);
     const manual = sites.get('municipalidad');
     assert.equal((await post(second.id, { institutionId: manual.institutionId, siteId: manual.id })).status, 422);
     const correction = await post(second.id, { institutionId: manual.institutionId, siteId: manual.id, reason: 'Desvío manual de prueba' });
