@@ -50,6 +50,7 @@ beforeEach(() => {
       return json(200, { id: incident.id, status: state });
     }
     if (path === '/ops/incidents/incident-1/history') return json(200, []);
+    if (path === '/ops/incidents/incident-1/operators') return json(200, [{ id: 'operator-1', name: 'Operador DEMO' }]);
     if (path === '/admin/sites') return json(200, [site, siteTwo]);
     if (path === '/admin/institutions') return json(200, [site, siteTwo].map((item) => ({ id: item.institutionId, name: item.name })));
     if (path === '/resources/units' || path === '/resources/personnel' || path === '/admin/users') return json(200, []);
@@ -127,6 +128,8 @@ it('superadministrador confirma dos instituciones sobre el mismo accidente', asy
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await screen.findByRole('navigation', { name: 'Navegación principal' });
+  expect(screen.queryByRole('link', { name: /Unidades|Personal/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Instituciones/ })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('link', { name: /Incidentes/ }));
   await screen.findByText('DEMO-AY-001');
   fireEvent.click(screen.getByRole('link', { name: 'Abrir →' }));

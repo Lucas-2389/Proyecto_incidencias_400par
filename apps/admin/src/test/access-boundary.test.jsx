@@ -5,6 +5,13 @@ import App from '../App';
 
 afterEach(() => vi.unstubAllGlobals());
 
+it.each(['/unidades', '/personal'])('redirige la ruta retirada %s sin montar recursos', (path) => {
+  const Router = ({ children }) => <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>;
+  render(<App Router={Router} />);
+  expect(screen.getByRole('link', { name: /Entrar al panel institucional/ })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: /Unidades|Personal/ })).not.toBeInTheDocument();
+});
+
 it('una URL privada redirige al login sin mostrar información institucional', () => {
   const Router = ({ children }) => <MemoryRouter initialEntries={['/incidentes']}>{children}</MemoryRouter>;
   render(<App Router={Router} />);

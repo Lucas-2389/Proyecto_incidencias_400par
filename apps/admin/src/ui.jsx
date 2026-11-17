@@ -28,7 +28,7 @@ export function Empty({ children = 'No hay registros para estos filtros.' }) { r
 export function Field({ label, hint, children }) { return <label className="field"><span>{label}</span>{children}{hint && <small className="field-hint">{hint}</small>}</label>; }
 export function Pill({ children, tone = 'neutral' }) { return <span className={`pill ${tone}`}>{children}</span>; }
 
-export function friendlyDate(value) { return value ? new Date(value).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
+export function friendlyDate(value) { return value ? new Date(value).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Lima' }) : '—'; }
 
 export function ErrorBoundaryContent({ error, loading, children }) {
   if (loading) return <div className="loading">Cargando datos…</div>;

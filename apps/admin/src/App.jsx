@@ -5,7 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Welcome from './pages/Welcome';
 import { IncidentDetail, IncidentList } from './pages/Incidents';
-import { Organization, Resources } from './pages/Resources';
+import { Organization } from './pages/Resources';
 import Directory from './pages/Directory';
 import History from './pages/History';
 import Notifications from './Notifications';
@@ -29,8 +29,6 @@ function Shell({ children }) {
     ['/incidentes', '▤', 'Incidentes', operational],
     ['/mapa', '◎', 'Mapa', operational],
     ['/instituciones', '▣', 'Instituciones', administrative],
-    ['/unidades', '▰', 'Unidades', administrative],
-    ['/personal', '♙', 'Personal', administrative],
     ['/directorio', '☎', 'Directorio', administrative],
     ['/historial', '↺', 'Historial', administrative],
   ];
@@ -51,8 +49,6 @@ function AppRoutes() {
     <Route path="/incidentes/:id" element={secure(operational, <IncidentDetail />)} />
     <Route path="/mapa" element={secure(operational, <Suspense fallback={<div className="loading">Cargando mapa…</div>}><MapView /></Suspense>)} />
     <Route path="/instituciones" element={secure(administrative, <Organization />)} />
-    <Route path="/unidades" element={secure(administrative, <Resources kind="units" />)} />
-    <Route path="/personal" element={secure(administrative, <Resources kind="personnel" />)} />
     <Route path="/directorio" element={secure(administrative, <Directory />)} />
     <Route path="/historial" element={secure(administrative, <History />)} />
     <Route path="/sin-acceso" element={<div className="denied"><h1>Acceso no permitido</h1><p>Tu rol no permite abrir esta sección.</p><Link to="/">Volver al inicio</Link></div>} />
