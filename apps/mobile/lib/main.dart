@@ -13,9 +13,9 @@ Future<void> main() async {
   late final String apiBaseUrl;
   try {
     apiBaseUrl = AppConfig.apiBaseUrl;
-  } on FormatException {
-    runApp(const MaterialApp(home: Scaffold(body: Center(child: Text(
-      'Configuración de API inválida. Revisa APP_ENV y API_BASE_URL al compilar.', textAlign: TextAlign.center,
+  } on FormatException catch (issue) {
+    runApp(MaterialApp(home: Scaffold(body: Center(child: Text(
+      'Configuración de API inválida. ${issue.message}', textAlign: TextAlign.center,
     )))));
     return;
   }

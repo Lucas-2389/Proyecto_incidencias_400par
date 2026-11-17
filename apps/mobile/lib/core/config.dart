@@ -10,7 +10,11 @@ class AppConfig {
     }
     final value = override.isNotEmpty ? override : environment == 'production' ? productionApiUrl : '';
     final uri = Uri.tryParse(value);
+    if (uri != null && RegExp(r'^(?:\d{1,3}\.){3}x$', caseSensitive: false).hasMatch(uri.host)) {
+      throw const FormatException('API_BASE_URL contiene una dirección de ejemplo. Para USB usa http://127.0.0.1:3000/api/v1 y activa adb reverse tcp:3000 tcp:3000.');
+    }
     if (uri == null || !uri.hasAuthority || !['http', 'https'].contains(uri.scheme) ||
+        uri.host.isEmpty ||
         uri.userInfo.isNotEmpty || uri.hasQuery || uri.hasFragment ||
         uri.path.replaceFirst(RegExp(r'/$'), '') != '/api/v1' ||
         (environment == 'production' && uri.scheme != 'https')) {

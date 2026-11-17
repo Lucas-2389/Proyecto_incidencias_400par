@@ -21,7 +21,15 @@ La cuenta institucional se utiliza en la web con los permisos correspondientes d
 
 ## Configuración y comandos
 
-URL centralizada: `lib/core/config.dart`, producción HTTPS a `https://gestion-incidencias-200e.onrender.com/api/v1`. Desarrollo requiere `--dart-define=APP_ENV=development --dart-define=API_BASE_URL=https://<servidor>/api/v1`.
+URL centralizada en `lib/core/config.dart`. Para trabajar en local con teléfono USB se usa `http://127.0.0.1:3000/api/v1` y `APP_ENV=development`. La URL de producción es `https://gestion-incidencias-200e.onrender.com/api/v1`.
+
+Desde la raíz del repositorio, con Docker y la API local activos, ejecutar el script que comprueba la API, prepara el túnel USB y arranca Flutter con la dirección local.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\run-mobile-local.ps1
+```
+
+El script admite `-DeviceId` cuando hay varios dispositivos. La dirección `192.168.1.X` es un marcador de ejemplo y la app la rechaza. Si se cambiaron los argumentos `--dart-define`, detener la ejecución anterior e iniciar otra con el script para recompilar la configuración.
 
 ```powershell
 flutter pub get
