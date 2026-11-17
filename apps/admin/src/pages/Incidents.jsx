@@ -68,8 +68,17 @@ export function IncidentList() {
       <div className="filters"><Field label="Estado"><select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">Todos</option>{statuses.map((item) => <option key={item} value={item}>{statusLabels[item]}</option>)}</select></Field>
         <label className="check"><input type="checkbox" checked={exception} onChange={(e) => setException(e.target.checked)} /> Solo excepciones</label></div>
       <ErrorBoundaryContent error={incidents.error} loading={incidents.loading}>
-        {incidents.data?.length ? <div className="table-wrap"><table><thead><tr><th>Referencia</th><th>Estado</th><th>Verificación</th><th>Prioridad</th><th>Fecha</th><th></th></tr></thead><tbody>
-          {incidents.data.map((item) => <tr key={item.id}><td><strong>{item.reference}</strong>{item.exception && <Pill tone="warn">Sin cobertura</Pill>}</td><td><Pill>{statusLabels[item.status] ?? item.status}</Pill></td><td>{verificationLabels[item.verificationStatus] ?? item.verificationStatus}</td><td><PriorityBadge priority={item.priority} /></td><td>{friendlyDate(item.createdAt)}</td><td><Link to={`/incidentes/${item.id}`}>Abrir →</Link></td></tr>)}
+        {incidents.data?.length ? <div className="table-wrap"><table><thead><tr><th>Incidente</th><th>Estado</th><th>Verificación</th><th>Prioridad</th><th>Fecha</th></tr></thead><tbody>
+          {incidents.data.map((item) => <tr key={item.id} className="incident-list-row">
+            <td><Link className="incident-list-link" to={`/incidentes/${item.id}`}>
+              <strong>{item.categoryName?.trim() || categories.data?.find((category) => category.id === item.categoryId)?.name || 'Categoría no disponible'}</strong>
+              <small>{item.reference}</small>
+            </Link>{item.exception && <Pill tone="warn">Sin cobertura</Pill>}</td>
+            <td><Pill>{statusLabels[item.status] ?? item.status}</Pill></td>
+            <td>{verificationLabels[item.verificationStatus] ?? item.verificationStatus}</td>
+            <td><PriorityBadge priority={item.priority} /></td>
+            <td>{friendlyDate(item.createdAt)}</td>
+          </tr>)}
         </tbody></table></div> : <Empty />}
       </ErrorBoundaryContent>
     </Panel>
@@ -235,21 +244,29 @@ function IncidentWorkspace({ id }) {
         {suggestions.data?.exception && <Notice kind="warn">Sin cobertura sugerida. Selecciona una sede y registra el motivo de la corrección.</Notice>}
         <Notice kind="error">{sites.error || institutions.error}</Notice>
         {(sites.error || institutions.error) && <button className="button ghost" onClick={() => Promise.all([sites.reload(), institutions.reload()])}>Reintentar sedes</button>}
-        {canDispatch ? <>
-          <div className="suggestions">{(suggestions.data?.suggestions ?? []).map((item) => <button key={item.siteId} className="suggestion" aria-pressed={siteId === item.siteId} onClick={() => chooseSite(item.siteId)}><strong>{item.institutionName}</strong><span>{item.siteName}</span><small>{item.reason}</small></button>)}</div>
-          <form className="form-grid" onSubmit={assign}>
-            <Field label="Sede responsable"><select required value={siteId} onChange={(event) => chooseSite(event.target.value)} disabled={pending.dispatch || sites.loading}>
-              <option value="">Seleccionar sede</option>{(sites.data ?? []).filter((site) => site.active !== false).map((site) => <option key={site.id} value={site.id} disabled={assignments.some((item) => item.siteId === site.id)}>{institutionName(site.institutionId)} · {site.name}</option>)}
-            </select></Field>
-            <Field label="Operador"><select value={operatorId} onChange={(event) => setOperatorId(event.target.value)} disabled={!siteId || !selectedOperators || Boolean(selectedOperators.error) || pending.dispatch}>
-              <option value="">{siteId && !selectedOperators ? 'Cargando operadores…' : 'Operador pendiente'}</option>{(selectedOperators?.data ?? []).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-            </select></Field>
+        {canDispatch ? <div className="dispatch-layout">
+          <div className="dispatch-suggestions">
+            <div className="suggestions">{(suggestions.data?.suggestions ?? []).map((item) => <button key={item.siteId} className="suggestion" aria-pressed={siteId === item.siteId} onClick={() => chooseSite(item.siteId)}>
+              <span className="dispatch-institution">{item.institutionName}</span>
+              <strong>{item.siteName}</strong>
+              <small className="dispatch-rule">{item.reason}</small>
+            </button>)}</div>
+          </div>
+          <form className="dispatch-form" onSubmit={assign}>
+            <div className="dispatch-fields">
+              <Field label="Sede responsable"><select required value={siteId} onChange={(event) => chooseSite(event.target.value)} disabled={pending.dispatch || sites.loading}>
+                <option value="">Seleccionar sede</option>{(sites.data ?? []).filter((site) => site.active !== false).map((site) => <option key={site.id} value={site.id} disabled={assignments.some((item) => item.siteId === site.id)}>{institutionName(site.institutionId)} · {site.name}</option>)}
+              </select></Field>
+              <Field label="Operador"><select value={operatorId} onChange={(event) => setOperatorId(event.target.value)} disabled={!siteId || !selectedOperators || Boolean(selectedOperators.error) || pending.dispatch}>
+                <option value="">{siteId && !selectedOperators ? 'Cargando operadores…' : 'Operador pendiente'}</option>{(selectedOperators?.data ?? []).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+              </select></Field>
+            </div>
             {selectedOperators?.error && <Notice kind="error">{selectedOperators.error} <button type="button" className="text-button" onClick={() => operators.retry(siteId)}>Reintentar operadores</button></Notice>}
             {selectedOperators && !selectedOperators.error && selectedOperators.data.length === 0 && <p>Esta sede no tiene operadores activos. Puedes confirmar con operador pendiente.</p>}
             {!recommended && <Field label="Motivo de corrección"><textarea required maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} /></Field>}
-            <button className="button primary" disabled={pending.dispatch || !siteId || assignments.some((item) => item.siteId === siteId)}>Confirmar asignación</button>
+            <div className="dispatch-actions"><button className="button primary" disabled={pending.dispatch || !siteId || assignments.some((item) => item.siteId === siteId)}>Confirmar asignación</button></div>
           </form>
-        </> : <p>El incidente está finalizado.</p>}
+        </div> : <p>El incidente está finalizado.</p>}
       </Panel>
     </>}
     <Panel title="Asignaciones visibles" eyebrow="Atención multiinstitución">

@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { currentRange } from '../config';
 import { queryString } from '../api/client';
-import { ErrorBoundaryContent, Panel, Pill, useRemote } from '../ui';
-import { priorityLabels, statusLabels } from '../incidentLabels';
+import { Empty, ErrorBoundaryContent, Panel, Pill, useRemote } from '../ui';
+import { statusLabels } from '../incidentLabels';
+import PriorityBadge from '../PriorityBadge';
 
 export default function Dashboard() {
   const [range] = useState(() => currentRange());
@@ -23,9 +24,14 @@ export default function Dashboard() {
     </ErrorBoundaryContent>
     <Panel title="Incidentes recientes" eyebrow="Bandeja" action={<Link className="text-link" to="/incidentes">Ver todos →</Link>}>
       <ErrorBoundaryContent error={incidents.error} loading={incidents.loading}>
-        <div className="table-wrap"><table><thead><tr><th>Referencia</th><th>Estado</th><th>Prioridad</th><th>Acción</th></tr></thead><tbody>
-          {(incidents.data ?? []).slice(0, 6).map((item) => <tr key={item.id}><td><strong>{item.reference}</strong></td><td><Pill>{statusLabels[item.status] ?? 'Estado por confirmar'}</Pill></td><td>{priorityLabels[item.priority] ?? 'Por confirmar'}</td><td><Link to={`/incidentes/${item.id}`}>Ver reporte →</Link></td></tr>)}
-        </tbody></table></div>
+        {incidents.data?.length ? <ul className="recent-incidents">
+          {incidents.data.slice(0, 6).map((item) => <li key={item.id}>
+            <Link className="recent-incident" to={`/incidentes/${item.id}`}>
+              <span className="recent-incident-title"><strong>{item.categoryName?.trim() || 'Categoría no disponible'}</strong><small>{item.reference}</small></span>
+              <span className="incident-indicators"><Pill>{statusLabels[item.status] ?? 'Estado por confirmar'}</Pill><PriorityBadge priority={item.priority} unknownLabel="Por confirmar" /></span>
+            </Link>
+          </li>)}
+        </ul> : <Empty>No hay incidentes recientes.</Empty>}
       </ErrorBoundaryContent>
     </Panel>
   </div>;

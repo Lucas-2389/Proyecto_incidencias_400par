@@ -1,10 +1,10 @@
 import { priorityLabels } from './incidentLabels';
 
-export default function PriorityBadge({ priority }) {
+export default function PriorityBadge({ priority, unknownLabel = 'Prioridad no informada' }) {
   const label = priorityLabels[priority];
   const urgent = priority === 'high' || priority === 'critical';
   return <span className={`priority-badge priority-badge--${label ? priority : 'unknown'}`}>
     {urgent && <span className="priority-alert" aria-hidden="true">!</span>}
-    {label ? `Prioridad ${label.toLocaleLowerCase('es')}` : 'Prioridad no informada'}
+    {label ? `Prioridad ${label.toLocaleLowerCase('es')}` : unknownLabel}
   </span>;
 }

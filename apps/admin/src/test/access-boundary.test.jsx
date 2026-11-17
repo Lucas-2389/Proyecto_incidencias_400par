@@ -12,8 +12,8 @@ it.each(['/unidades', '/personal'])('redirige la ruta retirada %s sin montar rec
   expect(screen.queryByRole('heading', { name: /Unidades|Personal/ })).not.toBeInTheDocument();
 });
 
-it('una URL privada redirige al login sin mostrar información institucional', () => {
-  const Router = ({ children }) => <MemoryRouter initialEntries={['/incidentes']}>{children}</MemoryRouter>;
+it.each(['/incidentes', '/perfil', '/perfil#seguridad'])('la URL privada %s redirige al login sin mostrar información institucional', (path) => {
+  const Router = ({ children }) => <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>;
   render(<App Router={Router} />);
   expect(screen.getByRole('heading', { name: 'Centro de operaciones' })).toBeInTheDocument();
   expect(screen.getByLabelText('Contraseña')).toHaveValue('');

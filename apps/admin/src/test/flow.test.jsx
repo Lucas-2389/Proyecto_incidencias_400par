@@ -110,7 +110,7 @@ it('operador hace login, abre bandeja, asigna sede y avanza estado sin ver admin
   expect(screen.queryByRole('link', { name: /Personal/ })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('link', { name: /Incidentes/ }));
   await screen.findByText('DEMO-AY-001');
-  fireEvent.click(screen.getByRole('link', { name: 'Abrir →' }));
+  fireEvent.click(screen.getByRole('link', { name: /Incendio.*DEMO-AY-001/ }));
   await screen.findByRole('heading', { name: 'Derivación sugerida' });
   fireEvent.change(screen.getByLabelText('Sede responsable'), { target: { value: site.id } });
   fireEvent.click(screen.getByRole('button', { name: 'Confirmar asignación' }));
@@ -132,7 +132,7 @@ it('superadministrador confirma dos instituciones sobre el mismo accidente', asy
   expect(screen.getByRole('link', { name: /Instituciones/ })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('link', { name: /Incidentes/ }));
   await screen.findByText('DEMO-AY-001');
-  fireEvent.click(screen.getByRole('link', { name: 'Abrir →' }));
+  fireEvent.click(screen.getByRole('link', { name: /Incendio.*DEMO-AY-001/ }));
   await screen.findByRole('heading', { name: 'Derivación sugerida' });
   fireEvent.change(screen.getByLabelText('Sede responsable'), { target: { value: site.id } });
   fireEvent.click(screen.getByRole('button', { name: 'Confirmar asignación' }));

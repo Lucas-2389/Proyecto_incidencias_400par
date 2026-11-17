@@ -5,8 +5,18 @@ const SessionContext = createContext(null);
 
 export function SessionProvider({ children, client }) {
   const [session, setSession] = useState(null);
+  const [sessionNotice, setSessionNotice] = useState(null);
   const api = useMemo(() => client || createApiClient({ onSession: setSession }), [client]);
-  return <SessionContext.Provider value={{ api, session, login: api.login, logout: api.logout }}>
+  const login = async (...credentials) => {
+    const result = await api.login(...credentials);
+    setSessionNotice(null);
+    return result;
+  };
+  const logout = (notice = null) => {
+    setSessionNotice(notice);
+    return api.logout();
+  };
+  return <SessionContext.Provider value={{ api, session, sessionNotice, login, logout }}>
     {children}
   </SessionContext.Provider>;
 }
