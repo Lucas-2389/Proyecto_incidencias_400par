@@ -152,7 +152,7 @@ La tabla técnica de control se define en [el ejecutor de migraciones](../../app
 
 El contrato normativo de las rutas es [OpenAPI](../../packages/contracts/openapi.yaml). Las operaciones funcionales usan `/api/v1`. `GET /api/health` verifica HTTP y `GET /api/health/database` ejecuta una consulta mínima real; un fallo de base devuelve un error seguro sin convertir la comprobación HTTP en una consulta SQL.
 
-Las rutas públicas incluyen catálogo, reporte invitado, directorio, alertas y mapa de calor según contrato. Las operaciones institucionales, los puntos exactos y la lectura de evidencias requieren autorización. Express sirve HTML y assets desde una ruta calculada con `__dirname`, independiente de `process.cwd()`; el fallback SPA excluye `/api` y archivos inexistentes. HTML usa `no-cache`; JS/CSS con hash bajo assets permiten caché larga. CORS se aplica a la API y no bloquea el servido estático.
+Las rutas públicas incluyen catálogo, reporte invitado, directorio, alertas, mapa de calor y consultas individuales públicas de incidentes según contrato. Las operaciones institucionales, los puntos exactos y la lectura de evidencias requieren autorización. Express sirve HTML y assets desde una ruta calculada con `__dirname`, independiente de `process.cwd()`; el fallback SPA excluye `/api` y archivos inexistentes. HTML usa `no-cache`; JS/CSS con hash bajo assets permiten caché larga. CORS se aplica a la API y no bloquea el servido estático.
 
 ### 4.3 Flujo de reporte y fotografía
 
@@ -184,7 +184,9 @@ El permiso de invitado tiene propósito exclusivo de subida, alcance de un incid
 
 Flutter conserva pendientes de envío y reintenta al recuperar conexión o reanudar la app. Esta cola técnica no es un historial privado de incidentes resueltos. La clave idempotente evita nuevas altas por reintentos.
 
-El mapa institucional muestra puntos filtrados por autorización. El público agrega celdas con al menos tres incidentes por categoría; usa 0,2 grados en categorías sensibles y 0,05 en las demás. La consulta limita intervalo y filas. Es una mitigación del piloto, no una garantía de anonimización frente a consultas cruzadas.
+El mapa institucional muestra puntos filtrados por autorización. El mapa público de calor agrega celdas con al menos tres incidentes por categoría y usa 0,2 grados en categorías sensibles y 0,05 en las demás. La consulta limita intervalo y filas.
+
+El mapa móvil usa `/public/incidents` y `/public/incidents/{id}` con proyección mínima de referencia, categoría, distrito, estado, fecha y centro de una celda fija de 0,01 grados. Los índices se limitan a celdas geográficas válidas. Ambas rutas excluyen en SQL categorías y subcategorías sensibles y responden con `Cache-Control: no-store`. El listado admite categoría, distrito y fechas opcionales, con siete días por defecto, máximo 90 días y 5000 incidentes elegibles. El detalle aplica la misma exclusión y permite actualizar favoritos antiguos. Los favoritos guardan solo identificadores en SharedPreferences y se consultan desde Mapa. La aproximación espacial tiene límites frente a correlaciones con información externa.
 
 Los avisos internos se persisten en MySQL. FCM es opcional y condicionado a configuración; un fallo push no debe deshacer la operación principal. La app actual consulta alertas públicas y no restaura una sesión ciudadana.
 

@@ -60,9 +60,9 @@ Quedan fuera de esta entrega la integración formal con instituciones, navegaci�
 | RF-30 | Historial operativo | Mantener la línea de tiempo institucional de cambios y responsables; no ofrecer historial privado al ciudadano en la app vigente. |
 | RF-31  | Duplicados                        | Permitir vincular/fusionar reportes que describan un mismo evento.                                                            |
 | RF-32  | Mapa institucional                | Visualizar incidencias autorizadas y ubicación exacta según permisos.                                                         |
-| RF-33  | Mapa de calor público             | Mostrar concentración agregada de incidencias sin puntos sensibles exactos.                                                   |
-| RF-34  | Filtros de mapa de calor          | Filtrar por tipo, fecha, franja horaria, distrito e institución.                                                              |
-| RF-35  | Protección de casos sensibles     | Ocultar o degradar precisión espacial de violencia familiar, sexual u otras categorías sensibles en vistas públicas.          |
+| RF-33  | Mapas públicos                   | Ofrecer agregados públicos y, en móvil, incidentes con posición aproximada mediante public-incident-map. |
+| RF-34  | Filtros de mapas                  | Filtrar agregados por tipo, fecha, franja horaria, distrito e institución. En móvil, ordenar Categoría, Distrito y Fechas opcionales. |
+| RF-35  | Protección de casos sensibles     | Proteger datos del reportante y excluir categorías o subcategorías sensibles del mapa y detalle públicos individuales. |
 | RF-36  | Directorio de emergencia          | Mostrar números nacionales y números locales vinculados a territorio e institución.                                           |
 | RF-37  | Llamada directa                   | Permitir iniciar llamada desde la app cuando el dispositivo lo soporte.                                                       |
 | RF-38  | Alertas ciudadanas                | Publicar alertas por zona, tipo y periodo de vigencia.                                                                        |
@@ -121,7 +121,7 @@ RNF-01, RNF-02 y RNF-04 describen objetivos de evolución. No se ha iniciado en 
 | RN-08     | Una unidad en Mantenimiento/Fuera de servicio no puede asignarse.                                                                   |
 | RN-09     | El mismo recurso no puede quedar asignado simultáneamente a dos atenciones incompatibles.                                           |
 | RN-10     | Los casos sensibles nunca se muestran con coordenada exacta en el mapa público.                                                     |
-| RN-11     | El mapa de calor público usa agregación espacial/temporal y un umbral mínimo de eventos por celda/zona antes de mostrar detalle.    |
+| RN-11     | El mapa de calor público usa agregación y umbral mínimo por celda. El mapa móvil individual aplica public-incident-map con posiciones aproximadas de 0,01 grados y exclusión de sensibles. |
 | RN-12     | Los datos de personas y fotos solo se muestran a roles con necesidad operativa.                                                     |
 | RN-13     | El cierre de una incidencia no elimina su auditoría.                                                                                |
 | RN-14 | El directorio nacional/local se administra desde la API; Android incluye contactos nacionales de respaldo para funcionar cuando la consulta remota falla. |

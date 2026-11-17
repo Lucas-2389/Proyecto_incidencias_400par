@@ -18,7 +18,7 @@ La API SHALL entregar puntos exactos de incidentes y sedes solo dentro del ámbi
 - **THEN** la API deniega el acceso
 
 ### Requirement: Mapa público agregado
-La vista pública MUST presentar concentraciones agregadas por celda o zona y MUST ocultar coordenadas exactas y datos personales de casos sensibles.
+La vista pública de calor MUST presentar concentraciones agregadas por celda o zona y MUST ocultar coordenadas exactas y datos personales de casos sensibles. El mapa móvil individual SHALL regirse por public-incident-map, con posiciones aproximadas y exclusión de categorías o subcategorías sensibles.
 
 #### Scenario: Celda con pocos eventos
 - **WHEN** una celda no alcanza el umbral mínimo configurado de eventos
@@ -27,6 +27,10 @@ La vista pública MUST presentar concentraciones agregadas por celda o zona y MU
 #### Scenario: Violencia sensible
 - **WHEN** el agregado incluye violencia familiar, sexual u otra categoría sensible
 - **THEN** la respuesta pública no contiene el punto exacto, descripción, foto ni identidad del reportante
+
+#### Scenario: Mapa móvil individual
+- **WHEN** un invitado consulta el mapa móvil por incidentes
+- **THEN** se aplica public-incident-map con exclusión de sensibles, proyección mínima y posición aproximada por incidente
 
 ### Requirement: Filtros del mapa de calor
 El sistema SHALL admitir filtros por tipo, categoría, fecha, franja horaria, distrito e institución, respetando la visibilidad del solicitante.
