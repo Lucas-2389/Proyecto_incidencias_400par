@@ -46,8 +46,10 @@ async function listOperational(pool, auth, query) {
   const exceptionOnly = query.exception === 'true';
   if (query.exception !== undefined && !['true', 'false'].includes(query.exception)) throw new HttpError(422, 'VALIDATION_ERROR', 'Filtro inválido');
   const [rows] = await pool.execute(
-    `SELECT i.id, i.reference, i.category_id AS categoryId, i.status, i.verification_status AS verificationStatus,
+    `SELECT i.id, i.reference, i.category_id AS categoryId, c.name AS categoryName,
+     i.status, i.verification_status AS verificationStatus,
      i.priority, i.created_at AS createdAt FROM incidents i
+     LEFT JOIN incident_categories c ON c.id = i.category_id
      WHERE (? IS NULL OR i.status = ?) ORDER BY i.created_at DESC LIMIT 200`, [status ?? null, status ?? null],
   );
   const visible = [];

@@ -11,7 +11,7 @@ function createAuthRouter(pool, authConfig, mailbox) {
   const router = express.Router();
   const authenticate = requireAuthentication(pool, authConfig);
   router.get('/me', authenticate, async (req, res) => {
-    res.json(await readProfile(pool, req.auth.user.id));
+    res.json(await readProfile(pool, req.auth.user.id, req.auth));
   });
   router.patch('/me', authenticate, async (req, res) => {
     res.json(await updateProfile(pool, req.auth.user.id, req.body));

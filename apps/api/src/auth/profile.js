@@ -3,10 +3,21 @@ const { requireObject, requireText } = require('../http/validation');
 const { optionalPhone } = require('../http/phone');
 const { hashPassword, verifyPassword } = require('./password');
 
-async function readProfile(pool, userId) {
+async function readProfile(pool, userId, auth = null) {
   const [[user]] = await pool.execute('SELECT id, name, email, phone FROM users WHERE id = ? AND status = ?', [userId, 'active']);
   if (!user) throw new HttpError(401, 'UNAUTHORIZED', 'Sesión inválida');
-  return user;
+  if (!auth || !['Operador', 'AdministradorInstitucional', 'SuperAdministrador'].some((role) => auth.roles.has(role))) return user;
+  const [memberships] = await pool.execute(
+    `SELECT m.institution_id AS institutionId, i.name AS institutionName,
+     m.site_id AS siteId, s.name AS siteName, r.code AS role
+     FROM institution_memberships m
+     JOIN institutions i ON i.id = m.institution_id AND i.active = TRUE
+     JOIN roles r ON r.id = m.role_id
+     LEFT JOIN sites s ON s.id = m.site_id AND s.institution_id = m.institution_id
+     WHERE m.user_id = ? AND m.active = TRUE
+     ORDER BY i.name, s.name, r.code`, [userId],
+  );
+  return { ...user, roles: [...auth.roles], memberships };
 }
 
 async function updateProfile(pool, userId, body) {

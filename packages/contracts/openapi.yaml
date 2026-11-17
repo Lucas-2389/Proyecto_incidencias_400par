@@ -38,10 +38,13 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         '200':
-          description: Perfil propio
+          description: Perfil propio. Las cuentas institucionales incluyen roles y asignaciones activas.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/OwnProfile' }
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/OwnProfile' }
+                  - { $ref: '#/components/schemas/InstitutionalProfile' }
         '401': { $ref: '#/components/responses/Unauthorized' }
     patch:
       tags: [Auth]
@@ -523,7 +526,7 @@ paths:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/IncidentSummary' }
+                items: { $ref: '#/components/schemas/OperationalIncidentSummary' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
@@ -1978,6 +1981,27 @@ components:
         name: { type: string }
         email: { type: string, format: email, readOnly: true }
         phone: { type: string, nullable: true, maxLength: 20 }
+    InstitutionalProfile:
+      type: object
+      additionalProperties: false
+      required: [id, name, email, phone, roles, memberships]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email, readOnly: true }
+        phone: { type: string, nullable: true, maxLength: 20 }
+        roles: { type: array, items: { type: string } }
+        memberships:
+          type: array
+          items:
+            type: object
+            required: [institutionId, institutionName, siteId, siteName, role]
+            properties:
+              institutionId: { type: string, format: uuid }
+              institutionName: { type: string }
+              siteId: { type: string, format: uuid, nullable: true }
+              siteName: { type: string, nullable: true }
+              role: { type: string }
     PasswordChangeRequest:
       type: object
       required: [currentPassword, newPassword]
@@ -2097,6 +2121,19 @@ components:
           properties:
             categoryId: { type: integer }
             subcategoryId: { type: integer, nullable: true }
+    OperationalIncidentSummary:
+      type: object
+      required: [id, reference, categoryId, categoryName, status, verificationStatus, priority, createdAt, exception]
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string }
+        categoryId: { type: integer }
+        categoryName: { type: string, nullable: true, description: Nombre de la categoría, incluidas categorías inactivas de reportes históricos. }
+        status: { $ref: '#/components/schemas/IncidentStatus' }
+        verificationStatus: { type: string }
+        priority: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        exception: { type: boolean }
     IncidentDetail:
       allOf:
         - $ref: '#/components/schemas/IncidentSummary'
