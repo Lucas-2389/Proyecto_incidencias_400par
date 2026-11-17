@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'core/api.dart';
 import 'core/pending.dart';
+import 'core/public_favorites.dart';
 import 'screens/alerts.dart';
 import 'screens/directory.dart';
 import 'screens/home.dart';
@@ -68,6 +69,7 @@ class _CitizenShellState extends State<CitizenShell> with WidgetsBindingObserver
   int selected = 0;
   StreamSubscription<List<ConnectivityResult>>? connection;
   late final SubmissionService submissions = SubmissionService(widget.api, widget.pending);
+  late final PublicFavorites favorites = PublicFavorites();
   final titles = const ['Inicio', 'Reportar', 'Mapa', 'Contactos', 'Alertas', 'Conoce la app', 'Perfil', 'Mis reportes'];
   late bool signedIn;
   String? identity;
@@ -119,7 +121,7 @@ class _CitizenShellState extends State<CitizenShell> with WidgetsBindingObserver
     0 => HomeScreen(pending: widget.pending, onReport: () => _navigate(1), onRetry: _retry,
       onNavigate: _navigate),
     1 => ReportScreen(api: widget.api, submissions: submissions),
-    2 => MapViewScreen(api: widget.api),
+    2 => MapViewScreen(api: widget.api, favorites: favorites),
     3 => DirectoryScreen(api: widget.api),
     4 => AlertsScreen(api: widget.api),
     5 => const PresentationScreen(),

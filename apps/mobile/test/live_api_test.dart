@@ -22,9 +22,8 @@ void main() {
       expect(categories, isNotEmpty);
       await api.list('/public/alerts');
       await api.list('/public/directory');
-      final to = DateTime.now().toUtc();
-      final from = to.subtract(const Duration(days: 7));
-      await api.list('/public/heatmap?from=${Uri.encodeQueryComponent(from.toIso8601String())}&to=${Uri.encodeQueryComponent(to.toIso8601String())}');
+      final publicMap = await api.request('GET', '/public/incidents', auth: false) as Map;
+      expect(publicMap['incidents'], isA<List>());
       final key = const Uuid().v4();
       final report = await api.submitReport({
         'categoryId': categories.first['id'],
