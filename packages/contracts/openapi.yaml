@@ -1485,6 +1485,55 @@ paths:
               schema: { type: array, items: { $ref: '#/components/schemas/AuditEntry' } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /public/incidents:
+    get:
+      tags: [Public]
+      summary: Incidentes públicos con posición aproximada y exclusión de sensibles
+      operationId: listPublicIncidents
+      security: []
+      description: Fechas omitidas usan los últimos siete días. Si se proporciona una fecha se requieren ambas. Intervalo máximo de 90 días, inicio inclusivo y fin exclusivo. Más de 5000 incidentes elegibles devuelve 422 QUERY_LIMIT. Excluye categorías y subcategorías sensibles antes del límite.
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - $ref: '#/components/parameters/GeoCategory'
+        - $ref: '#/components/parameters/GeoDistrict'
+      responses:
+        '200':
+          description: Proyección mínima pública con intervalo efectivo UTC
+          headers:
+            Cache-Control: { schema: { type: string, enum: [no-store] } }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [incidents, from, to]
+                properties:
+                  incidents: { type: array, maxItems: 5000, items: { $ref: '#/components/schemas/PublicIncident' } }
+                  from: { type: string, format: date-time }
+                  to: { type: string, format: date-time }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /public/incidents/{id}:
+    get:
+      tags: [Public]
+      summary: Estado público de un incidente elegible por identificador
+      operationId: getPublicIncident
+      security: []
+      description: Consulta independiente del intervalo del mapa. Los incidentes sensibles y los inexistentes responden el mismo 404.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200':
+          description: Proyección mínima vigente
+          headers:
+            Cache-Control: { schema: { type: string, enum: [no-store] } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicIncident' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /public/heatmap:
     get:
       tags: [Public]
@@ -2166,6 +2215,27 @@ components:
         beforeData: { type: object, nullable: true }
         afterData: { type: object, nullable: true }
         createdAt: { type: string, format: date-time }
+    PublicIncident:
+      type: object
+      additionalProperties: false
+      required: [id, reference, categoryId, districtId, status, createdAt, location]
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string }
+        categoryId: { type: integer }
+        districtId: { type: integer, nullable: true }
+        status: { type: string, enum: [reported, verifying, assigned, en_route, attending, resolved, closed] }
+        createdAt: { type: string, format: date-time }
+        location:
+          type: object
+          additionalProperties: false
+          required: [latitude, longitude, approximate, cellSizeDegrees]
+          description: Centro de una celda fija de 0,01 grados con índices limitados a celdas geográficas válidas. Se omiten coordenadas originales, precisión de captura y referencias textuales del lugar.
+          properties:
+            latitude: { type: number, minimum: -89.995, maximum: 89.995 }
+            longitude: { type: number, minimum: -179.995, maximum: 179.995 }
+            approximate: { type: boolean, enum: [true] }
+            cellSizeDegrees: { type: number, enum: [0.01] }
     HeatmapCell:
       type: object
       required: [cellId, count, latitude, longitude, cellSizeDegrees]

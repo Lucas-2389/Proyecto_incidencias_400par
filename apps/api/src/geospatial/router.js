@@ -85,8 +85,67 @@ async function operationalRows(pool, auth, rows) {
   return visible;
 }
 
+function publicFilters(query) {
+  let { from, to } = query;
+  if (from === undefined && to === undefined) {
+    const now = new Date();
+    to = now.toISOString();
+    from = new Date(now.getTime() - 7 * 86400000).toISOString();
+  }
+  return parseFilters({ from, to, categoryId: query.categoryId, districtId: query.districtId });
+}
+
+function approximateCoordinate(value, limit) {
+  const index = Math.max(-limit * 100, Math.min(limit * 100 - 1, Math.floor(Number(value) / 0.01)));
+  return Number(((index + 0.5) * 0.01).toFixed(3));
+}
+
+function publicIncident(row) {
+  return {
+    id: row.id, reference: row.reference, categoryId: row.categoryId, districtId: row.districtId,
+    status: row.status, createdAt: new Date(row.createdAt).toISOString(),
+    location: { latitude: approximateCoordinate(row.latitude, 90), longitude: approximateCoordinate(row.longitude, 180),
+      approximate: true, cellSizeDegrees: 0.01 },
+  };
+}
+
+async function loadPublicIncidents(pool, { id = null, filters = null } = {}) {
+  const conditions = id === null
+    ? 'i.created_at >= ? AND i.created_at < ? AND (? IS NULL OR i.category_id = ?) AND (? IS NULL OR l.district_id = ?)'
+    : 'i.id = ?';
+  const parameters = id === null
+    ? [databaseDate(filters.from), databaseDate(filters.to), filters.categoryId, filters.categoryId, filters.districtId, filters.districtId]
+    : [id];
+  const [rows] = await pool.execute(
+    `SELECT i.id, i.reference, i.category_id AS categoryId, l.district_id AS districtId,
+      i.status, i.created_at AS createdAt,
+      ST_X(l.location_point) AS latitude, ST_Y(l.location_point) AS longitude
+     FROM incidents i JOIN incident_locations l ON l.incident_id = i.id
+     JOIN incident_categories c ON c.id = i.category_id
+     LEFT JOIN incident_subcategories sc ON sc.id = i.subcategory_id
+     WHERE c.is_sensitive = FALSE AND COALESCE(sc.is_sensitive, FALSE) = FALSE
+       AND (${conditions})
+     ORDER BY i.created_at DESC, i.id LIMIT ${id === null ? MAX_ROWS + 1 : 1}`, parameters,
+  );
+  if (rows.length > MAX_ROWS) throw new HttpError(422, 'QUERY_LIMIT', 'Consulta demasiado amplia; reduzca el intervalo');
+  return rows.map(publicIncident);
+}
+
 function createGeospatialRouter(pool, authConfig) {
   const router = express.Router();
+  router.get('/public/incidents', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const filters = publicFilters(req.query);
+    const incidents = await loadPublicIncidents(pool, { filters });
+    res.json({ incidents, from: filters.from.toISOString(), to: filters.to.toISOString() });
+  });
+  router.get('/public/incidents/:id', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) throw new HttpError(404, 'NOT_FOUND', 'Reporte no disponible');
+    const [incident] = await loadPublicIncidents(pool, { id: req.params.id });
+    if (!incident) throw new HttpError(404, 'NOT_FOUND', 'Reporte no disponible');
+    res.json(incident);
+  });
   router.get('/public/heatmap', async (req, res) => {
     const filters = parseFilters(req.query);
     res.json(aggregatePublic(await loadIncidentRows(pool, filters)));
