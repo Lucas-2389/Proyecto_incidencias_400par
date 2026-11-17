@@ -7,7 +7,7 @@ Ofrecer mapas operativos y agregados espaciales útiles sin revelar ubicaciones 
 ## ADDED Requirements
 
 ### Requirement: Mapa institucional autorizado
-La API SHALL entregar puntos exactos de incidentes y sedes solo dentro del ámbito permitido al usuario institucional.
+La API SHALL entregar puntos exactos de incidentes y sedes solo dentro del ámbito permitido al usuario institucional. El panel SHALL presentarlos conforme a operational-incident-map con filtros de tipo, distrito y fechas opcionales.
 
 #### Scenario: Operador de sede
 - **WHEN** un Operador solicita el mapa de su ámbito
@@ -47,5 +47,5 @@ El sistema SHALL admitir filtros por tipo, categoría, fecha, franja horaria, di
 Un usuario institucional SHALL poder consultar agregados de su ámbito con mayor detalle que el público, sin ampliar sus permisos de lectura.
 
 #### Scenario: Filtro institucional
-- **WHEN** un AdministradorInstitucional filtra el mapa de calor por su institución
+- **WHEN** un AdministradorInstitucional consulta estadísticas operativas de su institución
 - **THEN** recibe solo conteos del ámbito que administra
