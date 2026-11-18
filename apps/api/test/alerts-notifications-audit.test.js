@@ -138,6 +138,7 @@ integration('alertas vigentes, avisos por destinatario y auditoría por ámbito'
     assert.deepEqual(cross, []);
     const adminAlertAudit = await (await request(`/admin/audit?entityId=${active.id}`, 'fireAdmin')).json();
     assert.ok(adminAlertAudit.some((entry) => entry.action === 'alert.create'));
+    assert.ok(adminAlertAudit.some((entry) => entry.actorName && entry.entityName));
     for (const status of ['attending', 'resolved', 'closed']) {
       const next = await request(`/ops/incidents/${report.id}/status`, 'operator', { method: 'PATCH',
         body: JSON.stringify({ assignmentId: assignment.id, status, note: `Paso ${status}` }) });

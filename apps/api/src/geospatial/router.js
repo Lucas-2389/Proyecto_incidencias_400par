@@ -1,6 +1,7 @@
 const express = require('express');
 const { HttpError } = require('../http/errors');
 const { requireAuthentication, requireRoles, hasIncidentScope, hasInstitutionScope } = require('../auth/authorization');
+const { canonicalDistrictId } = require('../territory/router');
 
 const MAX_DAYS = 90;
 const MAX_ROWS = 5000;
@@ -136,6 +137,7 @@ function createGeospatialRouter(pool, authConfig) {
   router.get('/public/incidents', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     const filters = publicFilters(req.query);
+    filters.districtId = await canonicalDistrictId(pool, req.query.districtId);
     const incidents = await loadPublicIncidents(pool, { filters });
     res.json({ incidents, from: filters.from.toISOString(), to: filters.to.toISOString() });
   });
@@ -148,20 +150,23 @@ function createGeospatialRouter(pool, authConfig) {
   });
   router.get('/public/heatmap', async (req, res) => {
     const filters = parseFilters(req.query);
+    filters.districtId = await canonicalDistrictId(pool, req.query.districtId);
     res.json(aggregatePublic(await loadIncidentRows(pool, filters)));
   });
   const secure = [requireAuthentication(pool, authConfig), requireRoles('SuperAdministrador', 'AdministradorInstitucional', 'Operador')];
   router.get('/ops/map', ...secure, async (req, res) => {
     const filters = parseFilters(req.query);
+    filters.districtId = await canonicalDistrictId(pool, req.query.districtId);
     if (filters.institutionId && !hasInstitutionScope(req.auth, filters.institutionId)) {
       throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
     }
     const incidents = await operationalRows(pool, req.auth, await loadIncidentRows(pool, filters));
     const [sites] = await pool.execute(
-      `SELECT s.id, s.institution_id AS institutionId, s.name,
+      `SELECT s.id, s.institution_id AS institutionId, s.district_id AS districtId, s.name,
         ST_X(s.location) AS latitude, ST_Y(s.location) AS longitude
-       FROM sites s WHERE s.active = TRUE AND (? IS NULL OR s.institution_id = ?) ORDER BY s.name LIMIT 501`,
-      [filters.institutionId, filters.institutionId],
+       FROM sites s WHERE s.active = TRUE AND (? IS NULL OR s.institution_id = ?)
+       AND (? IS NULL OR s.district_id = ?) ORDER BY s.name LIMIT 501`,
+      [filters.institutionId, filters.institutionId, filters.districtId, filters.districtId],
     );
     if (sites.length > 500) throw new HttpError(422, 'QUERY_LIMIT', 'Demasiadas sedes');
     res.json({ incidents: incidents.map((row) => ({ id: row.id, reference: row.reference, status: row.status,
@@ -171,6 +176,7 @@ function createGeospatialRouter(pool, authConfig) {
   });
   router.get('/ops/stats', ...secure, async (req, res) => {
     const filters = parseFilters(req.query);
+    filters.districtId = await canonicalDistrictId(pool, req.query.districtId);
     if (filters.institutionId && !hasInstitutionScope(req.auth, filters.institutionId)) {
       throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
     }

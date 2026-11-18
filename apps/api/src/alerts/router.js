@@ -3,6 +3,7 @@ const { randomUUID } = require('node:crypto');
 const { HttpError } = require('../http/errors');
 const { requireObject, requireText, requireInteger } = require('../http/validation');
 const { requireAuthentication, requireRoles } = require('../auth/authorization');
+const { canonicalDistrictId } = require('../territory/router');
 
 const columns = `id, author_user_id AS authorUserId, district_id AS districtId, type,
   title, message, valid_from AS validFrom, valid_until AS validUntil,
@@ -94,10 +95,7 @@ async function audit(connection, auth, correlationId, action, alert, before = nu
 function createAlertsRouter(pool, authConfig) {
   const router = express.Router();
   router.get('/public/alerts', async (req, res) => {
-    const districtId = req.query.districtId === undefined ? null : Number(req.query.districtId);
-    if (districtId !== null && (typeof req.query.districtId !== 'string' || !/^[1-9]\d*$/.test(req.query.districtId) || !Number.isSafeInteger(districtId))) {
-      throw new HttpError(422, 'VALIDATION_ERROR', 'Distrito inválido');
-    }
+    const districtId = await canonicalDistrictId(pool, req.query.districtId);
     const [rows] = await pool.execute(
       `SELECT ${columns} FROM alerts WHERE active = TRUE
        AND valid_from <= UTC_TIMESTAMP(3) AND valid_until > UTC_TIMESTAMP(3)
@@ -116,6 +114,7 @@ function createAlertsRouter(pool, authConfig) {
   });
   router.post('/admin/alerts', ...admin, async (req, res) => {
     const input = inputFrom(req.body);
+    if (input.districtId) input.districtId = await canonicalDistrictId(pool, String(input.districtId));
     if (!await canManageDistrict(pool, req.auth, input.districtId)) throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
     const id = randomUUID();
     const alert = await transaction(pool, async (connection) => {
@@ -137,6 +136,7 @@ function createAlertsRouter(pool, authConfig) {
     if (!req.auth.roles.has('SuperAdministrador') && before.authorUserId !== req.auth.user.id) throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
     if (!await canManageDistrict(pool, req.auth, before.districtId)) throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
     const input = inputFrom({ ...before, ...requireObject(req.body) });
+    if (input.districtId) input.districtId = await canonicalDistrictId(pool, String(input.districtId));
     if (!await canManageDistrict(pool, req.auth, input.districtId)) throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
     const alert = await transaction(pool, async (connection) => {
       await connection.execute(

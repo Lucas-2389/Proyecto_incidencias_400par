@@ -6,6 +6,10 @@ const { loadEnvironment } = require('../src/config/env');
 const { loadTestDatabaseConfig } = require('./integration-config');
 const { createConnectionOptions } = require('../src/db/pool');
 const { seedReference } = require('./seed-reference');
+const fs = require('node:fs');
+const path = require('node:path');
+const { lockTerritory, resolvePoint } = require('../src/territory/router');
+const territoryPackage = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/ayacucho-metropolitan.geojson'), 'utf8'));
 
 // All points and boundaries below are synthetic DEMO fixtures, pending field verification.
 const demoDistricts = [
@@ -76,6 +80,7 @@ async function seedDemo(connection, password) {
 async function seedDemoData(connection, password) {
   await connection.beginTransaction();
   try {
+    const territoryVersion = await lockTerritory(connection);
     const departmentId = await findOrCreate(connection,
       'SELECT id FROM departments WHERE code = ? AND is_demo = TRUE', ['DEMO-AYA'],
       'INSERT INTO departments (code, name, is_demo) VALUES (?, ?, TRUE)', ['DEMO-AYA', 'DEMO Ayacucho']);
@@ -84,6 +89,17 @@ async function seedDemoData(connection, password) {
       'INSERT INTO provinces (department_id, code, name, is_demo) VALUES (?, ?, ?, TRUE)', [departmentId, 'DEMO-HUA', 'DEMO Huamanga']);
     const districts = new Map();
     for (const district of demoDistricts) {
+      const code = territoryPackage.features.find((feature) => feature.properties.name === district.name).properties.code;
+      const [[canonical]] = await connection.execute(
+        `SELECT d.id, ST_AsText(b.area, 'axis-order=long-lat') AS polygon,
+          ST_Y(ST_Centroid(ST_SRID(b.area, 0))) AS latitude, ST_X(ST_Centroid(ST_SRID(b.area, 0))) AS longitude
+         FROM districts d JOIN territory_scope_districts t ON t.district_id = d.id
+         JOIN district_boundaries b ON b.district_id = d.id WHERE d.code = ? AND t.scope = 'ayacucho-metropolitan'`, [code],
+      );
+      if (canonical) {
+        districts.set(district.key, { ...district, ...canonical });
+        continue;
+      }
       const id = await findOrCreate(connection,
         'SELECT id FROM districts WHERE code = ? AND is_demo = TRUE', [district.code],
         'INSERT INTO districts (province_id, code, name, is_demo) VALUES (?, ?, ?, TRUE)', [provinceId, district.code, `DEMO Distrito ${district.name}`]);
@@ -147,6 +163,7 @@ async function seedDemoData(connection, password) {
       await connection.execute(
         "UPDATE sites SET name=?, district_id=?, location=ST_GeomFromText(?, 4326, 'axis-order=long-lat'), address=? WHERE id=? AND is_demo=TRUE",
         [name, district.id, point, 'DEMO ubicación sintética provisional, pendiente de verificación física', siteId]);
+      if (territoryVersion) await connection.execute("UPDATE sites SET territory_status = 'resolved', territory_version_id = ? WHERE id = ?", [territoryVersion, siteId]);
       siteIds.set(item.key, siteId);
       // Regional emergency fixtures cover all five synthetic districts.
       const coverage = ['samu', 'bomberos'].includes(institution.type)
@@ -184,7 +201,9 @@ async function seedDemoData(connection, password) {
       const [[category]] = await connection.execute('SELECT id FROM incident_categories WHERE code = ?', [code]);
       const id = randomUUID();
       await connection.execute("INSERT INTO incidents (id, reference, category_id, source, description, occurred_at, is_demo) VALUES (?, ?, ?, 'PHONE', ?, UTC_TIMESTAMP(3), TRUE)", [id, reference, category.id, description]);
-      await connection.execute("INSERT INTO incident_locations (incident_id, location_point, district_id, sector_id) VALUES (?, ST_GeomFromText('POINT(-74.22 -13.16)', 4326, 'axis-order=long-lat'), ?, ?)", [id, districtId, sectorId]);
+      const resolved = await resolvePoint(connection, -13.16, -74.22);
+      await connection.execute("INSERT INTO incident_locations (incident_id, location_point, district_id, sector_id, territory_status, territory_version_id) VALUES (?, ST_GeomFromText('POINT(-74.22 -13.16)', 4326, 'axis-order=long-lat'), ?, ?, ?, ?)",
+        [id, resolved.district?.id ?? null, resolved.sector?.id ?? null, resolved.status, territoryVersion]);
       await connection.execute("INSERT INTO incident_history (incident_id, event_type, new_value, note) VALUES (?, 'created', 'reported', 'DEMO: incidente ficticio')", [id]);
     }
     await connection.commit();

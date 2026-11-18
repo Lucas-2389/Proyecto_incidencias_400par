@@ -10,6 +10,7 @@ const { loadTestDatabaseConfig } = require('../scripts/integration-config');
 const { runMigrations } = require('../src/db/migrations');
 const { seedReference } = require('../scripts/seed-reference');
 const { seedDemo, demoSites, demoDistricts } = require('../scripts/seed-demo');
+const { loadMetropolitanTerritory } = require('../scripts/load-metropolitan-territory');
 const { login } = require('../src/auth/login');
 const { createApp } = require('../src/app');
 
@@ -189,6 +190,21 @@ integration('seed amplía sedes legado, conserva identidades y se repite concurr
         assert.equal(transition.status, 200);
       }
     } finally { await new Promise((resolve) => server.close(resolve)); }
+    const beforeTerritory = await snapshot();
+    const loaded = await loadMetropolitanTerritory(pool);
+    try {
+      await seedDemo(connection, password);
+      await seedDemo(connection, 'another-test-password-only');
+      const canonical = await snapshot();
+      assert.deepEqual(canonical.users, beforeTerritory.users);
+      assert.deepEqual(canonical.memberships, beforeTerritory.memberships);
+      assert.deepEqual(canonical.sites.map(({ districtId, ...site }) => site), beforeTerritory.sites.map(({ districtId, ...site }) => site));
+      assert.equal(new Set(canonical.sites.map((site) => site.districtId)).size, 5);
+      const [[duplicates]] = await connection.execute("SELECT COUNT(*) AS total FROM districts WHERE code IN ('DEMO-AYA-CENTRO','DEMO-CA','DEMO-SJB','DEMO-JN','DEMO-AACD')");
+      assert.equal(duplicates.total, 0);
+    } finally {
+      if (!loaded.unchanged) await loadMetropolitanTerritory(pool, { rollback: true });
+    }
   } finally {
     connection.release();
     await pool.end();

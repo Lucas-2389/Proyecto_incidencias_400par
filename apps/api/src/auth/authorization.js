@@ -94,4 +94,10 @@ function requireIncidentScope(pool, incidentParam = 'id') {
   };
 }
 
-module.exports = { requireAuthentication, requireRoles, hasInstitutionScope, requireInstitutionScope, hasIncidentScope, requireIncidentScope };
+function hasAdministrativeScope(auth, institutionId, siteId = null) {
+  return auth.roles.has('SuperAdministrador') || auth.memberships.some((membership) =>
+    membership.role === 'AdministradorInstitucional' && membership.institution_id === institutionId
+    && (!siteId || membership.site_id === null || membership.site_id === siteId));
+}
+
+module.exports = { requireAuthentication, requireRoles, hasInstitutionScope, hasAdministrativeScope, requireInstitutionScope, hasIncidentScope, requireIncidentScope };

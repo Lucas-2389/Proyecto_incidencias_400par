@@ -11,7 +11,7 @@ const row = { id, reference: 'DEMO-PUBLIC', categoryId: 2, districtId: 3, status
 
 async function serve(t, execute) {
   const app = express();
-  app.use(createGeospatialRouter({ execute }, {}));
+  app.use(createGeospatialRouter({ execute: (sql, params) => sql.includes('FROM district_aliases') ? Promise.resolve([[]]) : execute(sql, params) }, {}));
   app.use(errorHandler);
   const server = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));

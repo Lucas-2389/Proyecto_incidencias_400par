@@ -515,6 +515,9 @@ paths:
       operationId: listOperationalIncidents
       security: [{ bearerAuth: [] }]
       parameters:
+        - $ref: '#/components/parameters/GeoDistrict'
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
         - name: status
           in: query
           schema: { $ref: '#/components/schemas/IncidentStatus' }
@@ -812,7 +815,9 @@ paths:
     get:
       tags: [Territory]
       operationId: listDistricts
-      parameters: [{ name: provinceId, in: query, schema: { type: integer } }]
+      parameters:
+        - { name: provinceId, in: query, schema: { type: integer } }
+        - { name: scope, in: query, schema: { type: string, enum: [ayacucho-metropolitan] } }
       responses:
         '200':
           description: Distritos configurados
@@ -820,6 +825,24 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Territory' } }
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /territory/districts/boundaries:
+    get:
+      tags: [Territory]
+      operationId: getDistrictBoundaries
+      parameters:
+        - { name: scope, in: query, schema: { type: string, enum: [ayacucho-metropolitan] } }
+      responses:
+        '200':
+          description: Cinco multipolígonos WGS84 referenciales del INEI con extensión y procedencia
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DistrictBoundaries' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '503':
+          description: Cartografía pendiente de cargar
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
   /territory/sectors:
     get:
       tags: [Territory]
@@ -924,6 +947,7 @@ paths:
       operationId: listCoveredSites
       security: [{ bearerAuth: [] }]
       parameters:
+        - $ref: '#/components/parameters/GeoDistrict'
         - { name: latitude, in: query, required: true, schema: { type: number } }
         - { name: longitude, in: query, required: true, schema: { type: number } }
       responses:
@@ -1242,6 +1266,8 @@ paths:
       summary: Listar contactos administrables en el ámbito institucional
       operationId: listAdminDirectory
       security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/GeoDistrict'
       responses:
         '200':
           description: Contactos visibles para el administrador
@@ -1504,6 +1530,12 @@ paths:
       operationId: listAuditTrail
       security: [{ bearerAuth: [] }]
       parameters:
+        - $ref: '#/components/parameters/GeoDistrict'
+        - { name: q, in: query, schema: { type: string, maxLength: 150 }, description: Búsqueda en nombres autorizados y referencia del registro }
+        - { name: action, in: query, schema: { type: string }, description: Acción exacta o create, update y deactivate incluyendo variantes históricas }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: snapshotId, in: query, schema: { type: integer, minimum: 0 }, description: Límite superior recibido en X-Audit-Snapshot para recorrer una consulta estable }
         - { name: institutionId, in: query, schema: { type: string, format: uuid } }
         - { name: siteId, in: query, schema: { type: string, format: uuid } }
         - { name: entityType, in: query, schema: { type: string } }
@@ -1513,6 +1545,13 @@ paths:
       responses:
         '200':
           description: Eventos auditados del ámbito autorizado
+          headers:
+            X-Audit-Snapshot:
+              description: Identificador máximo de evento de la instantánea autorizada
+              schema: { type: integer }
+            X-Has-More:
+              description: Hay otra página con los mismos filtros e instantánea
+              schema: { type: boolean }
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/AuditEntry' } }
@@ -1765,6 +1804,8 @@ components:
         id: { type: integer }
         assignmentId: { type: string, nullable: true }
         actorUserId: { type: string, nullable: true }
+        actorName: { type: string, nullable: true }
+        linkedIncidentReference: { type: string, nullable: true }
         eventType: { type: string }
         previousValue: { type: string, nullable: true }
         newValue: { type: string, nullable: true }
@@ -1880,6 +1921,38 @@ components:
         longitude: { type: number }
         district: { allOf: [{ $ref: '#/components/schemas/Territory' }], nullable: true }
         sector: { allOf: [{ $ref: '#/components/schemas/Territory' }], nullable: true }
+        status: { type: string, enum: [resolved, outside_coverage, boundary, overlap] }
+    DistrictBoundaries:
+      type: object
+      required: [type, version, features, source, referenceOnly]
+      properties:
+        type: { type: string, enum: [FeatureCollection] }
+        version: { type: string, format: uuid }
+        scope: { type: string }
+        source: { type: string, format: uri }
+        sourceUpdatedAt: { type: string, format: date-time }
+        downloadedAt: { type: string, format: date-time }
+        sourceSha256: { type: string }
+        referenceOnly: { type: boolean }
+        features:
+          type: array
+          items:
+            type: object
+            required: [type, properties, geometry, bbox]
+            properties:
+              type: { type: string, enum: [Feature] }
+              properties:
+                type: object
+                properties:
+                  id: { type: integer }
+                  code: { type: string }
+                  name: { type: string }
+              bbox: { type: array, items: { type: number }, minItems: 4, maxItems: 4 }
+              geometry:
+                type: object
+                properties:
+                  type: { type: string, enum: [MultiPolygon] }
+                  coordinates: { type: array, items: { type: array, items: { type: array, items: { type: array, items: { type: number } } } } }
     SiteInput:
       type: object
       required: [institutionId, name, location]
@@ -1904,6 +1977,9 @@ components:
           properties:
             id: { type: string, format: uuid }
             isDemo: { type: boolean }
+            districtName: { type: string, nullable: true }
+            territoryStatus: { type: string, enum: [pending, resolved, outside_coverage, boundary, overlap, district_mismatch] }
+            territoryVersionId: { type: string, format: uuid, nullable: true }
     CoverageInput:
       type: object
       required: [name, coordinates]
@@ -1956,6 +2032,17 @@ components:
         role: { type: string }
         institutionId: { type: string }
         siteId: { type: string }
+        siteName: { type: string, nullable: true }
+        institutionName: { type: string, nullable: true }
+        districtId: { type: integer, nullable: true }
+        memberships:
+          type: array
+          items:
+            type: object
+            properties:
+              institutionId: { type: string }
+              siteId: { type: string, nullable: true }
+              role: { type: string }
     DatabaseHealthError:
       type: object
       required: [status, database, code, message, correlationId]
@@ -2212,6 +2299,9 @@ components:
         institutionId: { type: string }
         siteId: { type: string }
         districtId: { type: integer }
+        districtName: { type: string, nullable: true }
+        institutionName: { type: string, nullable: true }
+        siteName: { type: string, nullable: true }
         active: { type: boolean }
         isDemo: { type: boolean }
     DirectoryEntryInput:
@@ -2273,6 +2363,15 @@ components:
       properties:
         id: { type: integer }
         actorUserId: { type: string, format: uuid, nullable: true }
+        actorName: { type: string, nullable: true }
+        entityName: { type: string, nullable: true }
+        recordType: { type: string }
+        institutionName: { type: string, nullable: true }
+        siteName: { type: string, nullable: true }
+        districtId: { type: integer, nullable: true }
+        districtName: { type: string, nullable: true }
+        districtSource: { type: string, enum: [event, current_record] }
+        link: { type: string, nullable: true }
         institutionId: { type: string, format: uuid, nullable: true }
         siteId: { type: string, format: uuid, nullable: true }
         correlationId: { type: string, format: uuid, nullable: true }

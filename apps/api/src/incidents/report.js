@@ -1,7 +1,7 @@
 const { createHash, randomBytes, randomUUID } = require('node:crypto');
 const { HttpError } = require('../http/errors');
 const { requireObject, requireText, requireInteger } = require('../http/validation');
-const { parseCoordinate, resolvePoint } = require('../territory/router');
+const { parseCoordinate, resolvePoint, lockTerritory } = require('../territory/router');
 const { sendBestEffort } = require('../notifications/sender');
 const { optionalPhone } = require('../http/phone');
 
@@ -131,13 +131,14 @@ async function createReport(pool, body, { source, reporterUserId = null, creator
     );
     if (!subcategory) throw new HttpError(422, 'VALIDATION_ERROR', 'Subcategoría inválida');
   }
-  const territory = input.location ? await resolvePoint(pool, input.location.latitude, input.location.longitude) : null;
   const id = randomUUID();
   const reference = `INC-${new Date().getUTCFullYear()}-${randomBytes(6).toString('hex').toUpperCase()}`;
   const connection = await pool.getConnection();
   const notifications = [];
   try {
     await connection.beginTransaction();
+    const territoryVersion = await lockTerritory(connection);
+    const territory = input.location ? await resolvePoint(connection, input.location.latitude, input.location.longitude) : null;
     await connection.execute(
       `INSERT INTO incidents (id, reference, reporter_user_id, created_by_user_id, category_id, subcategory_id,
        source, description, affected_people, occurred_at, priority, caller_contact,
@@ -150,10 +151,12 @@ async function createReport(pool, body, { source, reporterUserId = null, creator
     if (input.location) {
       await connection.execute(
         `INSERT INTO incident_locations (incident_id, location_point, accuracy_meters, captured_at, reference_text,
-         district_id, sector_id) VALUES (?, ST_GeomFromText(?, 4326, 'axis-order=long-lat'), ?, ?, ?, ?, ?)`,
+         district_id, sector_id, territory_status, territory_version_id)
+         VALUES (?, ST_GeomFromText(?, 4326, 'axis-order=long-lat'), ?, ?, ?, ?, ?, ?, ?)`,
         [id, `POINT(${input.location.longitude} ${input.location.latitude})`, input.location.accuracyMeters,
           input.location.capturedAt ? mysqlDate(input.location.capturedAt) : null,
-          input.location.reference, territory.district?.id ?? null, territory.sector?.id ?? null],
+          input.location.reference, territory.district?.id ?? null, territory.sector?.id ?? null,
+          territory.status, territoryVersion],
       );
     }
     await connection.execute(
