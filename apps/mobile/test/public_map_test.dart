@@ -13,6 +13,13 @@ const secondId = '00000000-0000-4000-8000-000000000002';
 const publicCategories = [
   {'id': 2, 'code': 'medical_emergency', 'name': 'Emergencia médica'},
 ];
+const publicDistricts = [
+  {'id': 3, 'name': 'Ayacucho'},
+  {'id': 4, 'name': 'Carmen Alto'},
+  {'id': 5, 'name': 'San Juan Bautista'},
+  {'id': 6, 'name': 'Jesús Nazareno'},
+  {'id': 7, 'name': 'Andrés Avelino Cáceres Dorregaray'},
+];
 
 class PublicMapApi extends ApiClient {
   PublicMapApi() : super(baseUrl: 'http://example.invalid/api/v1');
@@ -44,11 +51,7 @@ class PublicMapApi extends ApiClient {
   }) async {
     paths.add(path);
     expect(auth, isFalse);
-    return path.contains('categories')
-        ? publicCategories
-        : [
-            {'id': 3, 'name': 'Ayacucho'},
-          ];
+    return path.contains('categories') ? publicCategories : publicDistricts;
   }
 
   @override
@@ -63,6 +66,31 @@ class PublicMapApi extends ApiClient {
     paths.add(path);
     expect(auth, isFalse);
     if (fail) throw Exception('offline');
+    if (path.startsWith('/territory/districts/boundaries')) {
+      return {
+        'features': publicDistricts
+            .map(
+              (district) => {
+                'properties': district,
+                'bbox': [-74.23, -13.17, -74.22, -13.16],
+                'geometry': {
+                  'type': 'MultiPolygon',
+                  'coordinates': [
+                    [
+                      [
+                        [-74.23, -13.17],
+                        [-74.22, -13.17],
+                        [-74.22, -13.16],
+                        [-74.23, -13.17],
+                      ],
+                    ],
+                  ],
+                },
+              },
+            )
+            .toList(),
+      };
+    }
     if (Uri.parse(path).path == '/public/incidents') {
       if (delayed != null) return delayed!.future;
       return {
@@ -87,6 +115,25 @@ Future<PublicFavorites> favoritesStore() async {
 }
 
 void main() {
+  testWidgets('cinco contornos permanecen visibles sin incidentes y destacan el distrito elegido', (tester) async {
+    final api = PublicMapApi()..empty = true;
+    final favorites = await favoritesStore();
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: MapViewScreen(api: api, favorites: favorites))));
+    await tester.pumpAndSettle();
+    expect(find.text('Sin incidentes para estos filtros.'), findsOneWidget);
+    expect(tester.widget<PolygonLayer>(find.byType(PolygonLayer)).polygons, hasLength(5));
+    await tester.tap(find.byKey(const Key('mapDistrict')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Andrés Avelino Cáceres Dorregaray').last);
+    await tester.pumpAndSettle();
+    final layer = tester.widget<PolygonLayer>(find.byType(PolygonLayer));
+    expect(layer.polygons.where((polygon) => polygon.borderStrokeWidth == 3), hasLength(1));
+    expect(api.paths.any((path) => path.contains('districtId=7')), isTrue);
+    expect(find.textContaining('Límites referenciales del INEI'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    favorites.dispose(); api.dispose();
+  });
+
   testWidgets(
     'fechas convierten días inclusivos a UTC y permiten borrar el intervalo',
     (tester) async {

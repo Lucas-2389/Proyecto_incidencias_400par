@@ -2,6 +2,10 @@
 
 ## Uso actual
 
+Mapa, Contactos y Alertas consultan los cinco distritos metropolitanos por nombre desde `GET /territory/districts?scope=ayacucho-metropolitan`. El mapa representa los contornos de `GET /territory/districts/boundaries?scope=ayacucho-metropolitan`, destaca el distrito elegido y lo encuadra incluso sin reportes. Los límites son referenciales del INEI. Los filtros operan sobre el distrito original del reporte y los puntos publicados siguen siendo aproximados.
+
+Contactos consulta teléfonos nacionales y locales del distrito seleccionado. Guarda la última lista nacional completa y su fecha para usarla sin conexión. Una corrección, desactivación o lista nacional vacía reemplaza la copia anterior al completar la consulta. La primera apertura sin datos guardados usa los teléfonos de respaldo. Pulsar Llamar abre el marcador para confirmar la llamada. Alertas permite elegir el distrito por nombre y combina sus publicaciones locales con las generales.
+
 La app ofrece **Inicio**, **Reportar**, **Mapa**, **Contactos**, **Alertas**, **Conoce la app** y **Perfil**. Las vistas públicas están disponibles inmediatamente. La sesión guardada se recupera en segundo plano y habilita **Mis reportes**.
 
 En **Perfil** puedes registrarte o iniciar sesión. **Datos personales** permite guardar nombre y teléfono opcional. El correo se muestra como dato de consulta. El teléfono se completa en nuevos reportes y puede cambiarse o borrarse para cada envío, conservando el valor de reportes anteriores. **Seguridad** permite cambiar la contraseña con la contraseña actual y una nueva de 12 a 128 caracteres, con confirmación. Al completar el cambio debes ingresar de nuevo en tus dispositivos.

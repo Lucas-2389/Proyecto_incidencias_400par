@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../core/api.dart';
 import '../core/config.dart';
 import '../core/public_favorites.dart';
+import '../core/territory.dart';
 import 'common.dart';
 import 'public_incident.dart';
 
@@ -40,6 +41,11 @@ class _MapViewScreenState extends State<MapViewScreen> {
   List<Map<String, dynamic>> categories = [];
   List<Map<String, dynamic>> districts = [];
   List<Map<String, dynamic>> incidents = [];
+  List<Map<String, dynamic>> boundaries = [];
+  final mapController = MapController();
+  bool mapReady = false;
+  String? boundaryError;
+  int boundaryGeneration = 0;
   int? categoryId;
   int? districtId;
   DateTimeRange? dates;
@@ -53,6 +59,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
   void initState() {
     super.initState();
     load();
+    loadBoundaries();
     widget.favorites.load().catchError((Object _) {
       if (mounted) {
         setState(
@@ -61,6 +68,100 @@ class _MapViewScreenState extends State<MapViewScreen> {
         );
       }
     });
+  }
+
+  @override
+  void dispose() {
+    mapController.dispose();
+    super.dispose();
+  }
+
+  Future<void> loadBoundaries() async {
+    final current = ++boundaryGeneration;
+    try {
+      final result =
+          await widget.api.request(
+                'GET',
+                metropolitanBoundariesPath,
+                auth: false,
+              )
+              as Map;
+      final features = (result['features'] as List)
+          .map((feature) => Map<String, dynamic>.from(feature as Map))
+          .toList();
+      if (!mounted || current != boundaryGeneration) return;
+      setState(() {
+        boundaries = features;
+        boundaryError = null;
+      });
+      fitDistrict();
+    } catch (_) {
+      if (mounted && current == boundaryGeneration) {
+        setState(() => boundaryError = 'No se pudieron cargar los límites.');
+      }
+    }
+  }
+
+  void fitDistrict() {
+    if (!mapReady) return;
+    final points = <LatLng>[];
+    for (final feature in boundaries) {
+      if (districtId != null &&
+          (feature['properties'] as Map)['id'] != districtId) {
+        continue;
+      }
+      final bbox = feature['bbox'] as List;
+      points.add(
+        LatLng((bbox[1] as num).toDouble(), (bbox[0] as num).toDouble()),
+      );
+      points.add(
+        LatLng((bbox[3] as num).toDouble(), (bbox[2] as num).toDouble()),
+      );
+    }
+    if (points.isNotEmpty) {
+      mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: LatLngBounds.fromPoints(points),
+          padding: const EdgeInsets.all(24),
+        ),
+      );
+    }
+  }
+
+  List<Polygon> districtPolygons() {
+    final polygons = <Polygon>[];
+    for (final feature in boundaries) {
+      final selected = (feature['properties'] as Map)['id'] == districtId;
+      for (final coordinates
+          in ((feature['geometry'] as Map)['coordinates'] as List)) {
+        final rings = (coordinates as List)
+            .map(
+              (ring) => (ring as List)
+                  .map(
+                    (point) => LatLng(
+                      (point[1] as num).toDouble(),
+                      (point[0] as num).toDouble(),
+                    ),
+                  )
+                  .toList(),
+            )
+            .toList();
+        if (rings.isEmpty) continue;
+        polygons.add(
+          Polygon(
+            points: rings.first,
+            holePointsList: rings.skip(1).toList(),
+            color: selected ? const Color(0x200F766E) : const Color(0x0564748B),
+            borderColor: selected
+                ? const Color(0xFF0F766E)
+                : const Color(0xFF64748B),
+            borderStrokeWidth: selected ? 3 : 1,
+            label: (feature['properties'] as Map)['name'] as String?,
+          ),
+        );
+      }
+    }
+    return polygons;
   }
 
   Future<void> load() async {
@@ -91,7 +192,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
       if (!catalogsLoaded) {
         final catalogs = await Future.wait([
           widget.api.list('/catalog/categories'),
-          widget.api.list('/territory/districts'),
+          widget.api.list(metropolitanDistrictsPath),
         ]);
         if (!mounted || current != generation) return;
         categories = catalogs[0];
@@ -264,6 +365,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
           ],
           onChanged: (value) {
             setState(() => districtId = value);
+            fitDistrict();
             load();
           },
         ),
@@ -295,6 +397,17 @@ class _MapViewScreenState extends State<MapViewScreen> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         if (favoritesError != null) Text(favoritesError!),
+        const Text('Ubicaciones aproximadas · Límites referenciales del INEI'),
+        if (boundaryError != null)
+          Row(
+            children: [
+              Expanded(child: Text(boundaryError!)),
+              TextButton(
+                onPressed: loadBoundaries,
+                child: const Text('Reintentar límites'),
+              ),
+            ],
+          ),
       ],
     ),
   );
@@ -334,15 +447,21 @@ class _MapViewScreenState extends State<MapViewScreen> {
             ),
           Expanded(
             child: FlutterMap(
-              options: const MapOptions(
-                initialCenter: LatLng(-13.16, -74.22),
+              mapController: mapController,
+              options: MapOptions(
+                initialCenter: const LatLng(-13.16, -74.22),
                 initialZoom: 12,
+                onMapReady: () {
+                  mapReady = true;
+                  fitDistrict();
+                },
               ),
               children: [
                 TileLayer(
                   urlTemplate: AppConfig.tileUrl,
                   userAgentPackageName: 'org.incidencias.mobile',
                 ),
+                PolygonLayer(polygons: districtPolygons()),
                 MarkerLayer(
                   markers: groups.entries.map((entry) {
                     final group = entry.value;

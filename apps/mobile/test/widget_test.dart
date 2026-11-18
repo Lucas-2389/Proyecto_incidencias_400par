@@ -6,6 +6,7 @@ import 'package:incidencias_mobile/core/api.dart';
 import 'package:incidencias_mobile/core/pending.dart';
 import 'package:incidencias_mobile/screens/mine.dart';
 import 'package:incidencias_mobile/screens/profile.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DemoApi extends ApiClient {
   DemoApi() : super(baseUrl: 'https://example.invalid/api/v1');
@@ -272,12 +273,13 @@ void main() {
   });
 
   testWidgets('los contactos oficiales siguen visibles sin Internet', (tester) async {
+    SharedPreferences.setMockInitialValues({});
     final api = OfflineApi();
     await tester.pumpWidget(IncidenciasApp(api: api, pending: EmptyPending(), watchConnectivity: false));
     await tester.tap(find.text('Contactos').first);
     await tester.pumpAndSettle();
     for (final number in ['105', '116', '106', '100']) {
-      expect(find.text('Llamar al $number'), findsOneWidget);
+      expect(find.byTooltip('Llamar al $number'), findsOneWidget);
     }
     expect(find.text('Iniciar sesión'), findsNothing);
     expect(tester.takeException(), isNull);
