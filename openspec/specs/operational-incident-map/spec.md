@@ -18,11 +18,11 @@ El mapa administrativo SHALL presentar marcadores por tipo de incidente, agrupac
 - **THEN** puede abrir el detalle del incidente correspondiente
 
 ### Requirement: Filtros territoriales comprensibles
-El mapa SHALL presentar los filtros en el orden Tipo de incidente, Distrito y Fechas opcionales. El tipo SHALL corresponder a una categoría del catálogo. El distrito SHALL seleccionarse por nombre desde el catálogo territorial y SHALL incluir Todos los distritos.
+El mapa SHALL presentar los filtros en el orden Tipo de incidente, Distrito y Fechas opcionales. El tipo SHALL corresponder a una categoría del catálogo. El distrito SHALL seleccionarse por nombre desde el catálogo metropolitano compartido y SHALL incluir Todos los distritos. La selección SHALL filtrar incidentes y sedes autorizados por su distrito correspondiente.
 
 #### Scenario: Categoría y distrito
 - **WHEN** el usuario selecciona un tipo y un distrito por sus nombres
-- **THEN** la consulta transmite sus identificadores y muestra únicamente los incidentes autorizados que cumplen ambos filtros
+- **THEN** la consulta transmite sus identificadores y muestra únicamente los incidentes autorizados que cumplen ambos filtros y las sedes autorizadas ubicadas en ese distrito
 
 #### Scenario: Carga fallida de distritos
 - **WHEN** falla la consulta del catálogo territorial
@@ -76,3 +76,18 @@ El mapa SHALL obtener los puntos exactos mediante el servicio institucional aute
 #### Scenario: Consulta demasiado amplia
 - **WHEN** el servicio rechaza una consulta por superar el límite de resultados
 - **THEN** la pantalla muestra la indicación de reducir el periodo o los filtros y permite corregirlos
+
+### Requirement: Límites y encuadre distritales
+El mapa SHALL dibujar los cinco límites referenciales y destacar y encuadrar el distrito seleccionado. Todos los distritos SHALL encuadrar el conjunto metropolitano. El límite SHALL permanecer visible aunque la consulta carezca de incidentes. La pantalla SHALL identificar fuente y carácter referencial de la cartografía.
+
+#### Scenario: Distrito sin reportes
+- **WHEN** se selecciona un distrito sin incidentes en el periodo
+- **THEN** se encuadra su polígono y se informa que no hay reportes para esos filtros
+
+#### Scenario: Cambio rápido de distrito
+- **WHEN** el usuario cambia de distrito mientras hay solicitudes pendientes
+- **THEN** límites, resultados y contadores corresponden a la última selección y se descartan respuestas anteriores
+
+#### Scenario: Fallo de cartografía
+- **WHEN** falla la descarga de geometrías
+- **THEN** se informa el error con reintento y los resultados conservan el filtro territorial solicitado

@@ -7,7 +7,7 @@ Organizar el acceso al panel institucional alrededor del seguimiento de incident
 ## Requirements
 
 ### Requirement: Navegación administrativa simplificada
-El panel SHALL retirar los enlaces y pantallas de Unidades y Personal para todos los roles. SHALL conservar los accesos autorizados a Dashboard, Incidentes, Mapa, Instituciones, Directorio e Historial.
+El panel SHALL retirar los enlaces y pantallas de Unidades y Personal para todos los roles. SHALL conservar los accesos autorizados a Dashboard, Incidentes, Mapa, Instituciones, Contactos de emergencia e Historial. Contactos de emergencia SHALL continuar accesible desde `/directorio` y los usuarios por sede SHALL gestionarse dentro de Instituciones.
 
 #### Scenario: Menú administrativo
 - **WHEN** un superadministrador o administrador institucional abre el panel
@@ -19,11 +19,15 @@ El panel SHALL retirar los enlaces y pantallas de Unidades y Personal para todos
 
 #### Scenario: Organización institucional
 - **WHEN** un administrador autorizado abre Instituciones
-- **THEN** puede consultar la organización institucional y sus sedes
+- **THEN** puede consultar la organización institucional, sus sedes y los usuarios autorizados de cada sede
 
 #### Scenario: Acceso de operador
 - **WHEN** un operador abre el panel e intenta acceder a una sección reservada a administración
 - **THEN** conserva el acceso a sus operaciones y recibe la restricción de acceso correspondiente para la sección administrativa
+
+#### Scenario: Enlace anterior a Directorio
+- **WHEN** se abre `/directorio` con un rol autorizado
+- **THEN** se muestra Contactos de emergencia con la administración de contactos correspondiente
 
 ### Requirement: Menú de cuenta institucional
 La cabecera SHALL ofrecer un control de cuenta con avatar, nombre y roles legibles para Operador, AdministradorInstitucional y SuperAdministrador. El menú SHALL incluir Mi perfil, Cambiar contraseña y Cerrar sesión. Cambiar contraseña SHALL abrir directamente la sección Seguridad del perfil.
