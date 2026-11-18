@@ -24,6 +24,8 @@ El sistema SHALL sugerir instituciones y sedes activas a partir de reglas config
 ### Requirement: Asignación institucional múltiple
 Un usuario autorizado SHALL poder confirmar o corregir la derivación y asignar varias instituciones o sedes al mismo incidente.
 
+El panel SHALL aplicar incident-dispatch para despacho directo a sede y operador opcional, seguimiento concurrente por tarjetas y estado global agregado. La API SHALL conservar el soporte de recursos opcionales para sus consumidores.
+
 #### Scenario: Corrección manual
 - **WHEN** un Operador autorizado cambia una sugerencia por una sede válida distinta e indica motivo
 - **THEN** se guarda la asignación corregida y la decisión queda trazada

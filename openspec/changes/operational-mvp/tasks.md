@@ -107,6 +107,8 @@
 
 ## 10. Panel React institucional
 
+La aceptación actual del panel se complementa con `admin-dispatch-operations-and-cleanup`. Sus tareas retiran los accesos de Unidades y Personal, sustituyen la vista de calor administrativa por el mapa operativo y simplifican el despacho a sede y operador opcional. Las casillas siguientes conservan el registro de la entrega original.
+
 - [x] 10.1 Crear proyecto React en `apps/admin` con URL API configurable por entorno; comprobar build de desarrollo sin `localhost` fijado en fuentes.
 - [x] 10.2 Implementar Login y sesión cliente con renovación de token y cierre; comprobar prueba de login válido/expirado.
 - [x] 10.3 Implementar navegación por rol y pantallas Dashboard, Incidentes y Detalle; comprobar que un Operador ve solo acciones permitidas.
@@ -137,6 +139,6 @@
 
 - [x] 12.1 Ejecutar todas las pruebas API, React y Flutter, incluidas las existentes de health checks; guardar resultados observables sin declarar éxitos no ejecutados.
 - [x] 12.2 Ejecutar migraciones y seed DEMO sobre MySQL real aislado; verificar estado de base, cuenta de aplicación no root y ausencia de cambios manuales.
-- [ ] 12.3 Ejecutar recorrido E2E Android→API→MySQL→panel→Android con GPS, foto, clasificación, asignación, estados, mapa, heatmap, directorio y auditoría; registrar referencias y resultados.
+- [ ] 12.3 Ejecutar recorrido E2E Android→API→MySQL→panel→Android con GPS, foto, clasificación, despacho a sede y operador opcional, estados por asignación, mapa operativo, mapa público móvil según public-incident-map, directorio y auditoría; registrar referencias y resultados.
 - [x] 12.4 Comprobar errores de MySQL caído, credenciales inválidas, acceso cruzado, pérdida de red y foto inválida sin filtrar secretos; guardar resultados de prueba.
 - [x] 12.5 Revisar OpenAPI frente a rutas reales, ejecutar `openspec validate operational-mvp --strict` y `git status`; registrar pendientes antes de declarar terminado el MVP.

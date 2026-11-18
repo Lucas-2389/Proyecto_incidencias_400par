@@ -3,11 +3,10 @@ const { HttpError } = require('../http/errors');
 const { requireObject, requireText } = require('../http/validation');
 const { hasInstitutionScope } = require('../auth/authorization');
 const { sendBestEffort } = require('../notifications/sender');
+const { assignmentNext, assignmentStages, aggregateStatus } = require('./stages');
 
 const verificationValues = new Set(['verified', 'unverifiable', 'false', 'duplicate']);
 const priorityValues = new Set(['low', 'normal', 'high', 'critical']);
-const assignmentNext = Object.freeze({ assigned: 'en_route', en_route: 'attending', attending: 'resolved', resolved: 'closed' });
-const assignmentStages = Object.freeze({ assigned: 0, en_route: 1, attending: 2, resolved: 3, closed: 4 });
 
 async function recordAudit(connection, actorId, correlationId, action, entityId, before, after, scope = {}) {
   await connection.execute(
@@ -107,11 +106,15 @@ async function advanceIncident(pool, incidentId, actor, body, correlationId, not
     await connection.execute('UPDATE institution_assignments SET status = ?, closed_at = CASE WHEN ? = ? THEN UTC_TIMESTAMP(3) ELSE closed_at END WHERE id = ?',
       [status, status, 'closed', assignmentId]);
     const [all] = await connection.execute('SELECT status FROM institution_assignments WHERE incident_id = ?', [incidentId]);
-    const minimum = Math.min(...all.map((item) => assignmentStages[item.status]));
-    const globalStatus = Object.keys(assignmentStages).find((key) => assignmentStages[key] === minimum);
+    const globalStatus = aggregateStatus(all);
     let notification = null;
     if (globalStatus !== incident.status) {
       await connection.execute('UPDATE incidents SET status = ? WHERE id = ?', [globalStatus, incidentId]);
+      await connection.execute(
+        `INSERT INTO incident_history (incident_id, actor_user_id, event_type, previous_value, new_value)
+         VALUES (?, ?, 'status.changed', ?, ?)`,
+        [incidentId, actor.user.id, incident.status, globalStatus],
+      );
       notification = await notifyReporter(connection, incidentId, incident.reporterId, globalStatus);
     }
     await connection.execute(

@@ -10,7 +10,7 @@ function auditMutation(pool) {
     let recorded = false;
     function needsAudit() {
       const path = auditPath(req);
-      if (res.statusCode < 400 && (path.startsWith('/admin/directory') || path.startsWith('/admin/alerts'))) return false;
+      if (res.statusCode < 400 && ['/admin/directory', '/admin/alerts', '/admin/sites', '/admin/users'].some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) return false;
       return Boolean(req.auth) && ((res.statusCode === 403 &&
         [...auditedPrefixes, '/ops/'].some((prefix) => path.startsWith(prefix)))
         || (res.statusCode < 400 && auditedPrefixes.some((prefix) => path.startsWith(prefix))));

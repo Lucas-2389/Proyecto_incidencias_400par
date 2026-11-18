@@ -1,9 +1,11 @@
 const express = require('express');
 const { HttpError } = require('../http/errors');
 const { requireObject, requireText } = require('../http/validation');
-const { requireAuthentication, requireRoles, requireIncidentScope, hasIncidentScope } = require('../auth/authorization');
+const { requireAuthentication, requireRoles, requireIncidentScope, hasIncidentScope, hasInstitutionScope } = require('../auth/authorization');
 const { verifyIncident, advanceIncident } = require('./lifecycle');
 const { suggestSites } = require('./suggestions');
+const { canonicalDistrictId } = require('../territory/router');
+const { parseFilters } = require('../geospatial/router');
 
 async function linkDuplicate(pool, duplicateId, actor, body, correlationId) {
   const input = requireObject(body);
@@ -45,17 +47,34 @@ async function listOperational(pool, auth, query) {
   }
   const exceptionOnly = query.exception === 'true';
   if (query.exception !== undefined && !['true', 'false'].includes(query.exception)) throw new HttpError(422, 'VALIDATION_ERROR', 'Filtro inválido');
-  const [rows] = await pool.execute(
-    `SELECT i.id, i.reference, i.category_id AS categoryId, i.status, i.verification_status AS verificationStatus,
-     i.priority, i.created_at AS createdAt FROM incidents i
-     WHERE (? IS NULL OR i.status = ?) ORDER BY i.created_at DESC LIMIT 200`, [status ?? null, status ?? null],
-  );
+  const districtId = await canonicalDistrictId(pool, query.districtId);
+  const period = query.from !== undefined || query.to !== undefined ? parseFilters(query) : null;
+  const from = period?.from.toISOString().slice(0, 23).replace('T', ' ') ?? null;
+  const to = period?.to.toISOString().slice(0, 23).replace('T', ' ') ?? null;
   const visible = [];
-  for (const row of rows) {
-    if (!await hasIncidentScope(pool, auth, row.id)) continue;
-    const suggestion = await suggestSites(pool, row.id, auth);
-    if (exceptionOnly && !suggestion.exception) continue;
-    visible.push({ ...row, createdAt: new Date(row.createdAt).toISOString(), exception: suggestion.exception });
+  let offset = 0;
+  let more = true;
+  while (more && visible.length < 200) {
+    const [rows] = await pool.execute(
+    `SELECT i.id, i.reference, i.category_id AS categoryId, c.name AS categoryName,
+     i.status, i.verification_status AS verificationStatus,
+     i.priority, i.created_at AS createdAt, l.district_id AS districtId FROM incidents i
+     LEFT JOIN incident_categories c ON c.id = i.category_id
+     LEFT JOIN incident_locations l ON l.incident_id = i.id
+     WHERE (? IS NULL OR i.status = ?) AND (? IS NULL OR l.district_id = ?)
+       AND (? IS NULL OR i.created_at >= ?) AND (? IS NULL OR i.created_at < ?)
+     ORDER BY i.created_at DESC, i.id DESC LIMIT 200 OFFSET ?`,
+      [status ?? null, status ?? null, districtId, districtId, from, from, to, to, offset],
+    );
+    for (const row of rows) {
+      if (!await hasIncidentScope(pool, auth, row.id)) continue;
+      const suggestion = await suggestSites(pool, row.id, auth);
+      if (exceptionOnly && !suggestion.exception) continue;
+      visible.push({ ...row, createdAt: new Date(row.createdAt).toISOString(), exception: suggestion.exception });
+      if (visible.length === 200) break;
+    }
+    more = rows.length === 200;
+    offset += 200;
   }
   return visible;
 }
@@ -64,6 +83,28 @@ function createOperationsRouter(pool, authConfig, notificationSender = null) {
   const router = express.Router();
   router.use(requireAuthentication(pool, authConfig), requireRoles('SuperAdministrador', 'AdministradorInstitucional', 'Operador'));
   router.get('/', async (req, res) => { res.json(await listOperational(pool, req.auth, req.query)); });
+  router.get('/:id/operators', requireIncidentScope(pool), async (req, res) => {
+    const siteId = req.query.siteId;
+    if (typeof siteId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(siteId)) {
+      throw new HttpError(422, 'VALIDATION_ERROR', 'Sede inválida');
+    }
+    const [[incident]] = await pool.execute('SELECT id FROM incidents WHERE id = ?', [req.params.id]);
+    if (!incident) throw new HttpError(404, 'NOT_FOUND', 'Reporte no encontrado');
+    const [[site]] = await pool.execute(
+      `SELECT s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id
+       WHERE s.id = ? AND s.active = TRUE AND i.active = TRUE`, [siteId],
+    );
+    if (!site) throw new HttpError(404, 'NOT_FOUND', 'Sede activa no encontrada');
+    if (!hasInstitutionScope(req.auth, site.institutionId, siteId)) throw new HttpError(403, 'FORBIDDEN', 'Acceso no permitido');
+    const [operators] = await pool.execute(
+      `SELECT DISTINCT u.id, u.name FROM users u
+       JOIN institution_memberships m ON m.user_id = u.id
+       JOIN roles r ON r.id = m.role_id
+       WHERE u.status = 'active' AND m.active = TRUE AND r.code = 'Operador'
+         AND m.institution_id = ? AND m.site_id = ? ORDER BY u.name, u.id`, [site.institutionId, siteId],
+    );
+    res.json(operators);
+  });
   router.patch('/:id/verification', requireIncidentScope(pool), async (req, res) => {
     res.json(await verifyIncident(pool, req.params.id, req.auth, req.body, req.correlationId));
   });
@@ -75,11 +116,22 @@ function createOperationsRouter(pool, authConfig, notificationSender = null) {
   });
   router.get('/:id/history', requireIncidentScope(pool), async (req, res) => {
     const [rows] = await pool.execute(
-      `SELECT id, institution_assignment_id AS assignmentId, actor_user_id AS actorUserId,
-       event_type AS eventType, previous_value AS previousValue, new_value AS newValue,
-       note, created_at AS createdAt FROM incident_history WHERE incident_id = ? ORDER BY id`, [req.params.id],
+      `SELECT h.id, h.institution_assignment_id AS assignmentId, h.actor_user_id AS actorUserId,
+       actor.name AS actorName, h.event_type AS eventType, h.previous_value AS previousValue, h.new_value AS newValue,
+       h.note, h.created_at AS createdAt, a.institution_id AS institutionId, a.site_id AS siteId,
+       linked.id AS linkedIncidentId, linked.reference AS linkedIncidentReference
+       FROM incident_history h LEFT JOIN users actor ON actor.id = h.actor_user_id
+       LEFT JOIN institution_assignments a ON a.id = h.institution_assignment_id
+       LEFT JOIN incidents linked ON h.event_type = 'duplicate.linked' AND linked.id = h.new_value
+       WHERE h.incident_id = ? ORDER BY h.id`, [req.params.id],
     );
-    res.json(rows.map((row) => ({ ...row, createdAt: new Date(row.createdAt).toISOString() })));
+    const events = await Promise.all(rows.map(async (row) => {
+      const { institutionId, siteId, linkedIncidentId, ...event } = row;
+      if (row.assignmentId && !hasInstitutionScope(req.auth, institutionId, siteId)) event.actorName = null;
+      if (linkedIncidentId && !await hasIncidentScope(pool, req.auth, linkedIncidentId)) event.linkedIncidentReference = null;
+      return { ...event, createdAt: new Date(row.createdAt).toISOString() };
+    }));
+    res.json(events);
   });
   router.get('/:id/assignments', requireIncidentScope(pool), async (req, res) => {
     const [rows] = await pool.execute(

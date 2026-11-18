@@ -1,8 +1,9 @@
 const { createHash, randomBytes, randomUUID } = require('node:crypto');
 const { HttpError } = require('../http/errors');
 const { requireObject, requireText, requireInteger } = require('../http/validation');
-const { parseCoordinate, resolvePoint } = require('../territory/router');
+const { parseCoordinate, resolvePoint, lockTerritory } = require('../territory/router');
 const { sendBestEffort } = require('../notifications/sender');
+const { optionalPhone } = require('../http/phone');
 
 function optionalDate(value, name, { defaultNow = false } = {}) {
   if (value === undefined || value === null) return defaultNow ? new Date().toISOString() : null;
@@ -41,13 +42,8 @@ function validateLocation(value, { required = true } = {}) {
 
 function validateReport(body, { locationRequired = true } = {}) {
   const input = requireObject(body);
-  const callerContact = input.callerContact == null || input.callerContact === ''
-    ? null : requireText(input.callerContact, 'callerContact', { max: 20 });
-  if (callerContact && (!/^\+?[0-9 ()-]{7,20}$/.test(callerContact)
-    || callerContact.replace(/\D/g, '').length < 7 || callerContact.replace(/\D/g, '').length > 15)) {
-    throw new HttpError(422, 'VALIDATION_ERROR', 'Teléfono de contacto inválido');
-  }
-  return {
+  const callerContact = optionalPhone(input.callerContact, 'callerContact');
+  const report = {
     categoryId: parsePositiveId(input.categoryId, 'categoryId'),
     subcategoryId: input.subcategoryId == null ? null : parsePositiveId(input.subcategoryId, 'subcategoryId'),
     description: requireText(input.description, 'description', { max: 2000 }),
@@ -56,6 +52,13 @@ function validateReport(body, { locationRequired = true } = {}) {
     location: validateLocation(input.location, { required: locationRequired }),
     callerContact,
   };
+  // Unknown observations keep the historical idempotency payload unchanged.
+  for (const field of ['isConscious', 'isBreathing', 'hasBleeding']) {
+    if (input[field] == null) continue;
+    if (typeof input[field] !== 'boolean') throw new HttpError(422, 'VALIDATION_ERROR', `Campo inválido: ${field}`);
+    report[field] = input[field];
+  }
+  return report;
 }
 
 function requestKey(header, body) {
@@ -128,27 +131,32 @@ async function createReport(pool, body, { source, reporterUserId = null, creator
     );
     if (!subcategory) throw new HttpError(422, 'VALIDATION_ERROR', 'Subcategoría inválida');
   }
-  const territory = input.location ? await resolvePoint(pool, input.location.latitude, input.location.longitude) : null;
   const id = randomUUID();
   const reference = `INC-${new Date().getUTCFullYear()}-${randomBytes(6).toString('hex').toUpperCase()}`;
   const connection = await pool.getConnection();
   const notifications = [];
   try {
     await connection.beginTransaction();
+    const territoryVersion = await lockTerritory(connection);
+    const territory = input.location ? await resolvePoint(connection, input.location.latitude, input.location.longitude) : null;
     await connection.execute(
       `INSERT INTO incidents (id, reference, reporter_user_id, created_by_user_id, category_id, subcategory_id,
-       source, description, affected_people, occurred_at, priority, caller_contact)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       source, description, affected_people, occurred_at, priority, caller_contact,
+       is_conscious, is_breathing, has_bleeding)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, reference, reporterUserId, creatorUserId, input.categoryId, input.subcategoryId,
-        source, input.description, input.affectedPeople, mysqlDate(input.occurredAt ?? new Date().toISOString()), category.defaultPriority, input.callerContact],
+        source, input.description, input.affectedPeople, mysqlDate(input.occurredAt ?? new Date().toISOString()), category.defaultPriority, input.callerContact,
+        input.isConscious ?? null, input.isBreathing ?? null, input.hasBleeding ?? null],
     );
     if (input.location) {
       await connection.execute(
         `INSERT INTO incident_locations (incident_id, location_point, accuracy_meters, captured_at, reference_text,
-         district_id, sector_id) VALUES (?, ST_GeomFromText(?, 4326, 'axis-order=long-lat'), ?, ?, ?, ?, ?)`,
+         district_id, sector_id, territory_status, territory_version_id)
+         VALUES (?, ST_GeomFromText(?, 4326, 'axis-order=long-lat'), ?, ?, ?, ?, ?, ?, ?)`,
         [id, `POINT(${input.location.longitude} ${input.location.latitude})`, input.location.accuracyMeters,
           input.location.capturedAt ? mysqlDate(input.location.capturedAt) : null,
-          input.location.reference, territory.district?.id ?? null, territory.sector?.id ?? null],
+          input.location.reference, territory.district?.id ?? null, territory.sector?.id ?? null,
+          territory.status, territoryVersion],
       );
     }
     await connection.execute(

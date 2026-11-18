@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 
 import 'core/api.dart';
 import 'core/pending.dart';
+import 'core/public_favorites.dart';
 import 'screens/alerts.dart';
 import 'screens/directory.dart';
 import 'screens/home.dart';
 import 'screens/map_view.dart';
 import 'screens/presentation.dart';
 import 'screens/report.dart';
+import 'screens/profile.dart';
+import 'screens/mine.dart';
 
 class IncidenciasApp extends StatelessWidget {
   const IncidenciasApp({super.key, required this.api, required this.pending, this.watchConnectivity = true});
@@ -66,10 +69,15 @@ class _CitizenShellState extends State<CitizenShell> with WidgetsBindingObserver
   int selected = 0;
   StreamSubscription<List<ConnectivityResult>>? connection;
   late final SubmissionService submissions = SubmissionService(widget.api, widget.pending);
-  final titles = const ['Inicio', 'Reportar', 'Mapa', 'Contactos', 'Alertas', 'Conoce la app'];
+  late final PublicFavorites favorites = PublicFavorites();
+  final titles = const ['Inicio', 'Reportar', 'Mapa', 'Contactos', 'Alertas', 'Conoce la app', 'Perfil', 'Mis reportes'];
+  late bool signedIn;
+  String? identity;
   @override
   void initState() {
     super.initState();
+    signedIn = widget.api.signedIn;
+    identity = widget.api.user?['id']?.toString();
     widget.api.addListener(_changed);
     WidgetsBinding.instance.addObserver(this);
     if (widget.watchConnectivity) {
@@ -78,7 +86,23 @@ class _CitizenShellState extends State<CitizenShell> with WidgetsBindingObserver
       });
     }
   }
-  void _changed() { if (mounted) setState(() {}); }
+  void _changed() {
+    if (!mounted) return;
+    final nextIdentity = widget.api.user?['id']?.toString();
+    if (signedIn != widget.api.signedIn || identity != nextIdentity) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      if (selected == 7 || (selected == 6 && !widget.api.signedIn)) selected = 0;
+      if (!widget.api.signedIn && widget.api.sessionMessage != null) selected = 6;
+    }
+    setState(() {
+      signedIn = widget.api.signedIn;
+      identity = nextIdentity;
+    });
+  }
+  void _navigate(int index) {
+    if (index == 7 && !widget.api.signedIn) index = 6;
+    setState(() => selected = index);
+  }
   Future<void> _retry() async {
     try { await submissions.retryPending(); if (mounted) setState(() {}); } catch (_) { /* Pendientes se conservan. */ }
   }
@@ -94,20 +118,24 @@ class _CitizenShellState extends State<CitizenShell> with WidgetsBindingObserver
     super.dispose();
   }
   Widget currentPage() => switch (selected) {
-    0 => HomeScreen(pending: widget.pending, onReport: () => setState(() => selected = 1), onRetry: _retry,
-      onNavigate: (index) => setState(() => selected = index)),
+    0 => HomeScreen(pending: widget.pending, onReport: () => _navigate(1), onRetry: _retry,
+      onNavigate: _navigate),
     1 => ReportScreen(api: widget.api, submissions: submissions),
-    2 => MapViewScreen(api: widget.api),
+    2 => MapViewScreen(api: widget.api, favorites: favorites),
     3 => DirectoryScreen(api: widget.api),
     4 => AlertsScreen(api: widget.api),
-    _ => const PresentationScreen(),
+    5 => const PresentationScreen(),
+    6 => ProfileScreen(api: widget.api),
+    7 when widget.api.signedIn => MineScreen(key: ValueKey(identity), api: widget.api),
+    _ => ProfileScreen(api: widget.api),
   };
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(titles[selected]), actions: [
-      Padding(padding: const EdgeInsets.only(right: 12), child: Center(child: Chip(
+      Padding(padding: const EdgeInsets.only(right: 12), child: Center(child: ActionChip(
+        tooltip: 'Abrir perfil', onPressed: () => _navigate(6),
         avatar: const Icon(Icons.circle, size: 10, color: Color(0xFF087C72)),
-        label: const Text('Sin cuenta')))),
+        label: Text(widget.api.signedIn ? (widget.api.user?['name']?.toString() ?? 'Ciudadano') : 'Sin cuenta')))),
     ]),
     drawer: Drawer(child: SafeArea(child: Column(children: [
       Container(width: double.infinity, padding: const EdgeInsets.all(24),
@@ -118,16 +146,16 @@ class _CitizenShellState extends State<CitizenShell> with WidgetsBindingObserver
           Text('Ayacucho · Piloto de prueba', style: TextStyle(color: Colors.white70)),
         ])),
       const Divider(),
-      Expanded(child: ListView.builder(itemCount: titles.length, itemBuilder: (context, index) => ListTile(
+      Expanded(child: ListView.builder(itemCount: widget.api.signedIn ? titles.length : titles.length - 1, itemBuilder: (context, index) => ListTile(
         leading: Icon([Icons.home_outlined, Icons.add_location_alt_outlined, Icons.map_outlined,
-          Icons.call_outlined, Icons.warning_amber_outlined, Icons.info_outline][index]),
+          Icons.call_outlined, Icons.warning_amber_outlined, Icons.info_outline, Icons.person_outline, Icons.history][index]),
         title: Text(titles[index]), selected: selected == index,
-        onTap: () { Navigator.pop(context); setState(() => selected = index); },
+        onTap: () { Navigator.pop(context); _navigate(index); },
       ))),
     ]))),
     body: SafeArea(child: currentPage()),
     bottomNavigationBar: selected < 4 ? NavigationBar(selectedIndex: selected,
-      onDestinationSelected: (index) => setState(() => selected = index), destinations: const [
+      onDestinationSelected: _navigate, destinations: const [
         NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Inicio'),
         NavigationDestination(icon: Icon(Icons.add_location_alt_outlined), label: 'Reportar'),
         NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Mapa'),

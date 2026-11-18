@@ -30,6 +30,63 @@ tags:
   - name: Catalog
   - name: Public
 paths:
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Consultar perfil propio
+      operationId: getOwnProfile
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Perfil propio. Las cuentas institucionales incluyen roles y asignaciones activas.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/OwnProfile' }
+                  - { $ref: '#/components/schemas/InstitutionalProfile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Auth]
+      summary: Editar nombre y teléfono propios
+      operationId: updateOwnProfile
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                name: { type: string, minLength: 1, maxLength: 150 }
+                phone: { type: string, maxLength: 20, nullable: true, description: Vacío o null elimina el teléfono. Omitir conserva el valor. }
+      responses:
+        '200':
+          description: Perfil guardado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnProfile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /auth/password/change:
+    post:
+      tags: [Auth]
+      summary: Cambiar contraseña propia e invalidar sesiones
+      operationId: changeOwnPassword
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordChangeRequest' }
+      responses:
+        '204': { description: Contraseña actualizada y sesiones revocadas }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /api/health:
     servers:
       - url: http://localhost:3000
@@ -348,7 +405,15 @@ paths:
     get:
       tags: [Catalog]
       operationId: listIncidentCategories
+      parameters:
+        - name: institutionType
+          in: query
+          required: false
+          description: Especialidad según reglas activas. Una misma categoría puede corresponder a PNP y SAMU.
+          schema: { type: string, enum: [pnp, samu, bomberos, municipalidad, otra] }
+          example: samu
       responses:
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
         '200':
           description: Categorías activas con prioridad inicial
           content:
@@ -393,8 +458,16 @@ paths:
     get:
       tags: [Catalog]
       operationId: listIncidentSubcategories
-      parameters: [{ $ref: '#/components/parameters/ResourceId' }]
+      parameters:
+        - { $ref: '#/components/parameters/ResourceId' }
+        - name: institutionType
+          in: query
+          required: false
+          description: Filtra por reglas generales de la categoría o específicas de cada subtipo.
+          schema: { type: string, enum: [pnp, samu, bomberos, municipalidad, otra] }
+          example: samu
       responses:
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
         '200':
           description: Subcategorías activas
           content:
@@ -442,6 +515,9 @@ paths:
       operationId: listOperationalIncidents
       security: [{ bearerAuth: [] }]
       parameters:
+        - $ref: '#/components/parameters/GeoDistrict'
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
         - name: status
           in: query
           schema: { $ref: '#/components/schemas/IncidentStatus' }
@@ -453,7 +529,7 @@ paths:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/IncidentSummary' }
+                items: { $ref: '#/components/schemas/OperationalIncidentSummary' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
@@ -472,6 +548,36 @@ paths:
               schema: { $ref: '#/components/schemas/SuggestionResult' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /ops/incidents/{id}/operators:
+    get:
+      tags: [Operations]
+      summary: Consultar operadores activos de una sede autorizada
+      operationId: listDispatchOperators
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IncidentId'
+        - name: siteId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Operadores elegibles sin duplicados, ordenados por nombre
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [id, name]
+                  properties:
+                    id: { type: string, format: uuid }
+                    name: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
   /ops/incidents/{id}/verification:
     patch:
       tags: [Operations]
@@ -551,6 +657,16 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CreateAssignmentRequest'
+            examples:
+              withoutResources:
+                summary: Asignación institucional sin recursos
+                value: { institutionId: '11111111-1111-4111-a111-111111111111', siteId: '22222222-2222-4222-a222-222222222222' }
+              unitsOnly:
+                summary: Solo unidades
+                value: { institutionId: '11111111-1111-4111-a111-111111111111', siteId: '22222222-2222-4222-a222-222222222222', unitIds: ['33333333-3333-4333-a333-333333333333'] }
+              personnelOnly:
+                summary: Solo personal
+                value: { institutionId: '11111111-1111-4111-a111-111111111111', siteId: '22222222-2222-4222-a222-222222222222', personnelIds: ['44444444-4444-4444-a444-444444444444'] }
       responses:
         '201':
           description: Asignación creada
@@ -699,7 +815,9 @@ paths:
     get:
       tags: [Territory]
       operationId: listDistricts
-      parameters: [{ name: provinceId, in: query, schema: { type: integer } }]
+      parameters:
+        - { name: provinceId, in: query, schema: { type: integer } }
+        - { name: scope, in: query, schema: { type: string, enum: [ayacucho-metropolitan] } }
       responses:
         '200':
           description: Distritos configurados
@@ -707,6 +825,24 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Territory' } }
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /territory/districts/boundaries:
+    get:
+      tags: [Territory]
+      operationId: getDistrictBoundaries
+      parameters:
+        - { name: scope, in: query, schema: { type: string, enum: [ayacucho-metropolitan] } }
+      responses:
+        '200':
+          description: Cinco multipolígonos WGS84 referenciales del INEI con extensión y procedencia
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DistrictBoundaries' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '503':
+          description: Cartografía pendiente de cargar
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
   /territory/sectors:
     get:
       tags: [Territory]
@@ -811,6 +947,7 @@ paths:
       operationId: listCoveredSites
       security: [{ bearerAuth: [] }]
       parameters:
+        - $ref: '#/components/parameters/GeoDistrict'
         - { name: latitude, in: query, required: true, schema: { type: number } }
         - { name: longitude, in: query, required: true, schema: { type: number } }
       responses:
@@ -1129,6 +1266,8 @@ paths:
       summary: Listar contactos administrables en el ámbito institucional
       operationId: listAdminDirectory
       security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/GeoDistrict'
       responses:
         '200':
           description: Contactos visibles para el administrador
@@ -1391,6 +1530,12 @@ paths:
       operationId: listAuditTrail
       security: [{ bearerAuth: [] }]
       parameters:
+        - $ref: '#/components/parameters/GeoDistrict'
+        - { name: q, in: query, schema: { type: string, maxLength: 150 }, description: Búsqueda en nombres autorizados y referencia del registro }
+        - { name: action, in: query, schema: { type: string }, description: Acción exacta o create, update y deactivate incluyendo variantes históricas }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: snapshotId, in: query, schema: { type: integer, minimum: 0 }, description: Límite superior recibido en X-Audit-Snapshot para recorrer una consulta estable }
         - { name: institutionId, in: query, schema: { type: string, format: uuid } }
         - { name: siteId, in: query, schema: { type: string, format: uuid } }
         - { name: entityType, in: query, schema: { type: string } }
@@ -1400,11 +1545,67 @@ paths:
       responses:
         '200':
           description: Eventos auditados del ámbito autorizado
+          headers:
+            X-Audit-Snapshot:
+              description: Identificador máximo de evento de la instantánea autorizada
+              schema: { type: integer }
+            X-Has-More:
+              description: Hay otra página con los mismos filtros e instantánea
+              schema: { type: boolean }
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/AuditEntry' } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /public/incidents:
+    get:
+      tags: [Public]
+      summary: Incidentes públicos con posición aproximada y exclusión de sensibles
+      operationId: listPublicIncidents
+      security: []
+      description: Fechas omitidas usan los últimos siete días. Si se proporciona una fecha se requieren ambas. Intervalo máximo de 90 días, inicio inclusivo y fin exclusivo. Más de 5000 incidentes elegibles devuelve 422 QUERY_LIMIT. Excluye categorías y subcategorías sensibles antes del límite.
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - $ref: '#/components/parameters/GeoCategory'
+        - $ref: '#/components/parameters/GeoDistrict'
+      responses:
+        '200':
+          description: Proyección mínima pública con intervalo efectivo UTC
+          headers:
+            Cache-Control: { schema: { type: string, enum: [no-store] } }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [incidents, from, to]
+                properties:
+                  incidents: { type: array, maxItems: 5000, items: { $ref: '#/components/schemas/PublicIncident' } }
+                  from: { type: string, format: date-time }
+                  to: { type: string, format: date-time }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+  /public/incidents/{id}:
+    get:
+      tags: [Public]
+      summary: Estado público de un incidente elegible por identificador
+      operationId: getPublicIncident
+      security: []
+      description: Consulta independiente del intervalo del mapa. Los incidentes sensibles y los inexistentes responden el mismo 404.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200':
+          description: Proyección mínima vigente
+          headers:
+            Cache-Control: { schema: { type: string, enum: [no-store] } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicIncident' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /public/heatmap:
     get:
       tags: [Public]
@@ -1603,6 +1804,8 @@ components:
         id: { type: integer }
         assignmentId: { type: string, nullable: true }
         actorUserId: { type: string, nullable: true }
+        actorName: { type: string, nullable: true }
+        linkedIncidentReference: { type: string, nullable: true }
         eventType: { type: string }
         previousValue: { type: string, nullable: true }
         newValue: { type: string, nullable: true }
@@ -1651,6 +1854,10 @@ components:
         siteId: { type: string, format: uuid }
         categoryId: { type: integer }
         subcategoryId: { type: integer }
+        affectedPeople: { type: integer, minimum: 0, nullable: true, description: Cantidad total de personas afectadas }
+        isConscious: { type: boolean, nullable: true, description: Conciencia de la persona principal identificada en la descripción. Omitido o null indica desconocido }
+        isBreathing: { type: boolean, nullable: true, description: Respiración de la persona principal. Omitido o null indica desconocido }
+        hasBleeding: { type: boolean, nullable: true, description: Sangrado de la persona principal. Omitido o null indica desconocido }
         description: { type: string, minLength: 1, maxLength: 2000 }
         location: { allOf: [{ $ref: '#/components/schemas/Coordinates' }], nullable: true }
         callerContact: { type: string, maxLength: 20, description: Teléfono opcional para que la central autorizada pueda contactar a la persona }
@@ -1714,6 +1921,38 @@ components:
         longitude: { type: number }
         district: { allOf: [{ $ref: '#/components/schemas/Territory' }], nullable: true }
         sector: { allOf: [{ $ref: '#/components/schemas/Territory' }], nullable: true }
+        status: { type: string, enum: [resolved, outside_coverage, boundary, overlap] }
+    DistrictBoundaries:
+      type: object
+      required: [type, version, features, source, referenceOnly]
+      properties:
+        type: { type: string, enum: [FeatureCollection] }
+        version: { type: string, format: uuid }
+        scope: { type: string }
+        source: { type: string, format: uri }
+        sourceUpdatedAt: { type: string, format: date-time }
+        downloadedAt: { type: string, format: date-time }
+        sourceSha256: { type: string }
+        referenceOnly: { type: boolean }
+        features:
+          type: array
+          items:
+            type: object
+            required: [type, properties, geometry, bbox]
+            properties:
+              type: { type: string, enum: [Feature] }
+              properties:
+                type: object
+                properties:
+                  id: { type: integer }
+                  code: { type: string }
+                  name: { type: string }
+              bbox: { type: array, items: { type: number }, minItems: 4, maxItems: 4 }
+              geometry:
+                type: object
+                properties:
+                  type: { type: string, enum: [MultiPolygon] }
+                  coordinates: { type: array, items: { type: array, items: { type: array, items: { type: array, items: { type: number } } } } }
     SiteInput:
       type: object
       required: [institutionId, name, location]
@@ -1738,6 +1977,9 @@ components:
           properties:
             id: { type: string, format: uuid }
             isDemo: { type: boolean }
+            districtName: { type: string, nullable: true }
+            territoryStatus: { type: string, enum: [pending, resolved, outside_coverage, boundary, overlap, district_mismatch] }
+            territoryVersionId: { type: string, format: uuid, nullable: true }
     CoverageInput:
       type: object
       required: [name, coordinates]
@@ -1790,6 +2032,17 @@ components:
         role: { type: string }
         institutionId: { type: string }
         siteId: { type: string }
+        siteName: { type: string, nullable: true }
+        institutionName: { type: string, nullable: true }
+        districtId: { type: integer, nullable: true }
+        memberships:
+          type: array
+          items:
+            type: object
+            properties:
+              institutionId: { type: string }
+              siteId: { type: string, nullable: true }
+              role: { type: string }
     DatabaseHealthError:
       type: object
       required: [status, database, code, message, correlationId]
@@ -1806,6 +2059,42 @@ components:
         code: { type: string, example: VALIDATION_ERROR }
         message: { type: string }
         correlationId: { type: string }
+    OwnProfile:
+      type: object
+      additionalProperties: false
+      required: [id, name, email, phone]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email, readOnly: true }
+        phone: { type: string, nullable: true, maxLength: 20 }
+    InstitutionalProfile:
+      type: object
+      additionalProperties: false
+      required: [id, name, email, phone, roles, memberships]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email, readOnly: true }
+        phone: { type: string, nullable: true, maxLength: 20 }
+        roles: { type: array, items: { type: string } }
+        memberships:
+          type: array
+          items:
+            type: object
+            required: [institutionId, institutionName, siteId, siteName, role]
+            properties:
+              institutionId: { type: string, format: uuid }
+              institutionName: { type: string }
+              siteId: { type: string, format: uuid, nullable: true }
+              siteName: { type: string, nullable: true }
+              role: { type: string }
+    PasswordChangeRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string, format: password }
+        newPassword: { type: string, format: password, minLength: 12, maxLength: 128 }
     RegisterRequest:
       type: object
       required: [name, email, password, acceptedTerms]
@@ -1890,7 +2179,10 @@ components:
         location: { $ref: '#/components/schemas/Coordinates' }
         description: { type: string, minLength: 1, maxLength: 2000 }
         callerContact: { type: string, maxLength: 20, description: Teléfono opcional visible solo para personal autorizado }
-        affectedPeople: { type: integer, minimum: 0 }
+        affectedPeople: { type: integer, minimum: 0, nullable: true, description: Cantidad total de personas afectadas }
+        isConscious: { type: boolean, nullable: true, description: Conciencia de la persona principal identificada en la descripción. Omitido o null indica desconocido }
+        isBreathing: { type: boolean, nullable: true, description: Respiración de la persona principal. Omitido o null indica desconocido }
+        hasBleeding: { type: boolean, nullable: true, description: Sangrado de la persona principal. Omitido o null indica desconocido }
         occurredAt: { type: string, format: date-time }
         clientRequestId: { type: string, maxLength: 128 }
     IncidentStatus:
@@ -1916,15 +2208,42 @@ components:
           properties:
             categoryId: { type: integer }
             subcategoryId: { type: integer, nullable: true }
+    OperationalIncidentSummary:
+      type: object
+      required: [id, reference, categoryId, categoryName, status, verificationStatus, priority, createdAt, exception]
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string }
+        categoryId: { type: integer }
+        categoryName: { type: string, nullable: true, description: Nombre de la categoría, incluidas categorías inactivas de reportes históricos. }
+        status: { $ref: '#/components/schemas/IncidentStatus' }
+        verificationStatus: { type: string }
+        priority: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        exception: { type: boolean }
     IncidentDetail:
       allOf:
         - $ref: '#/components/schemas/IncidentSummary'
         - type: object
           properties:
             description: { type: string }
+            affectedPeople: { type: integer, nullable: true, description: Cantidad total de afectados }
+            isConscious: { type: boolean, nullable: true, description: Conciencia de la persona principal indicada en la descripción }
+            isBreathing: { type: boolean, nullable: true, description: Respiración de la persona principal }
+            hasBleeding: { type: boolean, nullable: true, description: Sangrado de la persona principal }
             location: { allOf: [{ $ref: '#/components/schemas/Coordinates' }], nullable: true }
             callerContact: { type: string, nullable: true, description: Solo para roles institucionales autorizados }
             evidence: { type: array, items: { $ref: '#/components/schemas/EvidenceMetadata' } }
+            history: { type: array, items: { $ref: '#/components/schemas/CitizenHistoryEvent' } }
+    CitizenHistoryEvent:
+      type: object
+      additionalProperties: false
+      required: [eventType, previousValue, newValue, createdAt]
+      properties:
+        eventType: { type: string, enum: [created, status.changed] }
+        previousValue: { type: string, nullable: true, enum: [reported, verifying, assigned, en_route, attending, resolved, closed, null] }
+        newValue: { type: string, enum: [reported, verifying, assigned, en_route, attending, resolved, closed] }
+        createdAt: { type: string, format: date-time }
     EvidenceMetadata:
       type: object
       required: [id, mediaType, uploadedAt]
@@ -1940,9 +2259,10 @@ components:
         siteId: { type: string }
         operatorUserId: { type: string, format: uuid }
         reason: { type: string, maxLength: 1000, description: Obligatorio cuando se corrige una sugerencia }
-        unitIds: { type: array, items: { type: string }, uniqueItems: true }
-        personnelIds: { type: array, items: { type: string }, uniqueItems: true }
+        unitIds: { type: array, items: { type: string, format: uuid }, uniqueItems: true, maxItems: 30, default: [], description: Opcional. Se normaliza a una lista vacía al omitirse. null se rechaza }
+        personnelIds: { type: array, items: { type: string, format: uuid }, uniqueItems: true, maxItems: 30, default: [], description: Opcional. Se normaliza a una lista vacía al omitirse. null se rechaza }
     Assignment:
+      description: La respuesta de creación incluye unitIds y personnelIds normalizados a listas vacías cuando se omiten.
       allOf:
         - $ref: '#/components/schemas/CreateAssignmentRequest'
         - type: object
@@ -1979,6 +2299,9 @@ components:
         institutionId: { type: string }
         siteId: { type: string }
         districtId: { type: integer }
+        districtName: { type: string, nullable: true }
+        institutionName: { type: string, nullable: true }
+        siteName: { type: string, nullable: true }
         active: { type: boolean }
         isDemo: { type: boolean }
     DirectoryEntryInput:
@@ -2040,6 +2363,15 @@ components:
       properties:
         id: { type: integer }
         actorUserId: { type: string, format: uuid, nullable: true }
+        actorName: { type: string, nullable: true }
+        entityName: { type: string, nullable: true }
+        recordType: { type: string }
+        institutionName: { type: string, nullable: true }
+        siteName: { type: string, nullable: true }
+        districtId: { type: integer, nullable: true }
+        districtName: { type: string, nullable: true }
+        districtSource: { type: string, enum: [event, current_record] }
+        link: { type: string, nullable: true }
         institutionId: { type: string, format: uuid, nullable: true }
         siteId: { type: string, format: uuid, nullable: true }
         correlationId: { type: string, format: uuid, nullable: true }
@@ -2049,6 +2381,27 @@ components:
         beforeData: { type: object, nullable: true }
         afterData: { type: object, nullable: true }
         createdAt: { type: string, format: date-time }
+    PublicIncident:
+      type: object
+      additionalProperties: false
+      required: [id, reference, categoryId, districtId, status, createdAt, location]
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string }
+        categoryId: { type: integer }
+        districtId: { type: integer, nullable: true }
+        status: { type: string, enum: [reported, verifying, assigned, en_route, attending, resolved, closed] }
+        createdAt: { type: string, format: date-time }
+        location:
+          type: object
+          additionalProperties: false
+          required: [latitude, longitude, approximate, cellSizeDegrees]
+          description: Centro de una celda fija de 0,01 grados con índices limitados a celdas geográficas válidas. Se omiten coordenadas originales, precisión de captura y referencias textuales del lugar.
+          properties:
+            latitude: { type: number, minimum: -89.995, maximum: 89.995 }
+            longitude: { type: number, minimum: -179.995, maximum: 179.995 }
+            approximate: { type: boolean, enum: [true] }
+            cellSizeDegrees: { type: number, enum: [0.01] }
     HeatmapCell:
       type: object
       required: [cellId, count, latitude, longitude, cellSizeDegrees]

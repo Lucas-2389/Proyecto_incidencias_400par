@@ -18,7 +18,7 @@ integration('middleware rechaza token ausente y acceso cruzado por rol, sede y j
   const password = 'test-only-secret-value';
   const user = await registerCitizen(pool, { name: 'Operador de prueba', email, password, acceptedTerms: true });
   const [roles] = await pool.execute("SELECT id FROM roles WHERE code = 'Operador'");
-  const [sites] = await pool.execute("SELECT s.id, s.institution_id, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE");
+  const [sites] = await pool.execute("SELECT s.id, s.institution_id, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND s.name IN ('DEMO Comisaría PNP Ayacucho A', 'DEMO SAMU Ayacucho', 'DEMO Compañía de Bomberos Ayacucho n.º 63', 'DEMO Base Serenazgo Huamanga')");
   const pnp = sites.find((site) => site.type === 'pnp');
   const bomberos = sites.find((site) => site.type === 'bomberos');
   assert.ok(pnp && bomberos);

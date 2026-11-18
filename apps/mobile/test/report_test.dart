@@ -9,6 +9,14 @@ class ReportApi extends ApiClient {
   ReportApi() : super(baseUrl: 'http://example.invalid/api/v1');
   Map<String, dynamic>? lastBody;
   String? lastKey;
+  bool active = false;
+  @override
+  bool get signedIn => active;
+  void setProfile(String? id, String? phone) {
+    active = id != null;
+    user = id == null ? null : {'id': id, 'phone': phone};
+    notifyListeners();
+  }
   @override
   Future<List<Map<String, dynamic>>> list(
     String path, {
@@ -48,6 +56,31 @@ Future<void> fillReport(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('contacto autocompletado respeta edición tardía y cambio de cuenta', (tester) async {
+    final api = ReportApi()..setProfile('one', '999111222');
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: ReportScreen(api: api,
+      submissions: SubmissionService(api, ReportPending())))));
+    await tester.pumpAndSettle();
+    final contact = find.byKey(const Key('contactPhone'));
+    expect(tester.widget<TextFormField>(contact).controller!.text, '999111222');
+    await tester.enterText(contact, '');
+    api.setProfile('one', '999333444');
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextFormField>(contact).controller!.text, '');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Describe lo sucedido'), 'Borrador');
+    api.setProfile('two', '999555666');
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextFormField>(contact).controller!.text, '999555666');
+    expect(find.text('Borrador'), findsOneWidget);
+    api.setProfile(null, null);
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextFormField>(contact).controller!.text, '');
+    api.setProfile('restored', '999777888');
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextFormField>(contact).controller!.text, '999777888');
+    await tester.pumpWidget(const SizedBox.shrink());
+    api.dispose();
+  });
   testWidgets(
     'GPS concedido y referencia de calle se envían con la ubicación',
     (tester) async {

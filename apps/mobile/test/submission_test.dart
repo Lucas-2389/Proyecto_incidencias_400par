@@ -4,15 +4,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:incidencias_mobile/core/api.dart';
 import 'package:incidencias_mobile/core/pending.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MemoryPending implements PendingRepository {
   final reports = <String, PendingReport>{};
   @override
   Future<List<PendingReport>> all() async => reports.values.toList();
   @override
-  Future<void> save(PendingReport report) async { reports[report.clientRequestId] = report; }
+  Future<void> save(PendingReport report) async {
+    reports[report.clientRequestId] = report;
+  }
+
   @override
-  Future<void> remove(String clientRequestId) async { reports.remove(clientRequestId); }
+  Future<void> remove(String clientRequestId) async {
+    reports.remove(clientRequestId);
+  }
 }
 
 class FakeApi extends ApiClient {
@@ -21,14 +27,20 @@ class FakeApi extends ApiClient {
   bool failPhoto = false;
   bool authenticated = true;
   final keys = <String>[];
+  final bodies = <Map<String, dynamic>>[];
   @override
   bool get signedIn => authenticated;
   @override
-  Future<Map<String, dynamic>> submitReport(Map<String, dynamic> body, String clientRequestId) async {
+  Future<Map<String, dynamic>> submitReport(
+    Map<String, dynamic> body,
+    String clientRequestId,
+  ) async {
     keys.add(clientRequestId);
+    bodies.add(Map<String, dynamic>.from(body));
     if (offline) throw http.ClientException('offline');
     return {'id': 'incident-1', 'reference': 'AYA-1', 'status': 'reported'};
   }
+
   @override
   Future<void> uploadPhoto(String incidentId, String filePath) async {
     if (failPhoto) throw ApiException(503, 'Foto pendiente');
@@ -36,43 +48,107 @@ class FakeApi extends ApiClient {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'pendiente clínico conserva contenido y clave tras reconstruir almacenamiento',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final api = FakeApi()..offline = true;
+      final body = <String, dynamic>{
+        'categoryId': 2,
+        'subcategoryId': 20,
+        'affectedPeople': 0,
+        'isConscious': false,
+        'isBreathing': true,
+        'hasBleeding': null,
+      };
+      final report = PendingReport(
+        clientRequestId: 'clinical-stable',
+        body: body,
+      );
+      await SubmissionService(
+        api,
+        SharedPendingRepository(preferences),
+      ).submit(report);
+      final restored = SharedPendingRepository(preferences);
+      expect((await restored.all()).single.body, body);
+      api.offline = false;
+      await SubmissionService(api, restored).retryPending();
+      expect(api.keys, ['clinical-stable', 'clinical-stable']);
+      expect(api.bodies, [body, body]);
+      expect(await restored.all(), isEmpty);
+      api.dispose();
+    },
+  );
   test('invitado envía foto sin exigir inicio de sesión', () async {
     final api = FakeApi()..authenticated = false;
     final pending = MemoryPending();
     final directory = await Directory.systemTemp.createTemp('guest-photo-test');
-    final photo = await File('${directory.path}/photo.jpg').writeAsBytes([1, 2]);
+    final photo = await File(
+      '${directory.path}/photo.jpg',
+    ).writeAsBytes([1, 2]);
     try {
-      final result = await SubmissionService(api, pending).submit(PendingReport(clientRequestId: 'guest-photo', body: {'categoryId': 1}, photoPath: photo.path));
+      final result = await SubmissionService(api, pending).submit(
+        PendingReport(
+          clientRequestId: 'guest-photo',
+          body: {'categoryId': 1},
+          photoPath: photo.path,
+        ),
+      );
       expect(result.receipt?['reference'], 'AYA-1');
       expect(result.photoError, isNull);
       expect(await pending.all(), isEmpty);
-    } finally { api.dispose(); await directory.delete(recursive: true); }
+    } finally {
+      api.dispose();
+      await directory.delete(recursive: true);
+    }
   });
-  test('guarda el reporte sin red y reintenta con el mismo identificador', () async {
-    final api = FakeApi()..offline = true;
-    final pending = MemoryPending();
-    final service = SubmissionService(api, pending);
-    final report = PendingReport(clientRequestId: 'stable-uuid', body: {
-      'categoryId': 1, 'description': 'Prueba', 'location': {'latitude': -13.16, 'longitude': -74.22},
-    });
-    expect((await service.submit(report)).pending, isTrue);
-    expect((await pending.all()).single.clientRequestId, 'stable-uuid');
-    api.offline = false;
-    final result = (await service.retryPending()).single;
-    expect(result.receipt?['reference'], 'AYA-1');
-    expect(api.keys, ['stable-uuid', 'stable-uuid']);
-    expect(await pending.all(), isEmpty);
-    api.dispose();
-  });
+  test(
+    'guarda el reporte sin red y reintenta con el mismo identificador',
+    () async {
+      final api = FakeApi()..offline = true;
+      final pending = MemoryPending();
+      final service = SubmissionService(api, pending);
+      final report = PendingReport(
+        clientRequestId: 'stable-uuid',
+        body: {
+          'categoryId': 1,
+          'description': 'Prueba',
+          'location': {'latitude': -13.16, 'longitude': -74.22},
+          'callerContact': '999111222',
+        },
+      );
+      expect((await service.submit(report)).pending, isTrue);
+      expect((await pending.all()).single.clientRequestId, 'stable-uuid');
+      api.offline = false;
+      api.user = {'phone': '999333444'};
+      final result = (await service.retryPending()).single;
+      expect(result.receipt?['reference'], 'AYA-1');
+      expect(api.keys, ['stable-uuid', 'stable-uuid']);
+      expect(api.bodies.map((body) => body['callerContact']), [
+        '999111222',
+        '999111222',
+      ]);
+      expect(await pending.all(), isEmpty);
+      api.dispose();
+    },
+  );
 
   test('un error de foto conserva la referencia confirmada', () async {
     final api = FakeApi()..failPhoto = true;
     final pending = MemoryPending();
     final service = SubmissionService(api, pending);
-    final photo = await File('${Directory.systemTemp.path}/mobile-photo-test.jpg').writeAsBytes([1, 2]);
-    final result = await service.submit(PendingReport(
-      clientRequestId: 'photo-uuid', body: {'categoryId': 1}, photoPath: photo.path,
-    ));
+    final photo = await File(
+      '${Directory.systemTemp.path}/mobile-photo-test.jpg',
+    ).writeAsBytes([1, 2]);
+    final result = await service.submit(
+      PendingReport(
+        clientRequestId: 'photo-uuid',
+        body: {'categoryId': 1},
+        photoPath: photo.path,
+      ),
+    );
     expect(result.receipt?['reference'], 'AYA-1');
     expect(result.photoError, isNotNull);
     expect((await pending.all()).single.receipt?['reference'], 'AYA-1');

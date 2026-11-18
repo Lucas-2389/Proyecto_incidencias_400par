@@ -21,4 +21,15 @@ test('OpenAPI declara rutas reales y estados de despacho', () => {
   }
   assert.deepEqual(contract.components.schemas.VerifyIncidentRequest.properties.verificationStatus.enum,
     ['verified', 'unverifiable', 'false', 'duplicate']);
+  const assignment = contract.components.schemas.CreateAssignmentRequest;
+  assert.deepEqual(assignment.required, ['institutionId', 'siteId']);
+  for (const field of ['unitIds', 'personnelIds']) {
+    assert.equal(assignment.properties[field].type, 'array');
+    assert.equal(assignment.properties[field].items.format, 'uuid');
+    assert.equal(assignment.properties[field].maxItems, 30);
+    assert.equal(assignment.properties[field].uniqueItems, true);
+    assert.deepEqual(assignment.properties[field].default, []);
+  }
+  const examples = contract.paths['/ops/incidents/{id}/assignments'].post.requestBody.content['application/json'].examples;
+  assert.ok(examples.withoutResources && examples.unitsOnly && examples.personnelOnly);
 });

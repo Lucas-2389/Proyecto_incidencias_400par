@@ -2,7 +2,13 @@
 
 ## Uso actual
 
-La app abre sin registro ni inicio de sesión. **Inicio**, **Reportar**, **Mapa**, **Contactos**, **Alertas** y **Conoce la app** son las secciones disponibles. No se muestran Perfil ni Mis reportes privados. Las clases antiguas de cuenta se conservan como código legado sin rutas en la app; no se eliminan cuentas ni datos del servidor.
+Mapa, Contactos y Alertas consultan los cinco distritos metropolitanos por nombre desde `GET /territory/districts?scope=ayacucho-metropolitan`. El mapa representa los contornos de `GET /territory/districts/boundaries?scope=ayacucho-metropolitan`, destaca el distrito elegido y lo encuadra incluso sin reportes. Los límites son referenciales del INEI. Los filtros operan sobre el distrito original del reporte y los puntos publicados siguen siendo aproximados.
+
+Contactos consulta teléfonos nacionales y locales del distrito seleccionado. Guarda la última lista nacional completa y su fecha para usarla sin conexión. Una corrección, desactivación o lista nacional vacía reemplaza la copia anterior al completar la consulta. La primera apertura sin datos guardados usa los teléfonos de respaldo. Pulsar Llamar abre el marcador para confirmar la llamada. Alertas permite elegir el distrito por nombre y combina sus publicaciones locales con las generales.
+
+La app ofrece **Inicio**, **Reportar**, **Mapa**, **Contactos**, **Alertas**, **Conoce la app** y **Perfil**. Las vistas públicas están disponibles inmediatamente. La sesión guardada se recupera en segundo plano y habilita **Mis reportes**.
+
+En **Perfil** puedes registrarte o iniciar sesión. **Datos personales** permite guardar nombre y teléfono opcional. El correo se muestra como dato de consulta. El teléfono se completa en nuevos reportes y puede cambiarse o borrarse para cada envío, conservando el valor de reportes anteriores. **Seguridad** permite cambiar la contraseña con la contraseña actual y una nueva de 12 a 128 caracteres, con confirmación. Al completar el cambio debes ingresar de nuevo en tus dispositivos.
 
 1. En **Reportar**, elige categoría y describe un caso ficticio para probar el piloto.
 2. Usa GPS o marca el lugar en el mapa; añade una referencia de calle y, si deseas, un teléfono de contacto.
@@ -13,13 +19,21 @@ La app abre sin registro ni inicio de sesión. **Inicio**, **Reportar**, **Mapa*
 
 ## Seguridad
 
-No se restauran sesiones al iniciar. POST de reporte usa `auth: false` explícito. La foto utiliza un permiso temporal limitado al reporte, guardado en FlutterSecureStorage; las fotos siguen privadas. No se proporciona historial ni estado privado a un invitado. La referencia de envío no es una credencial de acceso. No hay contraseñas en el APK.
+La restauración usa el refresh token guardado en FlutterSecureStorage y carga el perfil desde la API. Los fallos transitorios permiten reintentar desde Perfil, y las credenciales invalidadas se eliminan. POST de reporte adjunta Bearer cuando existe sesión. El invitado puede enviar y adjuntar foto mediante un permiso temporal limitado al reporte. Los datos privados se autorizan en la API y se retiran de la navegación al cerrar sesión.
 
-La cuenta institucional se utiliza en la web, con autenticación y autorización del backend. Quitar el login ciudadano de la interfaz no elimina la protección de la API ni las cuentas existentes.
+La cuenta institucional se utiliza en la web con los permisos correspondientes del servidor.
 
 ## Configuración y comandos
 
-URL centralizada: `lib/core/config.dart`, producción HTTPS a `https://gestion-incidencias-200e.onrender.com/api/v1`. Desarrollo requiere `--dart-define=APP_ENV=development --dart-define=API_BASE_URL=https://<servidor>/api/v1`.
+URL centralizada en `lib/core/config.dart`. Para trabajar en local con teléfono USB se usa `http://127.0.0.1:3000/api/v1` y `APP_ENV=development`. La URL de producción es `https://gestion-incidencias-200e.onrender.com/api/v1`.
+
+Desde la raíz del repositorio, con Docker y la API local activos, ejecutar el script que comprueba la API, prepara el túnel USB y arranca Flutter con la dirección local.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\run-mobile-local.ps1
+```
+
+El script admite `-DeviceId` cuando hay varios dispositivos. La dirección `192.168.1.X` es un marcador de ejemplo y la app la rechaza. Si se cambiaron los argumentos `--dart-define`, detener la ejecución anterior e iniciar otra con el script para recompilar la configuración.
 
 ```powershell
 flutter pub get
@@ -28,6 +42,18 @@ flutter test
 flutter test --dart-define=RUN_LIVE_API=true test/live_api_test.dart
 flutter build apk --release
 ```
+
+Para el entorno local con teléfono conectado por USB, aplicar primero las migraciones de aplicación desde `apps/api` con `npm.cmd run db:migrate:app`. Desde `apps/mobile`, compilar con la API local.
+
+```powershell
+adb reverse tcp:3000 tcp:3000
+flutter build apk --debug --dart-define=APP_ENV=development --dart-define=API_BASE_URL=http://127.0.0.1:3000/api/v1
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+```
+
+Mantener el cable conectado y el puerto 3000 disponible. La base de test se prepara por separado con `npm.cmd run db:migrate:test`.
+
+Al abrir el repositorio completo en VS Code, seleccionar **Móvil local por USB** en Ejecutar y depurar. Esa configuración fija la URL local y prepara el túnel ADB antes de iniciar Flutter. Mantener la API ejecutándose con `npm.cmd start --prefix apps/api` desde la raíz del proyecto.
 
 La prueba remota optativa crea un reporte DEMO claramente identificado y sube un PNG de prueba; no borra datos. APK: `build/app/outputs/flutter-apk/app-release.apk`. La firma actual es de prueba para instalación directa, no para Google Play. No desinstalar para actualizar: usar `adb install -r` conservando pendientes.
 
@@ -38,4 +64,4 @@ Permisos Android existentes: Internet, red y ubicación. Cámara/galería se abr
 - [Diseño vigente: flujo, interfaz y fotos de invitado](../../docs/01-entrega/SDD.md).
 - [Antecedentes y resultados por versión](../../docs/04-historial/EVOLUCION_MOVIL.md).
 
-Las guías anteriores de login ciudadano describen versiones previas. Esta versión sustituye ese recorrido.
+Los artefactos `citizen-profile-and-session` describen la edición de cuenta y continuidad de sesión de esta entrega.

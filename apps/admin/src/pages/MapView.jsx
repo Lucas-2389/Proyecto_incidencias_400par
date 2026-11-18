@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { divIcon } from 'leaflet';
 import { Link } from 'react-router-dom';
 import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip, useMapEvents } from 'react-leaflet';
-import { currentRange, OSM_TILE_URL } from '../config';
+import { currentRange, OSM_TILE_URL, DISTRICT_BOUNDARIES } from '../config';
+import DistrictField from '../DistrictField';
+import DistrictBoundaries from '../DistrictBoundaries';
 import { queryString } from '../api/client';
 import { statusLabels } from '../incidentLabels';
-import { ErrorBoundaryContent, Field, Panel, useRemote } from '../ui';
+import { ErrorBoundaryContent, Field, Notice, Panel, friendlyDate, useRemote } from '../ui';
+import { mapPeriod } from '../mapPeriod';
 import 'leaflet/dist/leaflet.css';
 import '../leaflet-icons';
 
@@ -97,36 +100,62 @@ function groupNearby(incidents, zoom) {
 }
 
 export default function MapView() {
-  const [mode, setMode] = useState('operational');
-  const [zoom, setZoom] = useState(12);
-  const initial = currentRange();
-  const [from, setFrom] = useState(initial.from.slice(0, 10));
-  const [to, setTo] = useState(initial.to.slice(0, 10));
+  const [defaultRange, setDefaultRange] = useState(() => currentRange(7));
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [districtId, setDistrictId] = useState('');
+  const [revision, setRevision] = useState(0);
   const categories = useRemote('/catalog/categories');
-  const filters = queryString({ from: `${from}T00:00:00.000Z`, to: `${to}T23:59:59.000Z`, categoryId, districtId });
-  const map = useRemote(`/ops/map${filters}`);
-  const heatmap = useRemote(`/public/heatmap${filters}`);
-  const source = mode === 'operational' ? map : heatmap;
-  const categoryById = new Map((categories.data ?? []).map((item) => [item.id, item]));
+  const boundaries = useRemote(DISTRICT_BOUNDARIES);
+  const period = mapPeriod(from, to, defaultRange);
+  const filters = period.range && queryString({ ...period.range, categoryId, districtId });
+  function update() {
+    if (!from && !to) setDefaultRange(currentRange(7));
+    setRevision((value) => value + 1);
+  }
+  return <div className="page-stack">
+    <div className="page-intro"><span className="eyebrow">Territorio</span><h1>Mapa de incidencias</h1><p>Ubicaciones de los reportes y sedes de tu ámbito.</p></div>
+    <Panel title="Explorar territorio" eyebrow="Ayacucho piloto">
+      <div className="map-filters">
+        <Field label="Tipo de incidente"><select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} disabled={categories.loading}>
+          <option value="">Todos los tipos</option>{(categories.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select></Field>
+        <DistrictField value={districtId} onChange={setDistrictId} />
+        <Field label="Desde (opcional)"><input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></Field>
+        <Field label="Hasta (opcional)"><input type="date" value={to} onChange={(event) => setTo(event.target.value)} /></Field>
+      </div>
+      <div className="map-filter-footer">
+        {period.range && <p className="map-note">{!from && !to ? 'Últimos 7 días' : 'Periodo personalizado'} · {friendlyDate(period.range.from)} — {friendlyDate(new Date(new Date(period.range.to).getTime() - 1))} · Hora de Perú</p>}
+        <button className="button ghost" onClick={update} disabled={Boolean(period.error)}>Actualizar</button>
+      </div>
+      {boundaries.error && <Notice kind="error">No se pudieron cargar los límites. <button className="text-button" onClick={boundaries.reload}>Reintentar límites</button></Notice>}
+      {categories.error && <Notice kind="error">{categories.error} <button className="text-button" onClick={categories.reload}>Reintentar tipos</button></Notice>}
+      <Notice kind="error">{period.error}</Notice>
+      {period.range && <>
+        <OperationalMap key={filters} filters={filters} revision={revision} categories={categories.data ?? []} categoryId={categoryId} setCategoryId={setCategoryId} boundaries={boundaries.data} districtId={districtId} />
+      </>}
+    </Panel>
+  </div>;
+}
+
+function OperationalMap({ filters, revision, categories, categoryId, setCategoryId, boundaries, districtId }) {
+  const [zoom, setZoom] = useState(12);
+  const map = useRemote(`/ops/map${filters}`, [revision]);
+  const categoryById = new Map(categories.map((item) => [item.id, item]));
   const incidents = map.data?.incidents ?? [];
   const markerGroups = groupNearby(incidents, zoom);
   const counts = [...incidents.reduce((grouped, incident) => {
     grouped.set(incident.categoryId, (grouped.get(incident.categoryId) ?? 0) + 1);
     return grouped;
   }, new Map())].sort((a, b) => b[1] - a[1]);
-  return <div className="page-stack"><div className="page-intro"><span className="eyebrow">Territorio</span><h1>Mapa de incidencias</h1><p>Ubicaciones autorizadas y concentraciones públicas agregadas.</p></div>
-    <Panel title="Explorar territorio" eyebrow="Ayacucho piloto" action={<div className="segmented"><button className={mode === 'operational' ? 'active' : ''} onClick={() => setMode('operational')}>Operativo</button><button className={mode === 'heatmap' ? 'active' : ''} onClick={() => setMode('heatmap')}>Mapa de calor</button></div>}>
-      <div className="filters"><Field label="Desde"><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field><Field label="Hasta"><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
-        <Field label="Categoría"><select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}><option value="">Todas</option>{(categories.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
-        <Field label="Distrito ID"><input inputMode="numeric" value={districtId} onChange={(e) => setDistrictId(e.target.value)} placeholder="Todos" /></Field></div>
-      <ErrorBoundaryContent loading={source.loading} error={source.error}>
-        {mode === 'operational' && <div className="map-summary" role="status">
+  return <>
+      <ErrorBoundaryContent loading={map.loading} error={map.error}>
+        <div className="map-summary" role="status">
           <strong>{incidents.length} reporte{incidents.length === 1 ? '' : 's'} visible{incidents.length === 1 ? '' : 's'}</strong>
           <span>{incidents.filter((item) => !['resolved', 'closed'].includes(item.status)).length} en seguimiento</span>
           <span>{map.data?.sites?.length ?? 0} sedes en el mapa</span>
-        </div>}
+        </div>
         <div className="map-frame"><MapContainer
           center={[-13.16, -74.22]}
           zoom={12}
@@ -139,6 +168,7 @@ export default function MapView() {
           className="map-canvas"
         >
           <ZoomWatcher onZoomChange={setZoom} />
+          <DistrictBoundaries collection={boundaries} districtId={districtId} />
           <TileLayer
             url={OSM_TILE_URL}
             attribution="&copy; OpenStreetMap contributors"
@@ -146,7 +176,7 @@ export default function MapView() {
             maxZoom={20}
             keepBuffer={4}
           />
-          {mode === 'operational' && <>{markerGroups.map((group) => {
+          <>{markerGroups.map((group) => {
             const first = group[0];
             const category = categoryById.get(first.categoryId);
             const multiple = group.length > 1;
@@ -168,10 +198,9 @@ export default function MapView() {
               </div></Popup>
             </Marker>;
           })}
-            {(map.data?.sites ?? []).map((item) => <Circle key={item.id} center={[item.latitude, item.longitude]} radius={120} pathOptions={{ color: '#0f766e', fillColor: '#0f766e' }}><Popup>{item.name}</Popup></Circle>)}</>}
-          {mode === 'heatmap' && (heatmap.data ?? []).map((cell) => <Circle key={cell.cellId} center={[cell.latitude, cell.longitude]} radius={cell.cellSizeDegrees * 50000} pathOptions={{ color: '#e07443', fillColor: '#e07443', fillOpacity: 0.4 }}><Popup>{cell.count} reportes agregados</Popup></Circle>)}
+            {(map.data?.sites ?? []).map((item) => <Circle key={item.id} center={[item.latitude, item.longitude]} radius={120} pathOptions={{ color: '#0f766e', fillColor: '#0f766e' }}><Popup>{item.name}</Popup></Circle>)}</>
         </MapContainer></div>
-        {mode === 'operational' && <div className="map-legend" aria-label="Tipos de reportes visibles">
+        <div className="map-legend" aria-label="Tipos de reportes visibles">
           {counts.map(([id, count]) => {
             const category = categoryById.get(id);
             const { glyph, tone } = appearance(category);
@@ -183,9 +212,9 @@ export default function MapView() {
               <span>{category?.name ?? 'Incidente'}</span><strong>{count}</strong></button>;
           })}
           {!counts.length && <span>Sin reportes para estos filtros.</span>}
-        </div>}
-        {mode === 'operational' && counts.length > 0 && <p className="map-legend-help">Toca un tipo para filtrarlo. Acerca el mapa para separar reportes cercanos.</p>}
-        <p className="map-note">© OpenStreetMap contributors · {mode === 'operational' ? 'Puntos exactos limitados a tu ámbito.' : 'Celdas con al menos 3 reportes; centro de celda, sin ubicación exacta.'}</p>
+        </div>
+        {counts.length > 0 && <p className="map-legend-help">Toca un tipo para filtrarlo. Acerca el mapa para separar reportes cercanos.</p>}
+        <p className="map-note">© OpenStreetMap contributors · Límites referenciales del INEI · Puntos exactos limitados a tu ámbito.</p>
       </ErrorBoundaryContent>
-    </Panel></div>;
+    </>;
 }

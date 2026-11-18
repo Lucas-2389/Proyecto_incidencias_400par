@@ -103,9 +103,17 @@ integration('instituciones: CRUD autorizado y rechazo de Ciudadano', async () =>
     const scopedUsers = await (await userCall('', 'GET', institutionalAdminToken)).json();
     assert.ok(scopedUsers.some((row) => row.email === operatorEmail));
     assert.ok(!scopedUsers.some((row) => row.siteId === secondSite.id));
-    const changedOperator = await userCall(`/${(await operator.json()).id}`, 'PATCH', institutionalAdminToken, { status: 'inactive' });
+    const operatorRecord = await operator.json();
+    const changedOperator = await userCall(`/${operatorRecord.id}`, 'PATCH', institutionalAdminToken, { status: 'inactive' });
     assert.equal(changedOperator.status, 200);
     assert.equal((await changedOperator.json()).status, 'inactive');
+    const [[operatorRole]] = await pool.execute("SELECT id FROM roles WHERE code='Operador'");
+    await pool.execute('INSERT INTO institution_memberships (user_id, institution_id, site_id, role_id) VALUES (?, ?, ?, ?)',
+      [operatorRecord.id, institution.id, secondSite.id, operatorRole.id]);
+    assert.equal((await userCall(`/${operatorRecord.id}`, 'PATCH', institutionalAdminToken, { name: 'Cambio ajeno a la segunda sede' })).status, 403);
+    const allScopes = await userCall(`/${operatorRecord.id}`, 'PATCH', admin, { name: 'Cambio global autorizado' });
+    assert.equal(allScopes.status, 200);
+    assert.equal((await allScopes.json()).memberships.length, 2);
     const suffix = randomUUID().slice(0, 8);
     const [newDepartment] = await pool.execute('INSERT INTO departments (code, name) VALUES (?, ?)', [`TEST-${suffix}`, 'Departamento de prueba']);
     const [newProvince] = await pool.execute('INSERT INTO provinces (department_id, code, name) VALUES (?, ?, ?)', [newDepartment.insertId, `P-${suffix}`, 'Provincia de prueba']);

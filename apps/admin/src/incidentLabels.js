@@ -24,7 +24,14 @@ export function readableEvent(value) {
   if (value === 'status.changed') return 'Estado del incidente actualizado';
   if (value === 'verification.changed') return 'Verificación actualizada';
   if (value === 'access.denied') return 'Acceso no permitido';
-  const action = { post: 'Registro creado', patch: 'Registro actualizado', delete: 'Registro desactivado' }[value?.split('.').at(-1)];
-  return action ?? 'Cambio registrado';
+  const specific = {
+    'assignment.confirmed': 'Sede asignada', 'assignment.corrected': 'Derivación corregida',
+    'assignment.confirm': 'Asignación confirmada', 'assignment.override': 'Derivación corregida',
+    'duplicate.linked': 'Reporte vinculado como duplicado', 'incident.duplicate': 'Reporte vinculado como duplicado',
+    'evidence.access': 'Evidencia consultada', 'incident.priority': 'Prioridad actualizada',
+  };
+  const action = { create: 'Registro creado', post: 'Registro creado', update: 'Registro actualizado',
+    patch: 'Registro actualizado', deactivate: 'Registro desactivado', delete: 'Registro desactivado' }[value?.split('.').at(-1)];
+  return specific[value] ?? action ?? 'Evento no reconocido';
 }
 export function readableValue(value) { return statusLabels[value] ?? verificationLabels[value] ?? priorityLabels[value] ?? (value ? 'Dato actualizado' : 'Sin registro anterior'); }

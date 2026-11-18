@@ -75,6 +75,16 @@ class _ReportScreenState extends State<ReportScreen> {
     '/catalog/categories',
   );
   int? categoryId;
+  String? categoryCode;
+  int? subcategoryId;
+  int affectedChoice = -1;
+  bool? isConscious;
+  bool? isBreathing;
+  bool? hasBleeding;
+  final affectedCount = TextEditingController();
+  Future<List<Map<String, dynamic>>>? subcategories;
+  bool get hasTriage =>
+      categoryCode == 'medical_emergency' || categoryCode == 'traffic_accident';
   LatLng? point;
   double? accuracy;
   DateTime? capturedAt;
@@ -85,14 +95,224 @@ class _ReportScreenState extends State<ReportScreen> {
   String? photoError;
   bool pending = false;
   bool busy = false;
+  bool contactEdited = false;
+  String? contactIdentity;
+  @override
+  void initState() {
+    super.initState();
+    widget.api.addListener(syncContact);
+    syncContact();
+  }
+
+  void syncContact() {
+    final identity = widget.api.signedIn
+        ? (widget.api.user?['id']?.toString())
+        : null;
+    if (identity != contactIdentity) {
+      contactIdentity = identity;
+      contactEdited = false;
+      contactPhone.clear();
+    }
+    if (!contactEdited) {
+      contactPhone.text = identity == null
+          ? ''
+          : widget.api.user?['phone']?.toString() ?? '';
+    }
+  }
+
   @override
   void dispose() {
+    widget.api.removeListener(syncContact);
     description.dispose();
     contactPhone.dispose();
     locationReference.dispose();
+    affectedCount.dispose();
     map.dispose();
     super.dispose();
   }
+
+  void clearTriage() {
+    subcategoryId = null;
+    affectedChoice = -1;
+    affectedCount.clear();
+    isConscious = null;
+    isBreathing = null;
+    hasBleeding = null;
+    subcategories = null;
+  }
+
+  void loadSubcategories() {
+    subcategories = widget.api.list(
+      '/catalog/categories/$categoryId/subcategories',
+    );
+    // El builder se suscribe en el siguiente frame, incluso si la consulta falla inmediatamente.
+    subcategories!.ignore();
+  }
+
+  Widget observation(
+    String field,
+    String question,
+    bool? value,
+    ValueChanged<bool?> change,
+  ) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(question, style: Theme.of(context).textTheme.titleSmall),
+      Wrap(
+        spacing: 8,
+        children: [
+          for (final option in <bool?>[true, false, null])
+            ChoiceChip(
+              key: Key('$field-$option'),
+              label: Text(
+                option == null
+                    ? 'No sé'
+                    : option
+                    ? 'Sí'
+                    : 'No',
+              ),
+              selected: value == option,
+              onSelected: busy ? null : (_) => setState(() => change(option)),
+            ),
+        ],
+      ),
+      const SizedBox(height: 12),
+    ],
+  );
+
+  Widget triageBlock() => Card(
+    key: const Key('samuTriage'),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Cuestionario rápido para SAMU',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const Text('Opcional. Responde lo que sepas.'),
+          const SizedBox(height: 16),
+          FutureBuilder<List<Map<String, dynamic>>>(
+            key: ValueKey('subcategories-$categoryId'),
+            future: subcategories,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return TextButton(
+                  onPressed: () => setState(loadSubcategories),
+                  child: const Text('No se cargaron subtipos. Reintentar'),
+                );
+              }
+              if (!snapshot.hasData) return const LinearProgressIndicator();
+              final options = snapshot.data!
+                  .where(
+                    (item) =>
+                        item['categoryId'] == categoryId &&
+                        item['active'] != false,
+                  )
+                  .toList();
+              if (options.isEmpty) {
+                return const Text(
+                  'Sin subtipos disponibles. Puedes continuar.',
+                );
+              }
+              return DropdownButtonFormField<int>(
+                key: ValueKey('subcategory-$categoryId'),
+                initialValue: subcategoryId,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Subtipo (opcional)',
+                ),
+                items: [
+                  const DropdownMenuItem<int>(
+                    value: null,
+                    child: Text('No sé'),
+                  ),
+                  ...options.map(
+                    (item) => DropdownMenuItem(
+                      value: item['id'] as int,
+                      child: Text(item['name'] as String),
+                    ),
+                  ),
+                ],
+                onChanged: busy
+                    ? null
+                    : (value) => setState(() => subcategoryId = value),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<int>(
+            key: ValueKey('affectedChoice-$categoryId'),
+            initialValue: affectedChoice,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Personas afectadas'),
+            items: [
+              for (final count in [-1, 0, 1, 2, 3])
+                DropdownMenuItem(
+                  value: count,
+                  child: Text(
+                    count == -1
+                        ? 'No sé'
+                        : count == 3
+                        ? '3 o más'
+                        : '$count',
+                  ),
+                ),
+            ],
+            onChanged: busy
+                ? null
+                : (value) => setState(() {
+                    affectedChoice = value ?? -1;
+                    affectedCount.clear();
+                  }),
+          ),
+          if (affectedChoice == 3)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: TextFormField(
+                key: const Key('affectedCount'),
+                controller: affectedCount,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Cantidad exacta de afectados',
+                ),
+                validator: (value) {
+                  final count = int.tryParse(value?.trim() ?? '');
+                  if (count == null || count < 3 || count > 9007199254740991) {
+                    return 'Escribe un entero de 3 o más';
+                  }
+                  return null;
+                },
+              ),
+            ),
+          const SizedBox(height: 16),
+          const Text(
+            'Sobre la persona principal. Si hay varias, indica en la descripción a quién te refieres.',
+          ),
+          const SizedBox(height: 12),
+          observation(
+            'isConscious',
+            '¿Está consciente?',
+            isConscious,
+            (value) => isConscious = value,
+          ),
+          observation(
+            'isBreathing',
+            '¿Está respirando?',
+            isBreathing,
+            (value) => isBreathing = value,
+          ),
+          observation(
+            'hasBleeding',
+            '¿Tiene sangrado?',
+            hasBleeding,
+            (value) => hasBleeding = value,
+          ),
+        ],
+      ),
+    ),
+  );
 
   void choosePoint(LatLng selected, {double? accuracyMeters, DateTime? at}) {
     if (selected.latitude < -90 ||
@@ -171,6 +391,17 @@ class _ReportScreenState extends State<ReportScreen> {
       body: {
         'categoryId': categoryId,
         'description': description.text.trim(),
+        if (hasTriage) ...{
+          'subcategoryId': subcategoryId,
+          'affectedPeople': affectedChoice == -1
+              ? null
+              : affectedChoice == 3
+              ? int.parse(affectedCount.text.trim())
+              : affectedChoice,
+          'isConscious': isConscious,
+          'isBreathing': isBreathing,
+          'hasBleeding': hasBleeding,
+        },
         if (contactPhone.text.trim().isNotEmpty)
           'callerContact': contactPhone.text.trim(),
         'location': {
@@ -197,7 +428,11 @@ class _ReportScreenState extends State<ReportScreen> {
           form.currentState?.reset();
           description.clear();
           contactPhone.clear();
+          contactEdited = false;
+          syncContact();
           categoryId = null;
+          categoryCode = null;
+          clearTriage();
           point = null;
           locationReference.clear();
           accuracy = null;
@@ -313,7 +548,9 @@ class _ReportScreenState extends State<ReportScreen> {
                         );
                       }
                       return DropdownButtonFormField<int>(
+                        key: const Key('reportCategory'),
                         initialValue: categoryId,
+                        isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Categoría',
                         ),
@@ -325,14 +562,26 @@ class _ReportScreenState extends State<ReportScreen> {
                               ),
                             )
                             .toList(),
-                        onChanged: (value) =>
-                            setState(() => categoryId = value),
+                        onChanged: busy
+                            ? null
+                            : (value) => setState(() {
+                                if (value == categoryId) return;
+                                categoryId = value;
+                                categoryCode =
+                                    snapshot.data?.firstWhere(
+                                          (item) => item['id'] == value,
+                                        )['code']
+                                        as String?;
+                                clearTriage();
+                                if (hasTriage) loadSubcategories();
+                              }),
                         validator: (value) =>
                             value == null ? 'Elige una categoría' : null,
                       );
                     },
                   ),
                   const SizedBox(height: 12),
+                  if (hasTriage) triageBlock(),
                   TextFormField(
                     controller: description,
                     maxLines: 3,
@@ -349,6 +598,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   TextFormField(
                     key: const Key('contactPhone'),
                     controller: contactPhone,
+                    onChanged: (_) => contactEdited = true,
                     keyboardType: TextInputType.phone,
                     autofillHints: const [AutofillHints.telephoneNumber],
                     maxLength: 20,
@@ -481,46 +731,44 @@ class _ReportScreenState extends State<ReportScreen> {
                       ),
                     ),
                   ),
-                    OutlinedButton.icon(
-                      onPressed: () => showModalBottomSheet<void>(
-                        context: context,
-                        builder: (context) => SafeArea(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.photo_library_outlined,
-                                ),
-                                title: const Text('Elegir de galería'),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  pickPhoto(ImageSource.gallery);
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.camera_alt_outlined),
-                                title: const Text('Tomar foto'),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  pickPhoto(ImageSource.camera);
-                                },
-                              ),
-                            ],
-                          ),
+                  OutlinedButton.icon(
+                    onPressed: () => showModalBottomSheet<void>(
+                      context: context,
+                      builder: (context) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.photo_library_outlined),
+                              title: const Text('Elegir de galería'),
+                              onTap: () {
+                                Navigator.pop(context);
+                                pickPhoto(ImageSource.gallery);
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.camera_alt_outlined),
+                              title: const Text('Tomar foto'),
+                              onTap: () {
+                                Navigator.pop(context);
+                                pickPhoto(ImageSource.camera);
+                              },
+                            ),
+                          ],
                         ),
                       ),
-                      icon: const Icon(Icons.add_a_photo_outlined),
-                      label: Text(
-                        photoPath == null
-                            ? 'Adjuntar foto opcional'
-                            : 'Cambiar foto',
-                      ),
                     ),
-                    const Text(
-                      'La foto es opcional. Puedes tomarla y enviar tu reporte sin iniciar sesión.',
-                      style: TextStyle(fontSize: 12),
+                    icon: const Icon(Icons.add_a_photo_outlined),
+                    label: Text(
+                      photoPath == null
+                          ? 'Adjuntar foto opcional'
+                          : 'Cambiar foto',
                     ),
+                  ),
+                  const Text(
+                    'La foto es opcional. Puedes tomarla y enviar tu reporte sin iniciar sesión.',
+                    style: TextStyle(fontSize: 12),
+                  ),
                   const SizedBox(height: 18),
                   FilledButton.icon(
                     onPressed: busy ? null : submit,

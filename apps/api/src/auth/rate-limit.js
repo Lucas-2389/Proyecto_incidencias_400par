@@ -5,7 +5,7 @@ function createRateLimit(pool, action, { limit, windowSeconds = 900, now = () =>
   return async (req, _res, next) => {
     try {
       const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-      const origin = `${req.ip || 'unknown'}:${email}`;
+      const origin = `${req.ip || 'unknown'}:${req.auth?.user.id ?? email}`;
       const bucketHash = createHash('sha256').update(origin).digest('hex');
       const windowStart = Math.floor(now() / 1000 / windowSeconds) * windowSeconds;
       await pool.execute(

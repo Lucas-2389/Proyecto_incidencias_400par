@@ -43,7 +43,7 @@ integration('mapa, agregados y directorio verifican MySQL, ámbito y auditoría'
     return (await login(pool, { jwtSecret: secret }, { email, password })).accessToken;
   };
   const [[district]] = await pool.execute("SELECT id FROM districts WHERE code = 'DEMO-AYA-CENTRO'");
-  const [siteRows] = await pool.execute("SELECT s.id, s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND i.type IN ('pnp', 'bomberos') ORDER BY i.type");
+  const [siteRows] = await pool.execute("SELECT s.id, s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND s.name IN ('DEMO Comisaría PNP Ayacucho A', 'DEMO SAMU Ayacucho', 'DEMO Compañía de Bomberos Ayacucho n.º 63', 'DEMO Base Serenazgo Huamanga') AND i.type IN ('pnp', 'bomberos') ORDER BY i.type");
   const fireSite = siteRows[0];
   const policeSite = siteRows[1];
   const [superToken, operatorToken, otherAdminToken, citizenToken] = await Promise.all([

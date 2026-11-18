@@ -1,5 +1,48 @@
 # API técnica
 
+## Territorio metropolitano de Ayacucho
+
+`data/ayacucho-metropolitan.geojson` contiene los cinco distritos con UBIGEO 050101, 050104, 050110, 050115 y 050116 extraídos de la publicación del [INEI](https://ide.inei.gob.pe/). El paquete conserva URL, checksum SHA-256 del RAR y GeoPackage, fecha de descarga y metadato interno de actualización. La publicación descargada indica `2026-03-06T16:55:35.154Z`, mientras el portal anuncia 2023. Los límites son referenciales. Las coordenadas GeoJSON siguen el orden `[longitud, latitud]` en WGS84.
+
+Desde `apps/api`, aplicar primero las migraciones y simular la actualización.
+
+```powershell
+npm.cmd run db:migrate:test
+npm.cmd run territory:preview:test
+npm.cmd run territory:load:test
+```
+
+Los comandos `territory:preview:app` y `territory:load:app` seleccionan la base configurada de la aplicación. La simulación ejecuta las mismas comprobaciones y revierte la transacción. El informe enumera alias, clasificaciones, cambios y registros pendientes. Las ubicaciones inequívocas usan `resolved`, las exteriores `outside_coverage`, las fronteras compartidas `boundary`, los solapamientos `overlap` y las sedes con un distrito declarado discrepante `district_mismatch`.
+
+La carga reconoce los códigos DEMO conocidos, reutiliza identidades cuando corresponde y conserva alias cuando ya existe un distrito canónico. El lote guarda las asociaciones anteriores y activa cartografía y clasificación en una sola transacción. Repetir el mismo paquete devuelve `unchanged`. Para simular o aplicar la reversión del lote activo, usar respectivamente los siguientes comandos.
+
+```powershell
+node scripts/load-metropolitan-territory.js --target=test --rollback
+node scripts/load-metropolitan-territory.js --target=test --rollback --apply
+```
+
+Los nuevos incidentes creados después del lote se resuelven contra la versión restaurada. Los registros originales mantienen su identidad y sus asociaciones anteriores se recuperan. Las filas de catálogo creadas se conservan como identidades referenciables y su pertenencia al ámbito vuelve al estado anterior.
+
+`GET /api/v1/territory/districts?scope=ayacucho-metropolitan` devuelve el catálogo compartido. `GET /api/v1/territory/districts/boundaries?scope=ayacucho-metropolitan` devuelve los cinco multipolígonos, extensión por distrito, versión y procedencia. El catálogo sin `scope` conserva su consulta general y los identificadores antiguos se resuelven mediante sus alias.
+
+Para reproducir la extracción se requiere Node.js con `node:sqlite` y el GeoPackage y RAR originales.
+
+```powershell
+node scripts/extract-metropolitan-territory.js RUTA/DISTRITO.gpkg RUTA/Distrito.rar
+```
+
+La prueba `RUN_MYSQL_INTEGRATION=1 node --test test/metropolitan-territory.test.js` comprueba simulación, carga repetida, catálogo, resolución por distrito, interrupción y reversión sobre la base de pruebas.
+
+### Consultas y auditoría territorial
+
+`/ops/incidents` acepta `districtId` y el par opcional `from` y `to`, además de estado y excepción. El distrito se aplica antes del límite de la bandeja. `/admin/sites`, `/admin/directory`, `/ops/map`, `/ops/stats`, `/public/incidents` y `/public/alerts` reconocen los identificadores territoriales canónicos y sus alias de transición. El mapa institucional filtra también las sedes por distrito. La proyección pública filtra por el distrito original y conserva coordenadas aproximadas y exclusión de sensibles.
+
+`GET /admin/audit` conserva su arreglo y campos anteriores y agrega nombres autorizados, `recordType`, distrito y enlace disponible. Admite `q`, `action`, `entityType`, `entityId`, `institutionId`, `siteId`, `districtId`, `from`, `to`, `limit`, `offset` y `snapshotId`. Las acciones `create`, `update` y `deactivate` incluyen sus variantes históricas. El par de fechas admite hasta 90 días. La búsqueda se aplica a nombres y referencias permitidos antes de paginar.
+
+La primera página entrega las cabeceras `X-Audit-Snapshot` y `X-Has-More`, expuestas mediante CORS. Para recorrer el mismo conjunto, reutilizar la instantánea y variar `offset`. Las nuevas escrituras de cuentas, sedes y contactos confirman cambio y auditoría en una sola transacción. La consulta elimina secretos y distingue distrito guardado en el evento de distrito obtenido del objeto actual. Los cambios de cuenta con varias membresías comprueban todos sus ámbitos antes de editar nombre o estado.
+
+`RUN_MYSQL_INTEGRATION=1 node --test test/admin-clarity.test.js` recorre los cinco distritos con reportes móviles y telefónicos, mapas, métricas, usuarios y contactos. Comprueba una posición pública aproximada que cruza un límite real, filtrado antes de 200 resultados, páginas de auditoría, ámbitos cruzados y reversión ante fallo de auditoría.
+
 Este paquete inicia el backend Node.js + Express. Implementa las rutas técnicas y funcionales del piloto descritas en [OpenAPI](../../packages/contracts/openapi.yaml). El diseño vigente está en el [SDD](../../docs/01-entrega/SDD.md) y el procedimiento del servicio publicado en [operación Render](../../docs/02-guias/OPERACION_RENDER.md). El plan V1 original se conserva únicamente como antecedente histórico.
 
 ## Configuración de la API

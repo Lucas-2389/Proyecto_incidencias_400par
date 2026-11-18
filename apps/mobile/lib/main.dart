@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,15 +13,15 @@ Future<void> main() async {
   late final String apiBaseUrl;
   try {
     apiBaseUrl = AppConfig.apiBaseUrl;
-  } on FormatException {
-    runApp(const MaterialApp(home: Scaffold(body: Center(child: Text(
-      'Configuración de API inválida. Revisa APP_ENV y API_BASE_URL al compilar.', textAlign: TextAlign.center,
+  } on FormatException catch (issue) {
+    runApp(MaterialApp(home: Scaffold(body: Center(child: Text(
+      'Configuración de API inválida. ${issue.message}', textAlign: TextAlign.center,
     )))));
     return;
   }
   final api = ApiClient(baseUrl: apiBaseUrl);
-  // El flujo de emergencia no restaura sesiones ni exige una cuenta.
   final preferences = await SharedPreferences.getInstance();
   final pending = SharedPendingRepository(preferences);
   runApp(IncidenciasApp(api: api, pending: pending));
+  WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(api.restore()));
 }

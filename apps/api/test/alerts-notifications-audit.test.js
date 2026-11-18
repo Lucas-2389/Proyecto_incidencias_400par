@@ -41,7 +41,7 @@ integration('alertas vigentes, avisos por destinatario y auditoría por ámbito'
     users[key] = { ...user, token: (await login(pool, authConfig, { email, password })).accessToken };
   }
   const [[district]] = await pool.execute("SELECT id FROM districts WHERE code = 'DEMO-AYA-CENTRO'");
-  const [siteRows] = await pool.execute("SELECT s.id, s.institution_id AS institutionId, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND i.type IN ('pnp', 'bomberos')");
+  const [siteRows] = await pool.execute("SELECT s.id, s.institution_id AS institutionId, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND s.name IN ('DEMO Comisaría PNP Ayacucho A', 'DEMO SAMU Ayacucho', 'DEMO Compañía de Bomberos Ayacucho n.º 63', 'DEMO Base Serenazgo Huamanga') AND i.type IN ('pnp', 'bomberos')");
   const sites = new Map(siteRows.map((row) => [row.type, row]));
   await makeUser('super', 'SuperAdministrador');
   await makeUser('fireAdmin', 'AdministradorInstitucional', sites.get('bomberos').institutionId, sites.get('bomberos').id);
@@ -138,6 +138,7 @@ integration('alertas vigentes, avisos por destinatario y auditoría por ámbito'
     assert.deepEqual(cross, []);
     const adminAlertAudit = await (await request(`/admin/audit?entityId=${active.id}`, 'fireAdmin')).json();
     assert.ok(adminAlertAudit.some((entry) => entry.action === 'alert.create'));
+    assert.ok(adminAlertAudit.some((entry) => entry.actorName && entry.entityName));
     for (const status of ['attending', 'resolved', 'closed']) {
       const next = await request(`/ops/incidents/${report.id}/status`, 'operator', { method: 'PATCH',
         body: JSON.stringify({ assignmentId: assignment.id, status, note: `Paso ${status}` }) });

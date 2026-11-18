@@ -25,7 +25,7 @@ integration('verificación, estados multiinstitución, duplicados e historial co
   await pool.execute('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [actor.id, role.id]);
   const token = (await login(pool, authConfig, { email: superEmail, password })).accessToken;
   const [[category]] = await pool.execute("SELECT id FROM incident_categories WHERE code = 'traffic_accident'");
-  const [sites] = await pool.execute("SELECT s.id, s.institution_id AS institutionId, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND s.is_demo = TRUE AND i.type IN ('pnp','samu')");
+  const [sites] = await pool.execute("SELECT s.id, s.institution_id AS institutionId, i.type FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.is_demo = TRUE AND s.name IN ('DEMO Comisaría PNP Ayacucho A', 'DEMO SAMU Ayacucho', 'DEMO Compañía de Bomberos Ayacucho n.º 63', 'DEMO Base Serenazgo Huamanga') AND s.is_demo = TRUE AND i.type IN ('pnp','samu')");
   const pnp = sites.find((row) => row.type === 'pnp');
   const samu = sites.find((row) => row.type === 'samu');
   const makeIncident = async () => (await createReport(pool, { categoryId: category.id, description: 'Incidente de ciclo',
@@ -52,8 +52,18 @@ integration('verificación, estados multiinstitución, duplicados e historial co
     assert.equal(verified.status, 200);
     assert.equal((await verified.json()).priority, 'critical');
     const pnpAssignment = await (await call(`/ops/incidents/${incident.id}/assignments`, 'POST', { institutionId: pnp.institutionId, siteId: pnp.id, unitIds: [unitId] })).json();
+    for (const status of ['en_route', 'attending']) {
+      const advanced = await call(`/ops/incidents/${incident.id}/status`, 'PATCH', { assignmentId: pnpAssignment.id, status, note: 'Atención antes del refuerzo' });
+      assert.equal(advanced.status, 200);
+    }
     const samuAssignment = await (await call(`/ops/incidents/${incident.id}/assignments`, 'POST', { institutionId: samu.institutionId, siteId: samu.id })).json();
-    for (const status of ['en_route', 'attending', 'resolved']) {
+    const [[afterReinforcement]] = await pool.execute('SELECT status FROM incidents WHERE id = ?', [incident.id]);
+    assert.equal(afterReinforcement.status, 'assigned');
+    const [[preserved]] = await pool.execute('SELECT status FROM institution_assignments WHERE id = ?', [pnpAssignment.id]);
+    assert.equal(preserved.status, 'attending');
+    const [[regression]] = await pool.execute("SELECT COUNT(*) AS total FROM incident_history WHERE incident_id = ? AND event_type = 'status.changed' AND previous_value = 'attending' AND new_value = 'assigned'", [incident.id]);
+    assert.equal(regression.total, 1);
+    for (const status of ['resolved']) {
       const changed = await call(`/ops/incidents/${incident.id}/status`, 'PATCH', { assignmentId: pnpAssignment.id, status, note: `Hito ${status}` });
       assert.equal(changed.status, 200);
       assert.equal((await changed.json()).status, 'assigned');
@@ -64,6 +74,9 @@ integration('verificación, estados multiinstitución, duplicados e historial co
     for (const status of ['en_route', 'attending', 'resolved', 'closed']) {
       const changed = await call(`/ops/incidents/${incident.id}/status`, 'PATCH', { assignmentId: samuAssignment.id, status, note: `SAMU ${status}` });
       assert.equal(changed.status, 200);
+      if (status === 'resolved' || status === 'closed') {
+        assert.equal((await call(`/ops/incidents/${incident.id}/assignments`, 'POST', { institutionId: pnp.institutionId, siteId: pnp.id })).status, 409);
+      }
     }
     [[global]] = await pool.execute('SELECT status, priority, verification_status AS verificationStatus FROM incidents WHERE id = ?', [incident.id]);
     assert.equal(global.status, 'closed');
@@ -95,6 +108,12 @@ integration('verificación, estados multiinstitución, duplicados e historial co
     assert.equal(citizenDetail.operatorUserId, undefined);
     assert.equal(citizenDetail.personnelIds, undefined);
     assert.equal(citizenDetail.priority, undefined);
+    assert.equal(citizenDetail.status, 'closed');
+    assert.deepEqual(citizenDetail.history.map((event) => event.newValue),
+      ['reported', 'verifying', 'assigned', 'en_route', 'attending', 'assigned', 'en_route', 'attending', 'resolved', 'closed']);
+    for (const event of citizenDetail.history) {
+      assert.deepEqual(Object.keys(event).sort(), ['createdAt', 'eventType', 'newValue', 'previousValue']);
+    }
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await pool.end();
@@ -109,7 +128,7 @@ integration('fallo antes de auditoría revierte estado, historial, recursos y av
   const [[role]] = await pool.execute("SELECT id FROM roles WHERE code = 'SuperAdministrador'");
   await pool.execute('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [actor.id, role.id]);
   const [[category]] = await pool.execute("SELECT id FROM incident_categories WHERE code = 'traffic_accident'");
-  const [[site]] = await pool.execute("SELECT s.id, s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.type = 'pnp' AND i.is_demo = TRUE LIMIT 1");
+  const [[site]] = await pool.execute("SELECT s.id, s.institution_id AS institutionId FROM sites s JOIN institutions i ON i.id = s.institution_id WHERE i.type = 'pnp' AND i.is_demo = TRUE AND s.name IN ('DEMO Comisaría PNP Ayacucho A', 'DEMO SAMU Ayacucho', 'DEMO Compañía de Bomberos Ayacucho n.º 63', 'DEMO Base Serenazgo Huamanga') LIMIT 1");
   const receipt = (await createReport(pool, { categoryId: category.id, description: 'Rollback de estado',
     location: { latitude: -13.16, longitude: -74.22 } }, { source: 'MOBILE_APP', reporterUserId: actor.id,
     scopeType: 'user', scopeId: actor.id, key: randomUUID() })).receipt;

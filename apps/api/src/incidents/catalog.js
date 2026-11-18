@@ -5,6 +5,13 @@ const { requireAuthentication, requireRoles } = require('../auth/authorization')
 
 const families = new Set(['emergency', 'security']);
 const priorities = new Set(['low', 'normal', 'high', 'critical']);
+const institutionTypes = new Set(['pnp', 'samu', 'bomberos', 'municipalidad', 'otra']);
+
+function specialtyFilter(value) {
+  if (value === undefined) return null;
+  if (!institutionTypes.has(value)) throw new HttpError(422, 'VALIDATION_ERROR', 'Tipo institucional inválido');
+  return value;
+}
 
 function categoryInput(body, partial = false) {
   const input = requireObject(body);
@@ -48,11 +55,30 @@ function createCatalogRouter(pool, authConfig) {
   const router = express.Router();
   const admin = [requireAuthentication(pool, authConfig), requireRoles('SuperAdministrador')];
   router.get('/categories', async (req, res) => {
-    const [rows] = await pool.execute(`SELECT ${categoryColumns} FROM incident_categories WHERE active = TRUE ORDER BY family, name`);
+    const institutionType = specialtyFilter(req.query.institutionType);
+    const filter = institutionType === null ? '' : `AND EXISTS (
+      SELECT 1 FROM routing_rules rr
+      WHERE rr.category_id = incident_categories.id AND rr.active = TRUE AND rr.institution_type = ?
+        AND (rr.subcategory_id IS NULL OR EXISTS (
+          SELECT 1 FROM incident_subcategories sc WHERE sc.id = rr.subcategory_id
+            AND sc.category_id = incident_categories.id AND sc.active = TRUE)))`;
+    const [rows] = await pool.execute(
+      `SELECT ${categoryColumns} FROM incident_categories WHERE active = TRUE ${filter} ORDER BY family, name`,
+      institutionType === null ? [] : [institutionType],
+    );
     res.json(rows.map(normalize));
   });
   router.get('/categories/:id/subcategories', async (req, res) => {
-    const [rows] = await pool.execute(`SELECT ${subColumns} FROM incident_subcategories WHERE category_id = ? AND active = TRUE ORDER BY name`, [parseId(req.params.id)]);
+    const institutionType = specialtyFilter(req.query.institutionType);
+    const filter = institutionType === null ? '' : `AND EXISTS (
+      SELECT 1 FROM routing_rules rr
+      WHERE rr.category_id = incident_subcategories.category_id AND rr.active = TRUE AND rr.institution_type = ?
+        AND (rr.subcategory_id IS NULL OR rr.subcategory_id = incident_subcategories.id))`;
+    const parameters = [parseId(req.params.id)];
+    if (institutionType !== null) parameters.push(institutionType);
+    const [rows] = await pool.execute(
+      `SELECT ${subColumns} FROM incident_subcategories WHERE category_id = ? AND active = TRUE ${filter} ORDER BY name`, parameters,
+    );
     res.json(rows.map(normalize));
   });
   router.post('/categories', ...admin, async (req, res) => {

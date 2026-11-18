@@ -26,3 +26,13 @@ String formatDate(dynamic value) {
   return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year} '
       '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
 }
+
+String? validateContactPhone(String? value) {
+  final phone = value?.trim() ?? '';
+  if (phone.isEmpty) return null;
+  final digits = phone.replaceAll(RegExp(r'\D'), '');
+  if (!RegExp(r'^\+?[0-9 ()-]{7,20}$').hasMatch(phone) || digits.length < 7 || digits.length > 15) {
+    return 'Escribe un teléfono válido o deja el campo vacío';
+  }
+  return null;
+}
