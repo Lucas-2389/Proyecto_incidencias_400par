@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { divIcon } from 'leaflet';
 import { Link } from 'react-router-dom';
 import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip, useMapEvents } from 'react-leaflet';
-import { currentRange, OSM_TILE_URL } from '../config';
+import { currentRange, OSM_TILE_URL, DISTRICT_BOUNDARIES } from '../config';
+import DistrictField from '../DistrictField';
+import DistrictBoundaries from '../DistrictBoundaries';
 import { queryString } from '../api/client';
 import { statusLabels } from '../incidentLabels';
 import { ErrorBoundaryContent, Field, Notice, Panel, friendlyDate, useRemote } from '../ui';
@@ -105,8 +107,7 @@ export default function MapView() {
   const [districtId, setDistrictId] = useState('');
   const [revision, setRevision] = useState(0);
   const categories = useRemote('/catalog/categories');
-  const districts = useRemote('/territory/districts');
-  const districtNames = (districts.data ?? []).map((district) => district.name);
+  const boundaries = useRemote(DISTRICT_BOUNDARIES);
   const period = mapPeriod(from, to, defaultRange);
   const filters = period.range && queryString({ ...period.range, categoryId, districtId });
   function update() {
@@ -120,9 +121,7 @@ export default function MapView() {
         <Field label="Tipo de incidente"><select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} disabled={categories.loading}>
           <option value="">Todos los tipos</option>{(categories.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
         </select></Field>
-        <Field label="Distrito"><select value={districtId} onChange={(event) => setDistrictId(event.target.value)} disabled={districts.loading || Boolean(districts.error)}>
-          <option value="">Todos los distritos</option>{[...(districts.data ?? [])].sort((a, b) => a.name.localeCompare(b.name)).map((item) => <option key={item.id} value={item.id}>{districtNames.filter((name) => name === item.name).length > 1 ? `${item.name} (${item.code})` : item.name}</option>)}
-        </select></Field>
+        <DistrictField value={districtId} onChange={setDistrictId} />
         <Field label="Desde (opcional)"><input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></Field>
         <Field label="Hasta (opcional)"><input type="date" value={to} onChange={(event) => setTo(event.target.value)} /></Field>
       </div>
@@ -130,17 +129,17 @@ export default function MapView() {
         {period.range && <p className="map-note">{!from && !to ? 'Últimos 7 días' : 'Periodo personalizado'} · {friendlyDate(period.range.from)} — {friendlyDate(new Date(new Date(period.range.to).getTime() - 1))} · Hora de Perú</p>}
         <button className="button ghost" onClick={update} disabled={Boolean(period.error)}>Actualizar</button>
       </div>
-      {districts.error && <Notice kind="error">{districts.error} <button className="text-button" onClick={districts.reload}>Reintentar distritos</button></Notice>}
+      {boundaries.error && <Notice kind="error">No se pudieron cargar los límites. <button className="text-button" onClick={boundaries.reload}>Reintentar límites</button></Notice>}
       {categories.error && <Notice kind="error">{categories.error} <button className="text-button" onClick={categories.reload}>Reintentar tipos</button></Notice>}
       <Notice kind="error">{period.error}</Notice>
       {period.range && <>
-        <OperationalMap key={filters} filters={filters} revision={revision} categories={categories.data ?? []} categoryId={categoryId} setCategoryId={setCategoryId} />
+        <OperationalMap key={filters} filters={filters} revision={revision} categories={categories.data ?? []} categoryId={categoryId} setCategoryId={setCategoryId} boundaries={boundaries.data} districtId={districtId} />
       </>}
     </Panel>
   </div>;
 }
 
-function OperationalMap({ filters, revision, categories, categoryId, setCategoryId }) {
+function OperationalMap({ filters, revision, categories, categoryId, setCategoryId, boundaries, districtId }) {
   const [zoom, setZoom] = useState(12);
   const map = useRemote(`/ops/map${filters}`, [revision]);
   const categoryById = new Map(categories.map((item) => [item.id, item]));
@@ -169,6 +168,7 @@ function OperationalMap({ filters, revision, categories, categoryId, setCategory
           className="map-canvas"
         >
           <ZoomWatcher onZoomChange={setZoom} />
+          <DistrictBoundaries collection={boundaries} districtId={districtId} />
           <TileLayer
             url={OSM_TILE_URL}
             attribution="&copy; OpenStreetMap contributors"
@@ -214,7 +214,7 @@ function OperationalMap({ filters, revision, categories, categoryId, setCategory
           {!counts.length && <span>Sin reportes para estos filtros.</span>}
         </div>
         {counts.length > 0 && <p className="map-legend-help">Toca un tipo para filtrarlo. Acerca el mapa para separar reportes cercanos.</p>}
-        <p className="map-note">© OpenStreetMap contributors · Puntos exactos limitados a tu ámbito.</p>
+        <p className="map-note">© OpenStreetMap contributors · Límites referenciales del INEI · Puntos exactos limitados a tu ámbito.</p>
       </ErrorBoundaryContent>
     </>;
 }

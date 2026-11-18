@@ -51,45 +51,4 @@ function ResourceTable({ kind, title }) {
 
 export function Resources({ kind }) { return <div className="page-stack"><div className="page-intro"><span className="eyebrow">Administración</span><h1>{kind === 'units' ? 'Unidades' : 'Personal'}</h1><p>Recursos disponibles en tu institución y sede.</p></div><ResourceTable kind={kind} title={kind === 'units' ? 'Flota institucional' : 'Personal de atención'} /></div>; }
 
-export function Organization() {
-  const { api, session } = useSession();
-  const institutions = useRemote('/admin/institutions');
-  const sites = useRemote('/admin/sites');
-  const [name, setName] = useState('');
-  const [type, setType] = useState('pnp');
-  const [institutionId, setInstitutionId] = useState('');
-  const [siteName, setSiteName] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
-  const [error, setError] = useState('');
-  async function createInstitution(event) {
-    event.preventDefault(); setError('');
-    try { await api.request('/admin/institutions', { method: 'POST', body: JSON.stringify({ name, type }) }); setName(''); await institutions.reload(); }
-    catch (issue) { setError(issue.message); }
-  }
-  async function renameInstitution(item) {
-    const value = window.prompt('Nuevo nombre de institución', item.name);
-    if (!value || value === item.name) return;
-    try { await api.request(`/admin/institutions/${item.id}`, { method: 'PATCH', body: JSON.stringify({ name: value }) }); await institutions.reload(); }
-    catch (issue) { setError(issue.message); }
-  }
-  async function createSite(event) {
-    event.preventDefault(); setError('');
-    try { await api.request('/admin/sites', { method: 'POST', body: JSON.stringify({ institutionId, name: siteName,
-      location: { latitude: Number(latitude), longitude: Number(longitude) } }) }); setSiteName(''); await sites.reload(); }
-    catch (issue) { setError(issue.message); }
-  }
-  async function renameSite(item) {
-    const value = window.prompt('Nuevo nombre de sede', item.name);
-    if (!value || value === item.name) return;
-    try { await api.request(`/admin/sites/${item.id}`, { method: 'PATCH', body: JSON.stringify({ name: value }) }); await sites.reload(); }
-    catch (issue) { setError(issue.message); }
-  }
-  return <div className="page-stack"><div className="page-intro"><span className="eyebrow">Organización</span><h1>Instituciones y sedes</h1><p>Consulta el ámbito institucional configurado.</p></div>
-    <Notice kind="error">{error}</Notice>
-    <Panel title="Instituciones" eyebrow="Ámbito"><div className="cards">{(institutions.data ?? []).map((item) => <div className="mini-card" key={item.id}><strong>{item.name}</strong><small>{item.type} · {item.active ? 'Activa' : 'Inactiva'}</small>{session?.user?.roles?.includes('SuperAdministrador') && <button className="text-button" onClick={() => renameInstitution(item)}>Editar nombre</button>}</div>)}</div>
-      {session?.user?.roles?.includes('SuperAdministrador') && <form className="form-grid compact" onSubmit={createInstitution}><Field label="Nombre"><input required value={name} onChange={(e) => setName(e.target.value)} /></Field><Field label="Tipo"><select value={type} onChange={(e) => setType(e.target.value)}>{['pnp', 'samu', 'bomberos', 'municipalidad', 'otra'].map((value) => <option key={value}>{value}</option>)}</select></Field><button className="button primary">Agregar institución</button></form>}</Panel>
-    <Panel title="Sedes" eyebrow="Cobertura"><div className="cards">{(sites.data ?? []).map((item) => <div className="mini-card" key={item.id}><strong>{item.name}</strong><small>{item.location.latitude}, {item.location.longitude}</small><button className="text-button" onClick={() => renameSite(item)}>Editar nombre</button></div>)}</div>
-      <form className="form-grid compact" onSubmit={createSite}><Field label="Institución"><select required value={institutionId} onChange={(e) => setInstitutionId(e.target.value)}><option value="">Seleccionar</option>{(institutions.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Nombre de sede"><input required value={siteName} onChange={(e) => setSiteName(e.target.value)} /></Field><Field label="Latitud"><input required type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} /></Field><Field label="Longitud"><input required type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} /></Field><button className="button primary">Agregar sede</button></form></Panel>
-  </div>;
-}
+export { default as Organization } from './Organization';

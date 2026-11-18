@@ -6,6 +6,7 @@ import { Empty, ErrorBoundaryContent, Field, Notice, Panel, Pill, friendlyDate, 
 
 import IncidentTriage from '../IncidentTriage';
 import PriorityBadge from '../PriorityBadge';
+import DistrictField from '../DistrictField';
 import { useIncidentOperations } from '../useIncidentOperations';
 import { useDispatchOperators } from '../useDispatchOperators';
 
@@ -19,6 +20,7 @@ export function IncidentList() {
   const navigate = useNavigate();
   const [status, setStatus] = useState('');
   const [exception, setException] = useState(false);
+  const [districtId, setDistrictId] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -34,6 +36,7 @@ export function IncidentList() {
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   if (exception) params.set('exception', 'true');
+  if (districtId) params.set('districtId', districtId);
   const incidents = useRemote(`/ops/incidents?${params}`);
   async function createPhone(event) {
     event.preventDefault(); setError('');
@@ -65,7 +68,7 @@ export function IncidentList() {
         <Notice kind="error">{error}</Notice><button className="button primary">Guardar reporte</button>
       </form></Panel>}
     <Panel title="Reportes visibles" eyebrow="Bandeja" action={<button className="button ghost" onClick={incidents.reload}>Actualizar</button>}>
-      <div className="filters"><Field label="Estado"><select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">Todos</option>{statuses.map((item) => <option key={item} value={item}>{statusLabels[item]}</option>)}</select></Field>
+      <div className="filters"><DistrictField value={districtId} onChange={setDistrictId} /><Field label="Estado"><select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">Todos</option>{statuses.map((item) => <option key={item} value={item}>{statusLabels[item]}</option>)}</select></Field>
         <label className="check"><input type="checkbox" checked={exception} onChange={(e) => setException(e.target.checked)} /> Solo excepciones</label></div>
       <ErrorBoundaryContent error={incidents.error} loading={incidents.loading}>
         {incidents.data?.length ? <div className="table-wrap"><table><thead><tr><th>Incidente</th><th>Estado</th><th>Verificación</th><th>Prioridad</th><th>Fecha</th></tr></thead><tbody>
@@ -287,7 +290,11 @@ function IncidentWorkspace({ id }) {
         const assignment = assignments.find((value) => value.id === item.assignmentId);
         return <li key={item.id}><strong>{readableEvent(item.eventType)}</strong>
           {item.assignmentId && <span>{assignment ? `${institutionName(assignment.institutionId)} · ${siteName(assignment.siteId)}` : 'Atención institucional'}</span>}
-          <span>{readableValue(item.previousValue)} → {readableValue(item.newValue)}</span><small>{friendlyDate(item.createdAt)} · {item.note}</small>
+          {['status.changed', 'assignment.status', 'incident.status', 'verification', 'verification.changed', 'incident.verification', 'priority', 'incident.priority'].includes(item.eventType)
+            && <span>{readableValue(item.previousValue)} → {readableValue(item.newValue)}</span>}
+          {item.eventType === 'duplicate.linked' && <span>{item.linkedIncidentReference ? `Reporte principal ${item.linkedIncidentReference}` : 'Referencia del reporte principal no disponible'}</span>}
+          <small>{friendlyDate(item.createdAt)}{item.actorName ? ` · ${item.actorName}` : ''}{item.note ? ` · ${item.note}` : ''}</small>
+          {readableEvent(item.eventType) === 'Evento no reconocido' && <details><summary>Referencia técnica</summary><code>{item.eventType}</code></details>}
         </li>;
       })}</ol> : <Empty>Los cambios del reporte aparecerán aquí cuando comience su atención.</Empty>}
     </Panel>

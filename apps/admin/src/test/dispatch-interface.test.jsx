@@ -7,7 +7,7 @@ import IncidentLocation from '../IncidentLocation';
 import { mapPeriod } from '../mapPeriod';
 import { useIncidentOperations } from '../useIncidentOperations';
 
-const { api } = vi.hoisted(() => ({ api: { request: vi.fn() } }));
+const { api, map } = vi.hoisted(() => ({ api: { request: vi.fn() }, map: { fitBounds: vi.fn() } }));
 vi.mock('../session', () => ({ useSession: () => ({ api }) }));
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children, center }) => <div role="img" aria-label="Mapa" data-center={center.join(',')}>{children}</div>,
@@ -15,6 +15,8 @@ vi.mock('react-leaflet', () => ({
   Tooltip: ({ children }) => <span>{children}</span>, Circle: () => null,
   TileLayer: ({ eventHandlers }) => <button onClick={() => eventHandlers?.tileerror()}>Simular fallo cartográfico</button>,
   useMapEvents: () => ({}),
+  useMap: () => map,
+  GeoJSON: ({ data }) => <span data-testid="district-boundary">{data.properties.name}</span>,
 }));
 
 let incident;
@@ -27,6 +29,8 @@ const sites = [
   { id: 'site-b', institutionId: 'institution-b', name: 'Base SAMU', active: true },
 ];
 const defaultRange = { from: '2026-11-09T20:00:00.000Z', to: '2026-11-16T20:00:00.000Z' };
+const metropolitanDistricts = ['Ayacucho', 'Carmen Alto', 'San Juan Bautista', 'Jesús Nazareno', 'Andrés Avelino Cáceres Dorregaray']
+  .map((name, index) => ({ id: index + 7, name }));
 
 beforeEach(() => {
   incident = { id: 'incident-1', reference: 'DEMO-001', categoryId: 1, subcategoryId: 2, status: 'reported', priority: 'high',
@@ -63,7 +67,10 @@ beforeEach(() => {
     if (path === '/admin/institutions') return [{ id: 'institution-a', name: 'Bomberos' }, { id: 'institution-b', name: 'SAMU' }];
     if (path === '/catalog/categories') return [{ id: 1, name: 'Accidente', code: 'traffic_accident' }];
     if (path.endsWith('/subcategories')) return [{ id: 2, name: 'Lesiones múltiples' }];
-    if (path === '/territory/districts') return [{ id: 7, code: '050101', name: 'Ayacucho' }];
+    if (path.startsWith('/territory/districts/boundaries')) return { type: 'FeatureCollection', features: metropolitanDistricts.map((district) => (
+      { type: 'Feature', properties: district, bbox: [-74.3, -13.2, -74.2, -13.1], geometry: { type: 'MultiPolygon', coordinates: [] } }
+    )) };
+    if (path.startsWith('/territory/districts?')) return metropolitanDistricts;
     if (path.startsWith('/ops/map')) return { incidents: [{ id: 'incident-1', reference: 'DEMO-001', categoryId: 1, latitude: -13.16, longitude: -74.22, status: 'reported' }], sites: [] };
     throw new Error(`Ruta inesperada ${path}`);
   });
@@ -248,6 +255,33 @@ it('presenta filtros de mapa ordenados y transmite tipo y distrito', async () =>
   expect(screen.getByRole('link', { name: 'Ver detalle →' })).toHaveAttribute('href', '/incidentes/incident-1');
 });
 
+it('recupera los cinco contornos y permite seleccionar un distrito sin reportes', async () => {
+  const original = api.request.getMockImplementation();
+  let failed = true;
+  api.request.mockImplementation((path, options) => {
+    if (path.startsWith('/territory/districts/boundaries') && failed) return Promise.reject(new Error('Sin cartografía'));
+    if (path.startsWith('/ops/map')) return Promise.resolve({ incidents: [], sites: [] });
+    return original(path, options);
+  });
+  render(<MemoryRouter><MapView /></MemoryRouter>);
+  await screen.findByRole('button', { name: 'Reintentar límites' });
+  failed = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Reintentar límites' }));
+  await waitFor(() => expect(screen.getAllByTestId('district-boundary')).toHaveLength(5));
+  const selector = screen.getByRole('combobox', { name: 'Distrito' });
+  selector.focus();
+  expect(selector).toHaveFocus();
+  for (const district of metropolitanDistricts) {
+    expect(within(selector).getByRole('option', { name: district.name })).toBeInTheDocument();
+  }
+  fireEvent.change(selector, { target: { value: '11' } });
+  await screen.findByText('Sin reportes para estos filtros.');
+  expect(screen.getAllByTestId('district-boundary')).toHaveLength(5);
+  expect(map.fitBounds).toHaveBeenCalled();
+  fireEvent.change(selector, { target: { value: '' } });
+  await waitFor(() => expect(api.request.mock.calls.filter(([path]) => path.startsWith('/ops/map')).at(-1)[0]).not.toContain('districtId='));
+});
+
 it('usa días de Perú completos y valida fechas opcionales y límite', () => {
   expect(mapPeriod('', '', defaultRange).range).toBe(defaultRange);
   expect(mapPeriod('2026-11-16', '2026-11-16', defaultRange).range).toEqual({ from: '2026-11-16T05:00:00.000Z', to: '2026-11-17T05:00:00.000Z' });
@@ -261,7 +295,7 @@ it('recupera un catálogo territorial fallido y evita consultas de fechas incomp
   const original = api.request.getMockImplementation();
   let failDistricts = true;
   api.request.mockImplementation((path, options) => {
-    if (path === '/territory/districts' && failDistricts) return Promise.reject(new Error('Catálogo temporalmente no disponible'));
+    if (path.startsWith('/territory/districts?') && failDistricts) return Promise.reject(new Error('Catálogo temporalmente no disponible'));
     return original(path, options);
   });
   render(<MemoryRouter><MapView /></MemoryRouter>);
@@ -332,4 +366,18 @@ it('descarta una lectura anterior tras una recarga forzada', async () => {
   await act(async () => { await view.result.current.reload({ force: true }); });
   await act(async () => { resolveOld({ ...incident, status: 'reported' }); });
   expect(view.result.current.detail.status).toBe('assigned');
+});
+
+it('el historial describe creación y duplicado con sus datos pertinentes', async () => {
+  history = [
+    { id: 1, eventType: 'created', newValue: 'reported', createdAt: '2026-11-16T12:00:00Z' },
+    { id: 2, eventType: 'duplicate.linked', newValue: 'private-id', linkedIncidentReference: 'INC-PRINCIPAL', createdAt: '2026-11-16T12:01:00Z' },
+    { id: 3, eventType: 'legacy.note', createdAt: '2026-11-16T12:02:00Z' },
+  ];
+  renderDetail();
+  await screen.findByText('Reporte principal INC-PRINCIPAL');
+  const timeline = screen.getByRole('heading', { name: 'Historial' }).closest('section');
+  expect(within(timeline).getByText('Reporte recibido')).toBeInTheDocument();
+  expect(within(timeline).queryByText(/Dato actualizado|→/)).not.toBeInTheDocument();
+  expect(within(timeline).getByText('Evento no reconocido')).toBeInTheDocument();
 });

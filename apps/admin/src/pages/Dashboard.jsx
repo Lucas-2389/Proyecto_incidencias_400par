@@ -5,15 +5,20 @@ import { queryString } from '../api/client';
 import { Empty, ErrorBoundaryContent, Panel, Pill, useRemote } from '../ui';
 import { statusLabels } from '../incidentLabels';
 import PriorityBadge from '../PriorityBadge';
+import DistrictField from '../DistrictField';
 
 export default function Dashboard() {
   const [range] = useState(() => currentRange());
-  const stats = useRemote(`/ops/stats${queryString(range)}`);
-  const incidents = useRemote('/ops/incidents');
+  const [districtId, setDistrictId] = useState('');
+  const filters = queryString({ ...range, districtId });
+  const stats = useRemote(`/ops/stats${filters}`);
+  const incidents = useRemote(`/ops/incidents${filters}`);
   const total = stats.data?.total ?? 0;
   return <div className="page-stack">
     <div className="page-intro"><span className="eyebrow">Vista general</span><h1>Centro de operaciones</h1><p>Revisa los reportes, identifica los que necesitan atención y coordina la respuesta de tu institución.</p></div>
     <nav className="quick-actions" aria-label="Acciones frecuentes"><Link to="/incidentes"><strong>Revisar reportes →</strong><span>Consulta la bandeja y abre un caso para atenderlo.</span></Link><Link to="/mapa"><strong>Ubicar reportes →</strong><span>Consulta los lugares y filtra los tipos de emergencia.</span></Link></nav>
+    <DistrictField value={districtId} onChange={setDistrictId} />
+    <p className="map-note">Últimos siete días · Distrito seleccionado · Hora de Perú</p>
     <ErrorBoundaryContent error={stats.error} loading={stats.loading}>
       <div className="metric-grid">
         <div className="metric"><span>Incidentes</span><strong>{total}</strong><small>En tu ámbito</small></div>

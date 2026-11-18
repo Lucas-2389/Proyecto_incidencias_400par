@@ -31,7 +31,7 @@ function Shell({ children }) {
     ['/incidentes', '▤', 'Incidentes', operational],
     ['/mapa', '◎', 'Mapa', operational],
     ['/instituciones', '▣', 'Instituciones', administrative],
-    ['/directorio', '☎', 'Directorio', administrative],
+    ['/directorio', '☎', 'Contactos de emergencia', administrative],
     ['/historial', '↺', 'Historial', administrative],
   ];
   return <div className="app-shell"><aside className="sidebar"><Link className="brand" to="/"><span className="brand-symbol"><img src="/logo.png" alt="" /></span><span><strong>Centro de<br />operaciones</strong><small>Gestión de incidencias</small></span></Link>

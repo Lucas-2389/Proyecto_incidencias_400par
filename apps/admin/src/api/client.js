@@ -22,12 +22,14 @@ export function createApiClient({ baseUrl = API_BASE_URL, fetchImpl = fetch, onS
     if (version !== sessionVersion) throw new ApiError(401, { code: 'SESSION_CHANGED', message: 'La sesión ha cambiado' });
   };
   const raw = async (path, options = {}, token = null) => {
+    const { onResponse, ...fetchOptions } = options;
     const headers = { ...(options.body && !(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers };
-    const response = await fetchImpl(`${baseUrl}${path}`, { ...options, headers });
+    const response = await fetchImpl(`${baseUrl}${path}`, { ...fetchOptions, headers });
     if (response.status === 204) return null;
     const body = await response.json().catch(() => null);
     if (!response.ok) throw new ApiError(response.status, body);
+    onResponse?.(response);
     return body;
   };
   const refresh = async () => {

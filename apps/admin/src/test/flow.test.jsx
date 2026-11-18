@@ -130,6 +130,7 @@ it('superadministrador confirma dos instituciones sobre el mismo accidente', asy
   await screen.findByRole('navigation', { name: 'Navegación principal' });
   expect(screen.queryByRole('link', { name: /Unidades|Personal/ })).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Instituciones/ })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Contactos de emergencia/ })).toHaveAttribute('href', '/directorio');
   fireEvent.click(screen.getByRole('link', { name: /Incidentes/ }));
   await screen.findByText('DEMO-AY-001');
   fireEvent.click(screen.getByRole('link', { name: /Incendio.*DEMO-AY-001/ }));
