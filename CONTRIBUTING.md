@@ -6,6 +6,18 @@ Repositorio: https://github.com/Lucas-2389/Proyecto_incidencias_400par
 
 Sigue [la instalación para un compañero](docs/02-guias/COLABORACION.md). Cada desarrollador usa sus propios `.env`, MySQL local y contraseñas. No necesitas acceso a Render, Aiven ni Cloudinary de producción para comenzar. No hay `package.json` raíz: ejecuta npm con `--prefix` para cada aplicación.
 
+La primera instalación incluye configuración privada, dependencias, migraciones, carga de los cinco distritos y seed DEMO. No repetir esos pasos en cada arranque. En PowerShell usar `npm.cmd` para evitar restricciones sobre `npm.ps1`.
+
+Con la instalación lista, desde la raíz:
+
+| Terminal | Comandos |
+| --- | --- |
+| 1: MySQL y API | `docker compose up -d mysql`, comprobar `docker compose ps` hasta ver `healthy`, después `npm.cmd start --prefix apps/api`. |
+| 2: panel | `npm.cmd run dev --prefix apps/admin -- --strictPort`. Abrir `http://127.0.0.1:5173/login`. |
+| 3: móvil USB, opcional | `powershell -ExecutionPolicy Bypass -File .\scripts\run-mobile-local.ps1`, con teléfono autorizado y API activa. |
+
+Comprobar `http://127.0.0.1:3000/api/health/database` antes de probar reportes. API y panel mantienen sus terminales abiertas. Ctrl+C los detiene; no borrar el volumen MySQL para cerrar la jornada. Consultar [actualización del clon](docs/02-guias/COLABORACION.md#8-actualizar-el-clon-después-del-trabajo-del-compañero) al recibir migraciones, dependencias o variables nuevas.
+
 ## Una rama por cambio
 
 ```powershell
@@ -29,7 +41,7 @@ Abrir un Pull Request hacia `main` y pedir revisión al compañero. No usar `git
 
 ## SDD y OpenSpec
 
-Leer primero el [SRS](docs/01-entrega/SRS.md), después el [SDD](docs/01-entrega/SDD.md), el [contrato](packages/contracts/openapi.yaml) y las specs del cambio seleccionado. Registrar requisitos, comportamiento verificable y diseño antes de implementar nuevas capacidades. Las tareas pertenecen a OpenSpec, fuera del SDD: marcar únicamente trabajo ejecutado y comprobado. No archivar cambios pendientes.
+Leer primero el [SRS](docs/01-entrega/SRS.md), después el [SDD](docs/01-entrega/SDD.md), el [contrato](packages/contracts/openapi.yaml) y las specs del cambio seleccionado. Registrar requisitos, comportamiento verificable y diseño antes de implementar nuevas capacidades. Las tareas pertenecen a OpenSpec, fuera del SDD: marcar únicamente trabajo ejecutado y comprobado. Completar las verificaciones antes del archivo; si el responsable autoriza archivar con pendientes, conservarlos explícitos y acordar su seguimiento.
 
 ```powershell
 openspec list --json
@@ -42,10 +54,10 @@ No iniciar todavía el escalamiento como parte de esta preparación. Las áreas 
 ## Comprobaciones del PR
 
 ```powershell
-npm --prefix apps/admin run build
-npm --prefix apps/api test
-npm --prefix apps/api run contract:check
-npm --prefix apps/admin test
+npm.cmd --prefix apps/admin run build
+npm.cmd --prefix apps/api test
+npm.cmd --prefix apps/api run contract:check
+npm.cmd --prefix apps/admin test
 git diff --check
 ```
 
