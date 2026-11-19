@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useSession } from '../session';
-import { priorityLabels, readableEvent, readableValue, sourceLabels, statusLabels, verificationLabels } from '../incidentLabels';
+import { priorityLabels, readableEvent, readableValue, sourceLabels, statusLabels, verificationLabels, unitLabels } from '../incidentLabels';
+import { queryString } from '../api/client';
 import { Empty, ErrorBoundaryContent, Field, Notice, Panel, Pill, friendlyDate, useRemote } from '../ui';
 
 import IncidentTriage from '../IncidentTriage';
@@ -16,11 +17,14 @@ const statuses = ['reported', 'verifying', 'assigned', 'en_route', 'attending', 
 const nextStatus = { reported: 'verifying', assigned: 'en_route', en_route: 'attending', attending: 'resolved', resolved: 'closed' };
 
 export function IncidentList() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { api, session } = useSession();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('');
+  const status = searchParams.get('status') || '';
+  const setStatus = value => setSearchParams(current => { const next = new URLSearchParams(current); if (value) next.set('status', value); else next.delete('status'); return next; });
   const [exception, setException] = useState(false);
-  const [districtId, setDistrictId] = useState('');
+  const districtId = searchParams.get('districtId') || '';
+  const setDistrictId = value => setSearchParams(current => { const next = new URLSearchParams(current); if (value) next.set('districtId', value); else next.delete('districtId'); return next; });
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -34,6 +38,7 @@ export function IncidentList() {
   const sites = useRemote('/admin/sites');
   const institutions = useRemote('/admin/institutions');
   const params = new URLSearchParams();
+  for (const field of ['from', 'to']) if (searchParams.get(field)) params.set(field, searchParams.get(field));
   if (status) params.set('status', status);
   if (exception) params.set('exception', 'true');
   if (districtId) params.set('districtId', districtId);
@@ -68,7 +73,7 @@ export function IncidentList() {
         <Notice kind="error">{error}</Notice><button className="button primary">Guardar reporte</button>
       </form></Panel>}
     <Panel title="Reportes visibles" eyebrow="Bandeja" action={<button className="button ghost" onClick={incidents.reload}>Actualizar</button>}>
-      <div className="filters"><DistrictField value={districtId} onChange={setDistrictId} /><Field label="Estado"><select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">Todos</option>{statuses.map((item) => <option key={item} value={item}>{statusLabels[item]}</option>)}</select></Field>
+      <div className="filters"><DistrictField value={districtId} onChange={setDistrictId} /><Field label="Estado"><select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">Todos</option><option value="in_progress">En atención (asignados o en curso)</option>{statuses.map((item) => <option key={item} value={item}>{statusLabels[item]}</option>)}</select></Field>
         <label className="check"><input type="checkbox" checked={exception} onChange={(e) => setException(e.target.checked)} /> Solo excepciones</label></div>
       <ErrorBoundaryContent error={incidents.error} loading={incidents.loading}>
         {incidents.data?.length ? <div className="table-wrap"><table><thead><tr><th>Incidente</th><th>Estado</th><th>Verificación</th><th>Prioridad</th><th>Fecha</th></tr></thead><tbody>
@@ -102,6 +107,12 @@ function IncidentWorkspace({ id }) {
   const sites = useRemote('/admin/sites');
   const institutions = useRemote('/admin/institutions');
   const [siteId, setSiteId] = useState('');
+  const [resourcesOpen, setResourcesOpen] = useState(false);
+  const units = useRemote(siteId && resourcesOpen ? `/resources/units${queryString({ siteId })}` : null);
+  const people = useRemote(siteId && resourcesOpen ? `/resources/personnel${queryString({ siteId })}` : null);
+  const [unitIds, setUnitIds] = useState([]);
+  const [personnelIds, setPersonnelIds] = useState([]);
+  const [lastSaved, setLastSaved] = useState(null);
   const [operatorId, setOperatorId] = useState('');
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
@@ -144,6 +155,8 @@ function IncidentWorkspace({ id }) {
   function chooseSite(value) {
     setSiteId(value);
     setOperatorId('');
+    setUnitIds([]); setPersonnelIds([]);
+    setResourcesOpen(false);
     setReason('');
   }
   async function perform(key, path, body, { method = 'POST', collapse = false } = {}) {
@@ -156,14 +169,17 @@ function IncidentWorkspace({ id }) {
       await api.request(path, { method, body: JSON.stringify(body) });
       if (!mounted.current) return;
       setSuccess('Cambio guardado.');
+      setLastSaved(key);
       if (collapse) setControlOpen(false);
       await operations.reload({ force: true });
       if (mounted.current) await suggestions.reload();
+      if (mounted.current && key === 'dispatch') { setUnitIds([]); setPersonnelIds([]); await Promise.all([units.reload(), people.reload()]); }
     } catch (issue) {
       if (!mounted.current) return;
       setError(issue.status === 409 ? `La atención cambió. ${issue.message} Revisa los datos actualizados antes de confirmar.` : issue.message);
       if (collapse) setControlOpen(true);
       if (issue.status === 409) await operations.reload({ force: true });
+      if (mounted.current && key === 'dispatch' && issue.status === 409) await Promise.all([units.reload(), people.reload()]);
     } finally {
       pendingActions.current.delete(key);
       if (mounted.current) setPending((value) => ({ ...value, [key]: false }));
@@ -172,8 +188,14 @@ function IncidentWorkspace({ id }) {
   async function assign(event) {
     event.preventDefault();
     if (!selectedSite) return setError('Selecciona una sede.');
+    if (unitIds.some(id => !units.data?.some(unit => unit.id === id && unit.siteId === siteId && unit.status === 'available'))
+      || personnelIds.some(id => !people.data?.some(person => person.id === id && person.siteId === siteId && person.active && person.available !== false))) {
+      setError('Cambió la disponibilidad. Actualiza y vuelve a seleccionar los recursos de esta sede.');
+      setUnitIds([]); setPersonnelIds([]); return;
+    }
     await perform('dispatch', `/ops/incidents/${id}/assignments`, {
       institutionId: selectedSite.institutionId, siteId, operatorUserId: operatorId || null, reason: recommended ? null : reason,
+      ...(unitIds.length ? { unitIds } : {}), ...(personnelIds.length ? { personnelIds } : {}),
     });
   }
   const siteName = (value) => sites.data?.find((site) => site.id === value)?.name ?? 'Sede no disponible';
@@ -218,10 +240,12 @@ function IncidentWorkspace({ id }) {
       <section className="panel incident-control-panel" aria-labelledby="incident-control-title">
         <div className="panel-heading">
           <h2 id="incident-control-title">Control · Verificar y priorizar</h2>
+          {lastSaved === 'verification' && <span className="saved-badge" role="status">✓ Verificación guardada</span>}
           <button className="button ghost" aria-expanded={controlOpen} aria-controls="incident-control" onClick={() => setControlOpen((value) => !value)}>{controlOpen ? 'Replegar control' : 'Abrir control'}</button>
         </div>
         <div id="incident-control" hidden={!controlOpen}>
-          <form className="incident-control-form" onSubmit={(event) => {
+          <p>Iniciar verificación indica que estás revisando el reporte. Guardar verificación registra tu conclusión y prioridad; ninguna de estas acciones envía recursos. En Motivo explica qué comprobaste.</p>
+          <form className="incident-control-form" onChange={() => setLastSaved(null)} onSubmit={(event) => {
             event.preventDefault();
             const selectedPriority = priority ?? incident.priority;
             perform('verification', `/ops/incidents/${id}/verification`, {
@@ -235,7 +259,7 @@ function IncidentWorkspace({ id }) {
             </select></Field>
             <Field label="Motivo"><input required maxLength={1000} value={note} onChange={(event) => setNote(event.target.value)} /></Field>
             <div className="incident-control-actions">
-              <button className="button secondary" disabled={controlPending}>Guardar verificación</button>
+              <button className={`button ${lastSaved === 'verification' ? 'saved' : 'secondary'}`} disabled={controlPending}>Guardar verificación</button>
               {incident.status === 'reported' && <button type="button" className="button ghost" disabled={controlPending} onClick={() => perform('startVerification', `/ops/incidents/${id}/status`, { status: 'verifying', note }, { method: 'PATCH', collapse: true })}>Iniciar verificación</button>}
             </div>
           </form>
@@ -267,7 +291,30 @@ function IncidentWorkspace({ id }) {
             {selectedOperators?.error && <Notice kind="error">{selectedOperators.error} <button type="button" className="text-button" onClick={() => operators.retry(siteId)}>Reintentar operadores</button></Notice>}
             {selectedOperators && !selectedOperators.error && selectedOperators.data.length === 0 && <p>Esta sede no tiene operadores activos. Puedes confirmar con operador pendiente.</p>}
             {!recommended && <Field label="Motivo de corrección"><textarea required maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} /></Field>}
-            <div className="dispatch-actions"><button className="button primary" disabled={pending.dispatch || !siteId || assignments.some((item) => item.siteId === siteId)}>Confirmar asignación</button></div>
+            {siteId && <div className="dispatch-resource-picker">
+              <button type="button" className="button ghost" aria-expanded={resourcesOpen} onClick={() => setResourcesOpen(!resourcesOpen)}>{resourcesOpen ? 'Replegar recursos' : 'Elegir unidades y personal'}</button>
+              {resourcesOpen && <>
+              <strong>Recursos de la sede (opcionales)</strong><p>Los recursos ocupados no pueden seleccionarse. El servidor comprueba su disponibilidad otra vez al confirmar.</p>
+              {(units.loading || people.loading) && <p role="status">Actualizando disponibilidad…</p>}
+              <Notice kind="error">{units.error || people.error}</Notice>
+              <button type="button" className="text-button" onClick={() => Promise.all([units.reload(), people.reload()])}>Actualizar disponibilidad</button>
+              <fieldset disabled={pending.dispatch || units.loading || people.loading}><legend>Unidades</legend>
+                {(units.data ?? []).filter(unit => unit.siteId === siteId).map(unit => <label className="resource-choice" key={unit.id}>
+                  <input type="checkbox" checked={unitIds.includes(unit.id)} disabled={unit.status !== 'available'} onChange={event => setUnitIds(current => event.target.checked ? [...current, unit.id] : current.filter(id => id !== unit.id))} />
+                  {unit.code} · {unit.type} · {unitLabels[unit.status] ?? 'No disponible'}
+                </label>)}
+                {!units.loading && !(units.data ?? []).some(unit => unit.siteId === siteId) && <p>Esta sede no tiene unidades registradas.</p>}
+              </fieldset>
+              <fieldset disabled={pending.dispatch || people.loading || units.loading}><legend>Personal</legend>
+                {(people.data ?? []).filter(person => person.siteId === siteId).map(person => <label className="resource-choice" key={person.id}>
+                  <input type="checkbox" checked={personnelIds.includes(person.id)} disabled={!person.active || person.available === false} onChange={event => setPersonnelIds(current => event.target.checked ? [...current, person.id] : current.filter(id => id !== person.id))} />
+                  {person.name} · {!person.active ? 'Inactivo' : person.available === false ? 'En otra atención' : 'Disponible'}
+                </label>)}
+                {!people.loading && !(people.data ?? []).some(person => person.siteId === siteId) && <p>Esta sede no tiene personal registrado.</p>}
+              </fieldset>
+              </>}
+            </div>}
+            <div className="dispatch-actions"><button className={`button ${lastSaved === 'dispatch' ? 'saved' : 'primary'}`} disabled={pending.dispatch || !siteId || assignments.some((item) => item.siteId === siteId) || ((unitIds.length > 0 || personnelIds.length > 0) && (units.loading || people.loading || Boolean(units.error || people.error)))}>Confirmar asignación</button></div>
           </form>
         </div> : <p>El incidente está finalizado.</p>}
       </Panel>

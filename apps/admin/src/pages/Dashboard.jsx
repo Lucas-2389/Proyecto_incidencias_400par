@@ -21,10 +21,10 @@ export default function Dashboard() {
     <p className="map-note">Últimos siete días · Distrito seleccionado · Hora de Perú</p>
     <ErrorBoundaryContent error={stats.error} loading={stats.loading}>
       <div className="metric-grid">
-        <div className="metric"><span>Incidentes</span><strong>{total}</strong><small>En tu ámbito</small></div>
-        <div className="metric"><span>En atención</span><strong>{(stats.data?.byStatus?.assigned ?? 0) + (stats.data?.byStatus?.en_route ?? 0) + (stats.data?.byStatus?.attending ?? 0)}</strong><small>Asignados o en curso</small></div>
-        <div className="metric"><span>Cerrados</span><strong>{stats.data?.byStatus?.closed ?? 0}</strong><small>Últimos 7 días</small></div>
-        <div className="metric"><span>Tiempo de asignación</span><strong>{stats.data?.averageAssignmentMinutes == null ? '—' : `${stats.data.averageAssignmentMinutes} min`}</strong><small>Promedio del ámbito</small></div>
+        <Link className="metric metric-link" to={`/incidentes${filters}`}><span>Incidentes</span><strong>{total}</strong><small>Ver reportes del periodo →</small></Link>
+        <Link className="metric metric-link" to={`/incidentes${filters}&status=in_progress`}><span>En atención</span><strong>{(stats.data?.byStatus?.assigned ?? 0) + (stats.data?.byStatus?.en_route ?? 0) + (stats.data?.byStatus?.attending ?? 0)}</strong><small>Ver asignados o en curso →</small></Link>
+        <Link className="metric metric-link" to={`/incidentes${filters}&status=closed`}><span>Cerrados</span><strong>{stats.data?.byStatus?.closed ?? 0}</strong><small>Ver cierres del periodo →</small></Link>
+        <Link className="metric metric-link" to={`/incidentes${filters}&status=in_progress`}><span>Tiempo de asignación</span><strong>{stats.data?.averageAssignmentMinutes == null ? '—' : `${stats.data.averageAssignmentMinutes} min`}</strong><small>Promedio · Ver atenciones →</small></Link>
       </div>
     </ErrorBoundaryContent>
     <Panel title="Incidentes recientes" eyebrow="Bandeja" action={<Link className="text-link" to="/incidentes">Ver todos →</Link>}>

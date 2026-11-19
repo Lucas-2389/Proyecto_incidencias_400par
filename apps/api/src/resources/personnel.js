@@ -6,7 +6,7 @@ const { requireAuthentication, requireRoles, hasInstitutionScope } = require('..
 const { nullableText, scopeInput, assertSiteScope, findResource, listScope, queryScope, duplicateError } = require('./common');
 
 const columns = 'id, institution_id AS institutionId, site_id AS siteId, code, name, role_description AS roleDescription, active, is_demo AS isDemo';
-function normalize(row) { return { ...row, active: Boolean(row.active), isDemo: Boolean(row.isDemo) }; }
+function normalize(row) { return { ...row, active: Boolean(row.active), isDemo: Boolean(row.isDemo), ...(row.available === undefined ? {} : { available: Boolean(row.available) }) }; }
 
 function validate(body, options) {
   const { input, result } = scopeInput(body, options);
@@ -27,7 +27,9 @@ function createPersonnelRouter(pool, authConfig) {
     const scope = listScope(req.auth);
     const [rows] = await pool.execute(
       `SELECT DISTINCT r.id, r.institution_id AS institutionId, r.site_id AS siteId, r.code, r.name,
-       r.role_description AS roleDescription, r.active, r.is_demo AS isDemo FROM personnel r ${scope.join}
+       r.role_description AS roleDescription, r.active, r.is_demo AS isDemo,
+       (r.active = TRUE AND NOT EXISTS (SELECT 1 FROM personnel_assignments pa
+         WHERE pa.personnel_id = r.id AND pa.released_at IS NULL)) AS available FROM personnel r ${scope.join}
        WHERE (? IS NULL OR r.institution_id = ?) AND (? IS NULL OR r.site_id = ?) ORDER BY r.name`,
       [...scope.params, ...queryScope(req)],
     );

@@ -139,6 +139,7 @@ it.each([['Operador', 'Sin asignación institucional activa'], ['SuperAdministra
   expect(screen.getByText(label)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /Cuenta de/ }));
   fireEvent.click(within(document.getElementById('account-options')).getByRole('button', { name: 'Cerrar sesión' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Sí, cerrar sesión' }));
   await screen.findByRole('button', { name: 'Ingresar' });
 });
 

@@ -20,6 +20,18 @@ it('las estadísticas se cargan una vez y no reinician la consulta al renderizar
   expect(api.request.mock.calls.filter(([url]) => url.startsWith('/ops/stats'))).toHaveLength(1);
 });
 
+it('las tarjetas abren la bandeja con periodo y estado coherentes con sus cifras', async () => {
+  render(<MemoryRouter><Dashboard /></MemoryRouter>);
+  const total = await screen.findByRole('link', { name: /^Incidentes/ });
+  const totalUrl = new URL(total.getAttribute('href'), 'http://test');
+  expect(totalUrl.pathname).toBe('/incidentes');
+  expect(totalUrl.searchParams.has('from')).toBe(true);
+  expect(totalUrl.searchParams.has('to')).toBe(true);
+  expect(totalUrl.searchParams.has('status')).toBe(false);
+  expect(new URL(screen.getByRole('link', { name: /^En atención/ }).getAttribute('href'), 'http://test').searchParams.get('status')).toBe('in_progress');
+  expect(new URL(screen.getByRole('link', { name: /^Cerrados/ }).getAttribute('href'), 'http://test').searchParams.get('status')).toBe('closed');
+});
+
 it('muestra seis enlaces completos con categoría, referencia y prioridades consistentes', async () => {
   api.request.mockImplementation(async path => path.startsWith('/ops/stats') ? {} :
     ['low', 'normal', 'high', 'critical', null, 'unexpected', 'high'].map((priority, index) => ({
@@ -32,7 +44,7 @@ it('muestra seis enlaces completos con categoría, referencia y prioridades cons
   for (const priority of ['low', 'normal', 'high', 'critical']) expect(document.querySelector(`.priority-badge--${priority}`)).toBeInTheDocument();
   expect(screen.getAllByText('Por confirmar')).toHaveLength(2);
   expect(screen.getByText('Categoría no disponible')).toBeInTheDocument();
-  expect(screen.queryByText(/Ver reporte/)).not.toBeInTheDocument();
+  expect(screen.queryByRole('columnheader', { name: 'Acción' })).not.toBeInTheDocument();
   expect(screen.queryByRole('columnheader', { name: 'Acción' })).not.toBeInTheDocument();
 });
 

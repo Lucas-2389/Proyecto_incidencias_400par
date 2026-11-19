@@ -63,3 +63,19 @@ Para Android y pruebas con base aislada, consultar las guías de cada aplicació
 - [Reorganización documental](../03-validacion/REVISION_DOCUMENTAL.md): alcance, documentos consolidados y controles de esta entrega.
 
 No se atribuyen al 20 de octubre resultados de suites antiguas. Esta revisión de documentación no modifica código, permisos, cuentas, datos, tareas OpenSpec ni infraestructura.
+
+## 6. Revisión de interacción posterior al merge — 19 de noviembre de 2026
+
+Esta revisión posterior sí incluye código. El punto de integración es `23f5c68`; el respaldo `backup-local-before-teammate-update-2026-11-19` se conserva y no se aplica en bloque. La recuperación se limita a interacción compatible: recursos administrativos, formularios, confirmaciones, punto de sede en mapa, selección opcional de recursos y referencias regionales. Se conservan Perfil, Seguridad, triage, operadores y usuarios de sede de la actualización colaborativa.
+
+| Criterio | Comprobación |
+| --- | --- |
+| Tipos con datos y filtro sin salto | Test de consulta pendiente y navegador real: lista base de tipos autorizados, misma instancia Leaflet y desplazamiento de 0 píxeles al filtrar Inundación. |
+| Sedes visibles y etiquetas discretas | Navegador: 19 sedes registradas activadas por cuatro entidades, alternancia por entidad y tooltip distrital de 10 píxeles. Todos esos puntos son simulación. |
+| Recursos y confirmación | Pruebas de edición en formulario, cancelación de baja, confirmación de baja y prevención de alta duplicada. La selección excluye ocupados y conserva operador. |
+| Permisos y funciones nuevas | Tests de rutas privadas y perfiles; navegador verifica Perfil, elección de punto de sede y cancelación del cierre de sesión. |
+| Disponibilidad real | Consulta autenticada local de personal: 7 registros, 3 disponibles y 3 activos ocupados; la disponibilidad se calcula sin escrituras nuevas. |
+
+La suite del backend mantiene 30 integraciones omitidas cuando no se habilita la base aislada. Los recorridos del navegador y las consultas locales aquí descritos son evidencia adicional, no sustituyen esa suite ni certifican operación real de emergencias. Esta revisión no cambia Flutter, los datos de producción ni el despliegue.
+
+Resultado final ejecutado: panel 67/67 pruebas aprobadas; backend 61 aprobadas, 0 fallidas y 30 omitidas; build de React correcto, OpenAPI válido (66 rutas) y `git diff --check` sin errores. No se realizó commit ni publicación de esta revisión.

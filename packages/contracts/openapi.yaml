@@ -520,7 +520,8 @@ paths:
         - { name: to, in: query, schema: { type: string, format: date-time } }
         - name: status
           in: query
-          schema: { $ref: '#/components/schemas/IncidentStatus' }
+          description: Estado individual o in_progress para asignados, en camino y en atención.
+          schema: { type: string, enum: [reported, verifying, assigned, en_route, attending, resolved, closed, in_progress] }
         - { name: exception, in: query, schema: { type: boolean }, description: Solo incidentes sin sede sugerida }
       responses:
         '200':
@@ -789,6 +790,42 @@ paths:
         '204': { description: Institución desactivada sin borrar historial }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /territory/ayacucho/reference-boundaries:
+    get:
+      tags: [Territory]
+      operationId: getAyacuchoReferenceBoundaries
+      summary: Cartografía regional referencial de Ayacucho
+      description: GeoJSON de INDECI para consulta visual. No modifica jurisdicciones operativas ni acredita demarcación legal. Incluye fuente, fecha de descarga y checksum.
+      responses:
+        '200':
+          description: FeatureCollection de distritos con código y nombre de provincia, bbox y referenceOnly true
+          content:
+            application/geo+json:
+              schema:
+                type: object
+        '404':
+          description: Paquete cartográfico no disponible
+  /ops/map/sites:
+    get:
+      tags: [Geospatial]
+      operationId: listMapReferenceSites
+      security:
+        - bearerAuth: []
+      summary: Sedes registradas de referencia en Ayacucho
+      description: Requiere perfil operativo. Devuelve solo identidad de sede e institución, tipo, distrito, punto e indicador de simulación. Excluye contactos, personal y recursos. No es un directorio oficial completo ni concede acceso a reportes ajenos.
+      responses:
+        '200':
+          description: Objeto con source registered-sites, completeDirectory false y lista sites
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Autenticación requerida
+        '403':
+          description: Perfil no permitido
+        '422':
+          description: Límite de sedes excedido
   /territory/departments:
     get:
       tags: [Territory]
@@ -1880,6 +1917,9 @@ components:
           properties:
             id: { type: string, format: uuid }
             isDemo: { type: boolean }
+            available:
+              type: boolean
+              description: En el listado, indica personal activo sin asignación no liberada. Es una instantánea; la reserva se valida transaccionalmente al confirmar.
     UnitInput:
       type: object
       required: [institutionId, siteId, code, type]

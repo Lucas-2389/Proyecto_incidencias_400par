@@ -82,7 +82,7 @@ it('dashboard conserva el intervalo de consulta tras recibir estadísticas', asy
   fireEvent.change(screen.getByLabelText('Correo institucional'), { target: { value: 'operator@demo.invalid' } });
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
-  await screen.findByText('Promedio del ámbito');
+  await screen.findByText('Promedio · Ver atenciones →');
   await new Promise((resolve) => setTimeout(resolve, 100));
   const statsCalls = fetch.mock.calls.filter(([url]) => new URL(url, 'http://test.invalid').pathname.endsWith('/ops/stats'));
   expect(statsCalls.length).toBeLessThanOrEqual(2);
@@ -95,7 +95,7 @@ it('administrador institucional ve la bandeja sin la acción de registrar llamad
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await screen.findByRole('navigation', { name: 'Navegación principal' });
-  fireEvent.click(screen.getByRole('link', { name: /Incidentes/ }));
+  fireEvent.click(screen.getByRole('navigation', { name: 'Navegación principal' }).querySelector('a[href="/incidentes"]'));
   await screen.findByRole('heading', { name: 'Bandeja de incidentes' });
   expect(screen.queryByRole('button', { name: /Registrar llamada/ })).not.toBeInTheDocument();
 });
@@ -108,7 +108,7 @@ it('operador hace login, abre bandeja, asigna sede y avanza estado sin ver admin
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await screen.findByRole('navigation', { name: 'Navegación principal' });
   expect(screen.queryByRole('link', { name: /Personal/ })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('link', { name: /Incidentes/ }));
+  fireEvent.click(screen.getByRole('navigation', { name: 'Navegación principal' }).querySelector('a[href="/incidentes"]'));
   await screen.findByText('DEMO-AY-001');
   fireEvent.click(screen.getByRole('link', { name: /Incendio.*DEMO-AY-001/ }));
   await screen.findByRole('heading', { name: 'Derivación sugerida' });
@@ -128,10 +128,11 @@ it('superadministrador confirma dos instituciones sobre el mismo accidente', asy
   fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'test-password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Ingresar' }));
   await screen.findByRole('navigation', { name: 'Navegación principal' });
-  expect(screen.queryByRole('link', { name: /Unidades|Personal/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Unidades/ })).toHaveAttribute('href', '/unidades');
+  expect(screen.getByRole('link', { name: /Personal/ })).toHaveAttribute('href', '/personal');
   expect(screen.getByRole('link', { name: /Instituciones/ })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Contactos de emergencia/ })).toHaveAttribute('href', '/directorio');
-  fireEvent.click(screen.getByRole('link', { name: /Incidentes/ }));
+  fireEvent.click(screen.getByRole('navigation', { name: 'Navegación principal' }).querySelector('a[href="/incidentes"]'));
   await screen.findByText('DEMO-AY-001');
   fireEvent.click(screen.getByRole('link', { name: /Incendio.*DEMO-AY-001/ }));
   await screen.findByRole('heading', { name: 'Derivación sugerida' });

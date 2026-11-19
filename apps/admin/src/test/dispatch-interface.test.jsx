@@ -7,7 +7,7 @@ import IncidentLocation from '../IncidentLocation';
 import { mapPeriod } from '../mapPeriod';
 import { useIncidentOperations } from '../useIncidentOperations';
 
-const { api, map } = vi.hoisted(() => ({ api: { request: vi.fn() }, map: { fitBounds: vi.fn() } }));
+const { api, map } = vi.hoisted(() => ({ api: { request: vi.fn() }, map: { fitBounds: vi.fn(), setView: vi.fn() } }));
 vi.mock('../session', () => ({ useSession: () => ({ api }) }));
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children, center }) => <div role="img" aria-label="Mapa" data-center={center.join(',')}>{children}</div>,
@@ -33,6 +33,7 @@ const metropolitanDistricts = ['Ayacucho', 'Carmen Alto', 'San Juan Bautista', '
   .map((name, index) => ({ id: index + 7, name }));
 
 beforeEach(() => {
+  map.fitBounds.mockClear(); map.setView.mockClear();
   incident = { id: 'incident-1', reference: 'DEMO-001', categoryId: 1, subcategoryId: 2, status: 'reported', priority: 'high',
     source: 'PHONE', description: 'La persona principal se encuentra cerca del mercado.',
     isConscious: false, isBreathing: true, hasBleeding: null, affectedPeople: 0,
@@ -64,6 +65,14 @@ beforeEach(() => {
     if (path.endsWith('/suggestions')) return { suggestions: sites.map((site) => ({ siteId: site.id, siteName: site.name, institutionName: site.name })) };
     if (path.includes('/operators?')) return [{ id: 'operator-a', name: 'Ana Operadora' }];
     if (path === '/admin/sites') return sites;
+    if (path.startsWith('/resources/units')) return [
+      { id: 'unit-free', siteId: 'site-a', code: 'Unidad libre', type: 'Rescate', status: 'available' },
+      { id: 'unit-busy', siteId: 'site-a', code: 'Unidad ocupada', type: 'Rescate', status: 'assigned' },
+    ];
+    if (path.startsWith('/resources/personnel')) return [
+      { id: 'person-free', siteId: 'site-a', name: 'Personal libre', active: true, available: true },
+      { id: 'person-busy', siteId: 'site-a', name: 'Personal ocupado', active: true, available: false },
+    ];
     if (path === '/admin/institutions') return [{ id: 'institution-a', name: 'Bomberos' }, { id: 'institution-b', name: 'SAMU' }];
     if (path === '/catalog/categories') return [{ id: 1, name: 'Accidente', code: 'traffic_accident' }];
     if (path.endsWith('/subcategories')) return [{ id: 2, name: 'Lesiones múltiples' }];
@@ -71,11 +80,95 @@ beforeEach(() => {
       { type: 'Feature', properties: district, bbox: [-74.3, -13.2, -74.2, -13.1], geometry: { type: 'MultiPolygon', coordinates: [] } }
     )) };
     if (path.startsWith('/territory/districts?')) return metropolitanDistricts;
+    if (path === '/territory/ayacucho/reference-boundaries') return { type: 'FeatureCollection', features: metropolitanDistricts.map(district => ({
+      type: 'Feature', properties: { ...district, code: `05010${district.id}`, provinceCode: '0501', provinceName: 'Huamanga' },
+      bbox: [-74.3, -13.2, -74.2, -13.1], geometry: { type: 'MultiPolygon', coordinates: [] },
+    })) };
+    if (path === '/ops/map/sites') return { sites: [{ id: 'muni', name: 'Municipalidad de prueba', institutionType: 'municipalidad',
+      districtCode: '050101', districtName: 'Ayacucho', isDemo: true, latitude: -13.16, longitude: -74.22 }] };
     if (path.startsWith('/ops/map')) return { incidents: [{ id: 'incident-1', reference: 'DEMO-001', categoryId: 1, latitude: -13.16, longitude: -74.22, status: 'reported' }], sites: [] };
     throw new Error(`Ruta inesperada ${path}`);
   });
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
+
+it('conserva el mapa y los controles mientras se actualiza un filtro de categoría', async () => {
+  const original = api.request.getMockImplementation();
+  let finish;
+  api.request.mockImplementation((path, options) => {
+    if (path.startsWith('/ops/map?') && new URL(path, 'http://test').searchParams.get('categoryId')) {
+      return new Promise(resolve => { finish = resolve; });
+    }
+    return original(path, options);
+  });
+  render(<MemoryRouter><MapView /></MemoryRouter>);
+  const initialMap = await screen.findByRole('img', { name: 'Mapa' });
+  fireEvent.change(screen.getByLabelText('Tipo de incidente'), { target: { value: '1' } });
+  await waitFor(() => expect(finish).toBeTypeOf('function'));
+  expect(screen.getByRole('img', { name: 'Mapa' })).toBe(initialMap);
+  expect(screen.getByText('Actualizando reportes…')).toBeInTheDocument();
+  await act(async () => finish({ incidents: [], sites: [] }));
+  expect(screen.getByRole('img', { name: 'Mapa' })).toBe(initialMap);
+  fireEvent.click(screen.getByRole('button', { name: 'Todos los tipos', exact: true }));
+  await waitFor(() => expect(screen.getByLabelText('Tipo de incidente')).toHaveValue(''));
+});
+
+it('muestra sedes solo al activar su entidad y permite ocultarlas', async () => {
+  render(<MemoryRouter><MapView /></MemoryRouter>);
+  await screen.findByRole('img', { name: 'Mapa' });
+  expect(screen.getByText(/No hay sedes sin indicador de simulación/)).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Información de las referencias'));
+  fireEvent.click(screen.getByLabelText('Incluir sedes de simulación'));
+  const municipality = screen.getByRole('button', { name: /Municipalidades · 1/ });
+  expect(municipality).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.queryByText('Sede de simulación: ubicación de prueba')).not.toBeInTheDocument();
+  fireEvent.click(municipality);
+  expect(screen.getByText('Sede de simulación: ubicación de prueba')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Ocultar sedes' }));
+  expect(municipality).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.queryByText('Sede de simulación: ubicación de prueba')).not.toBeInTheDocument();
+});
+
+it('ofrece solo tipos con reportes y mantiene los otros tipos activos al filtrar', async () => {
+  const original = api.request.getMockImplementation();
+  api.request.mockImplementation((path, options) => {
+    if (path === '/catalog/categories') return Promise.resolve([
+      { id: 1, name: 'Accidente', code: 'traffic_accident' },
+      { id: 2, name: 'Inundación', code: 'flood' },
+      { id: 3, name: 'Sin reportes', code: 'fire' },
+    ]);
+    if (path.startsWith('/ops/map?') && !path.includes('categoryId=')) return Promise.resolve({ incidents: [
+      { id: 'a', categoryId: 1, latitude: -13.16, longitude: -74.22 },
+      { id: 'b', categoryId: 2, latitude: -13.15, longitude: -74.21 },
+    ] });
+    return original(path, options);
+  });
+  render(<MemoryRouter><MapView /></MemoryRouter>);
+  const legend = await screen.findByLabelText('Tipos de reportes visibles');
+  await within(legend).findByRole('button', { name: /Inundación/ });
+  expect(within(legend).queryByRole('button', { name: /Sin reportes/ })).not.toBeInTheDocument();
+  const mapElement = screen.getByRole('img', { name: 'Mapa' });
+  fireEvent.click(within(legend).getByRole('button', { name: /Inundación/ }));
+  await waitFor(() => expect(screen.getByLabelText('Tipo de incidente')).toHaveValue('2'));
+  expect(within(legend).getByRole('button', { name: /Accidente/ })).toBeInTheDocument();
+  expect(screen.getByRole('img', { name: 'Mapa' })).toBe(mapElement);
+});
+
+it('selecciona recursos libres y conserva la elección del operador de la nueva interfaz', async () => {
+  renderDetail();
+  fireEvent.change(await screen.findByLabelText('Sede responsable'), { target: { value: 'site-a' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Elegir unidades y personal' }));
+  await waitFor(() => expect(screen.getByRole('checkbox', { name: /Unidad libre/ })).toBeEnabled());
+  expect(screen.getByRole('checkbox', { name: /Unidad ocupada/ })).toBeDisabled();
+  expect(screen.getByRole('checkbox', { name: /Personal ocupado/ })).toBeDisabled();
+  fireEvent.click(screen.getByRole('checkbox', { name: /Unidad libre/ }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /Personal libre/ }));
+  fireEvent.change(screen.getByLabelText('Operador'), { target: { value: 'operator-a' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Confirmar asignación' }));
+  await waitFor(() => expect(api.request.mock.calls.some(([path, options]) => path.endsWith('/assignments') && options?.method === 'POST')).toBe(true));
+  const [, options] = api.request.mock.calls.find(([path, options]) => path.endsWith('/assignments') && options?.method === 'POST');
+  expect(JSON.parse(options.body)).toMatchObject({ unitIds: ['unit-free'], personnelIds: ['person-free'], operatorUserId: 'operator-a' });
+});
 
 function renderDetail() {
   return render(<MemoryRouter initialEntries={['/incidentes/incident-1']}><Link to="/incidentes/incident-2">Otro incidente</Link><Routes><Route path="/incidentes/:id" element={<IncidentDetail />} /></Routes></MemoryRouter>);
@@ -245,7 +338,7 @@ it('distingue escritura confirmada de recarga fallida y reintenta solo la lectur
 it('presenta filtros de mapa ordenados y transmite tipo y distrito', async () => {
   render(<MemoryRouter><MapView /></MemoryRouter>);
   await screen.findByRole('option', { name: 'Ayacucho' });
-  expect(screen.getAllByRole('combobox').map((select) => select.closest('label').textContent)).toEqual([expect.stringContaining('Tipo de incidente'), expect.stringContaining('Distrito')]);
+  expect(screen.getAllByRole('combobox').map((select) => select.closest('label').textContent)).toEqual([expect.stringContaining('Tipo de incidente'), expect.stringContaining('Distrito'), expect.stringContaining('Provincia de referencia'), expect.stringContaining('Sede para centrar')]);
   expect(screen.getByLabelText('Desde (opcional)')).toHaveValue('');
   expect(screen.getByLabelText('Hasta (opcional)')).toHaveValue('');
   fireEvent.change(screen.getByLabelText('Tipo de incidente'), { target: { value: '1' } });
@@ -266,6 +359,7 @@ it('recupera los cinco contornos y permite seleccionar un distrito sin reportes'
   render(<MemoryRouter><MapView /></MemoryRouter>);
   await screen.findByRole('button', { name: 'Reintentar límites' });
   failed = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Límites distritales', exact: true }));
   fireEvent.click(screen.getByRole('button', { name: 'Reintentar límites' }));
   await waitFor(() => expect(screen.getAllByTestId('district-boundary')).toHaveLength(5));
   const selector = screen.getByRole('combobox', { name: 'Distrito' });
@@ -275,9 +369,11 @@ it('recupera los cinco contornos y permite seleccionar un distrito sin reportes'
     expect(within(selector).getByRole('option', { name: district.name })).toBeInTheDocument();
   }
   fireEvent.change(selector, { target: { value: '11' } });
-  await screen.findByText('Sin reportes para estos filtros.');
+  await screen.findByText(/^Sin reportes para estos filtros\./);
   expect(screen.getAllByTestId('district-boundary')).toHaveLength(5);
-  expect(map.fitBounds).toHaveBeenCalled();
+  expect(map.fitBounds).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Centrar zona' }));
+  expect(map.fitBounds).toHaveBeenCalledTimes(1);
   fireEvent.change(selector, { target: { value: '' } });
   await waitFor(() => expect(api.request.mock.calls.filter(([path]) => path.startsWith('/ops/map')).at(-1)[0]).not.toContain('districtId='));
 });

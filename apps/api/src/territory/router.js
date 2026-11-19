@@ -67,6 +67,12 @@ async function lockTerritory(connection) {
 
 function createTerritoryRouter(pool) {
   const router = express.Router();
+  router.get('/ayacucho/reference-boundaries', (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.sendFile(require('node:path').join(__dirname, '../../data/ayacucho-reference.geojson'), {
+      headers: { 'Content-Type': 'application/geo+json; charset=utf-8' },
+    });
+  });
   const lists = [
     ['/departments', 'SELECT id, code, name, is_demo AS isDemo FROM departments ORDER BY name', null],
     ['/provinces', 'SELECT id, department_id AS departmentId, code, name, is_demo AS isDemo FROM provinces WHERE (? IS NULL OR department_id = ?) ORDER BY name', 'departmentId'],

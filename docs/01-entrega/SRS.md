@@ -3,7 +3,7 @@
 ## Plataforma de gestión de incidencias
 
 Universidad Nacional de San Cristóbal de Huamanga · Ingeniería de Sistemas · Arquitectura de Software
-Versión documental: 1.0 · Fecha de organización: 20 de octubre de 2026
+Versión documental: 1.1 · Actualización: 19 de noviembre de 2026 · Organización inicial: 20 de octubre de 2026
 Estado: preparado para revisión académica; no representa aprobación del docente.
 
 ## 1. Propósito y alcance
@@ -139,6 +139,24 @@ RNF-01, RNF-02 y RNF-04 describen objetivos de evolución. No se ha iniciado en 
 5. Los reintentos con la misma clave no generan incidentes duplicados.
 6. Un cierre conserva los eventos de auditoría; el ciudadano no dispone de historial privado móvil.
 7. Credenciales, certificados y archivos privados no forman parte de la entrega pública.
+
+### 6.1 Referencias territoriales y de sedes
+
+El usuario institucional puede mostrar u ocultar por separado las sedes registradas de Municipalidad, PNP, SAMU y Bomberos, combinar estas capas y filtrar sus referencias por provincia de Ayacucho. Debe distinguir sedes de simulación y no interpretar el inventario como un padrón oficial completo.
+
+La capa territorial regional permite consultar los distritos presentes en la fuente pública, identificar su nombre al pasar el cursor y destacar el contorno. Debe indicar su carácter referencial y su procedencia; no debe presentarse como demarcación legal ni ampliar permisos de atención fuera del ámbito autorizado.
+
+Cambiar el tipo de incidente no debe desmontar el mapa ni desplazar la página durante una actualización. Debe conservar el zoom, informar el estado de carga y permitir volver a todos los tipos. Una actualización fallida conserva la consulta anterior e informa el fallo.
+
+### 6.2 Uso intuitivo y compatibilidad de las mejoras
+
+1. El mapa inicia sin capas; el usuario activa reportes, límites y entidades con botones. Los puntos coincidentes permiten identificar todas las sedes que comparten ubicación. Las capas no deben alterar el zoom ni el centro; Centrar zona y Ver sede son acciones explícitas de navegación.
+2. Solo se ofrecen como botones tipos de incidente con reportes autorizados en el periodo y distrito consultados. Elegir uno conserva los otros tipos con datos y mantiene la posición del mapa.
+3. El distrito se identifica con una etiqueta discreta al pasar el cursor, sin cubrir una zona extensa del mapa.
+4. Administradores pueden crear y editar unidades y personal mediante formularios, confirmar desactivaciones y consultar el estado de su flota. Una confirmación repetida no debe duplicar la creación.
+5. La sede puede ubicarse en el mapa manteniendo dirección, teléfono, distrito y gestión de usuarios. El punto elegido no amplía la jurisdicción.
+6. La asignación mantiene la selección de operador y permite añadir recursos disponibles de la sede. Los ocupados aparecen deshabilitados y la API vuelve a comprobarlos al reservar.
+7. Cerrar sesión solicita confirmación y permite continuar trabajando. Perfil, Seguridad, triage e historial de la versión integrada deben conservarse.
 
 ## 7. Trazabilidad y documentos relacionados
 

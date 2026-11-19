@@ -3,7 +3,7 @@
 ## Plataforma de gestión de incidencias
 
 Universidad Nacional de San Cristóbal de Huamanga · Ingeniería de Sistemas · Arquitectura de Software
-Versión documental: 1.0 · Fecha: 20 de octubre de 2026
+Versión documental: 1.1 · Actualización: 19 de noviembre de 2026 · Organización inicial: 20 de octubre de 2026
 Estado: preparado para revisión académica; diseño contrastado con el código versionado, sin nueva certificación del servicio remoto.
 
 ## Contenido
@@ -264,7 +264,33 @@ El servidor valida entorno, prepara dependencias, carga el CA cuando procede y c
 
 No se inicia ni se certifica escalamiento horizontal en esta revisión documental. Balanceo, múltiples réplicas, presupuesto de conexiones, límites compartidos, observabilidad y carga requieren un change propio autorizado. No hay evidencia nueva de 1 000–5 000 usuarios. FCM, límites territoriales oficiales, restauración y políticas de retención conservan sus dependencias operativas.
 
+### 7.4 Capas regionales de consulta y estabilidad del mapa
+
+El panel consume `/territory/ayacucho/reference-boundaries` como GeoJSON estático de INDECI, con metadatos de procedencia y checksum. Cubre 11 provincias y 124 distritos de la fuente descargada; su simplificación se limita a visualización y no modifica las tablas ni el resolvedor territorial metropolitano. La cartografía no acredita demarcación legal.
+
+La capa `/ops/map/sites` exige autenticación y rol operativo. Comparte únicamente nombre de sede e institución, tipo, distrito, punto e indicador DEMO; excluye contactos, personal y asignaciones. Los registros de ejemplo se identifican como simulación, y las otras sedes no se declaran oficialmente verificadas. Los botones de entidad y el selector provincial controlan referencias; el filtrado de incidentes conserva la autorización existente.
+
+`OperationalMap` conserva su instancia al cambiar el filtro de categoría: no usa una clave derivada de filtros y mantiene el contenido durante consultas posteriores. Indica actualización o error sin desmontar Leaflet. El resaltado de distritos restaura su estilo al salir del polígono. Procedencia, reproducción y limitaciones: [guía de referencias](../02-guias/MAPA_REFERENCIAS.md).
+
+### 7.5 Recuperación compatible de mejoras de interacción
+
+Sobre el merge `23f5c68` se adaptan selectivamente mejoras del respaldo local, sin aplicar todo el stash. Se conservan el perfil, triage, operadores, alta de usuarios de sede y el cargador territorial de la versión integrada. No se reemplaza la política metropolitana con el anterior prototipo de coordinación intermunicipal.
+
+El mapa inicia sin capas, usa símbolos por entidad y agrupa puntos coincidentes sin desplazar sus coordenadas. Un conjunto base de reportes autorizados por periodo/distrito mantiene las categorías con datos; la consulta de categoría conserva los filtros del servidor y la instancia de Leaflet. Las categorías sin reportes no generan botones y la etiqueta distrital se limita a un tooltip pequeño. `DistrictBoundaries` solo dibuja: no ejecuta fitBounds al cambiar capas. `MapNavigator` centra exclusivamente ante las acciones Centrar zona o Ver sede; los popups no desplazan automáticamente el mapa. La navegación lateral y la cabecera permanecen visibles mediante posición sticky, con navegación horizontal en pantallas pequeñas y superficies de color translúcido sobre fondos opacos legibles.
+
+Se recuperan rutas administrativas de Unidades y Personal, edición en formulario, confirmación de desactivación, resumen de flota y actualización periódica. `SiteForm` incorpora un selector cartográfico bajo demanda y mantiene los campos y el alta de cuentas de la versión integrada. El menú de cuenta conserva Perfil y Seguridad y añade confirmación de cierre de sesión.
+
+La asignación sigue admitiendo únicamente sede y operador; opcionalmente permite seleccionar recursos. El listado de personal añade `available`, calculado a partir de actividad y ausencia de reservas no liberadas. Las unidades y personas ocupadas se deshabilitan en la interfaz; la reserva real sigue validándose mediante los bloqueos y transacciones existentes. Esta propiedad no constituye una reserva ni elimina posibles conflictos concurrentes.
+
 ## 8. Referencias y trazabilidad
+
+Preparación visual para publicación: se retiran las leyendas globales fijas de demostración del pie y se conserva la identificación individual de los ejemplos. La capa de sedes excluye `isDemo=true` por defecto; su inclusión exige una opción explícita de consulta. No hay borrado de registros ni conversión de ejemplos a datos reales. Los colores de selección y navegación se unifican en azul; éxito, advertencia, prioridad y tipo de entidad conservan significado semántico independiente.
+
+Sistema visual compartido (19 de noviembre de 2026): `apps/admin/src/panel-theme.css` centraliza tipografía Helvetica/Arial, acento #002FA7, superficies #FFFFFF/#F7F7F8, reglas #C4CEDE y contraste de formularios/tablas. Se importa después de los estilos funcionales y conserva las prioridades, avisos y métricas semánticas existentes. El alcance incluye presentación, acceso, navegación, dashboard, incidentes, mapa, instituciones, recursos, directorio, historial y perfil. No modifica API, permisos ni modelos de datos. Foco visible, estados de interacción y diseño adaptable se aplican a componentes comunes. Se conserva la navegación sticky y el mapa con capas bajo demanda.
+
+Diseño visual del historial: se aplica la guía local `frontend-design` instalada desde `Ilm-Alan/frontend-design`. La pantalla usa una dirección Swiss acotada: superficies #FFFFFF y #F7F7F8, acento #002FA7 y Helvetica/Arial. Los eventos mantienen datos reales de la API y se distinguen mediante numeración de lista, reglas y contraste; no se generan eventos para decorar. La navegación incorpora SVG propios, sin dependencia adicional ni cambio de permisos. El resto del panel conserva sus colores semánticos y flujos existentes.
+
+Mejora del dashboard (19 de noviembre de 2026): las métricas son enlaces accesibles con estados hover, foco y pulsación. Conservan periodo y distrito al abrir la bandeja. El filtro `status=in_progress` de la API agrupa assigned, en_route y attending antes de paginar y mantiene el control de ámbito; no constituye un nuevo estado persistido. Cerrados usa closed y la tarjeta de tiempo abre las atenciones del periodo, sin prometer un informe estadístico adicional. La bandeja lee sus filtros desde la URL. Las tarjetas usan fondos suaves diferenciados y bordes visibles sin depender solo del color para comunicar su propósito.
 
 - [SRS: requisitos y reglas](SRS.md), con identificadores RF/RNF/RN conservados.
 - [Plan y verificación](PLAN_Y_VERIFICACION.md): gestión del trabajo y evidencia, fuera del SDD.

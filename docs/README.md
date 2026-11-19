@@ -24,6 +24,7 @@ docs/
 
 - [Clonar y trabajar con un compañero](02-guias/COLABORACION.md).
 - [Usuarios, acceso y módulos](02-guias/USUARIOS.md).
+- [Mapa regional y sedes de referencia](02-guias/MAPA_REFERENCIAS.md).
 - [Convenciones de implementación](02-guias/CONVENCIONES.md).
 - [Operación y preparación de Render](02-guias/OPERACION_RENDER.md): revisar las fechas de sus comprobaciones.
 - Guías específicas: [API](../apps/api/README.md), [React](../apps/admin/README.md), [Android](../apps/mobile/README.md) y [migraciones](../apps/api/migrations/README.md).

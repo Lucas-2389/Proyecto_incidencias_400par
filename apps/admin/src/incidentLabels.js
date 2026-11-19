@@ -15,7 +15,7 @@ export const verificationLabels = {
   false: 'Falso', duplicate: 'Duplicado',
 };
 
-export const unitLabels = { available: 'Disponible', assigned: 'Asignada', en_route: 'En camino', attending: 'En atención', unavailable: 'No disponible', maintenance: 'En mantenimiento', inactive: 'Inactiva' };
+export const unitLabels = { returning: 'Retornando a base', out_of_service: 'Fuera de servicio', available: 'Disponible', assigned: 'Asignada', en_route: 'En camino', attending: 'En atención', unavailable: 'No disponible', maintenance: 'En mantenimiento', inactive: 'Inactiva' };
 export const institutionLabels = { pnp: 'Policía Nacional (PNP)', samu: 'Atención médica (SAMU)', bomberos: 'Bomberos', municipalidad: 'Municipalidad / Serenazgo', otra: 'Otra institución' };
 export const entityLabels = { incident: 'Incidente', institution: 'Institución', site: 'Sede', unit: 'Unidad', personnel: 'Personal', user: 'Usuario', directory: 'Contacto', alert: 'Alerta', institution_assignment: 'Asignación' };
 const eventLabels = { created: 'Reporte recibido', assigned: 'Recursos asignados', 'assignment.status': 'Estado de la atención', 'incident.status': 'Estado del incidente', verification: 'Verificación del reporte', 'incident.verification': 'Verificación del reporte', priority: 'Prioridad actualizada', create: 'Registro creado', update: 'Registro actualizado', delete: 'Registro desactivado' };

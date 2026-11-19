@@ -60,7 +60,7 @@ export default function History() {
     setDates((current) => ({ ...current, [key]: value }));
     setPage({ offset: 0, snapshotId: null });
   }
-  return <div className="page-stack">
+  return <div className="page-stack history-page">
     <div className="page-intro"><span className="eyebrow">Trazabilidad</span><h1>Historial y estadísticas</h1><p>Consulta quién realizó cada cambio y los datos que se modificaron.</p></div>
     <Panel title="Periodo y territorio">
       <div className="filters">

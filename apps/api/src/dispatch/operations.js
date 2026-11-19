@@ -41,7 +41,7 @@ async function linkDuplicate(pool, duplicateId, actor, body, correlationId) {
 
 async function listOperational(pool, auth, query) {
   const status = query.status;
-  const allowed = new Set(['reported', 'verifying', 'assigned', 'en_route', 'attending', 'resolved', 'closed']);
+  const allowed = new Set(['reported', 'verifying', 'assigned', 'en_route', 'attending', 'resolved', 'closed', 'in_progress']);
   if (status !== undefined && (typeof status !== 'string' || !allowed.has(status))) {
     throw new HttpError(422, 'VALIDATION_ERROR', 'Estado inválido');
   }
@@ -61,10 +61,10 @@ async function listOperational(pool, auth, query) {
      i.priority, i.created_at AS createdAt, l.district_id AS districtId FROM incidents i
      LEFT JOIN incident_categories c ON c.id = i.category_id
      LEFT JOIN incident_locations l ON l.incident_id = i.id
-     WHERE (? IS NULL OR i.status = ?) AND (? IS NULL OR l.district_id = ?)
+     WHERE (? IS NULL OR i.status = ? OR (? = 'in_progress' AND i.status IN ('assigned', 'en_route', 'attending'))) AND (? IS NULL OR l.district_id = ?)
        AND (? IS NULL OR i.created_at >= ?) AND (? IS NULL OR i.created_at < ?)
      ORDER BY i.created_at DESC, i.id DESC LIMIT 200 OFFSET ?`,
-      [status ?? null, status ?? null, districtId, districtId, from, from, to, to, offset],
+      [status ?? null, status ?? null, status ?? null, districtId, districtId, from, from, to, to, offset],
     );
     for (const row of rows) {
       if (!await hasIncidentScope(pool, auth, row.id)) continue;

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useSession } from '../session';
 import { queryString } from '../api/client';
 import { Empty, ErrorBoundaryContent, Field, Notice, Panel, Pill, useRemote } from '../ui';
 import { institutionLabels } from '../incidentLabels';
 import DistrictField from '../DistrictField';
+const LocationPicker = lazy(() => import('../LocationPicker'));
 
 const territorialLabels = { pending: 'Distrito pendiente', resolved: 'Distrito confirmado por ubicación',
   outside_coverage: 'Ubicación fuera de los límites cargados', boundary: 'En límite compartido',
@@ -17,10 +18,15 @@ function SiteForm({ site, institutions, onSaved }) {
     latitude: site?.location?.latitude ?? '', longitude: site?.location?.longitude ?? '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showMap, setShowMap] = useState(false);
   const update = (key, value) => setValues((current) => ({ ...current, [key]: value }));
   async function save(event) {
     event.preventDefault();
     if (saving) return;
+    if (values.latitude === '' || values.longitude === '' || !Number.isFinite(Number(values.latitude)) || !Number.isFinite(Number(values.longitude))) {
+      setError('Selecciona la ubicación de la sede en el mapa o completa sus coordenadas.');
+      return;
+    }
     setSaving(true); setError('');
     try {
       const result = await api.request(`/admin/sites${site ? `/${site.id}` : ''}`, { method: site ? 'PATCH' : 'POST', body: JSON.stringify({
@@ -42,8 +48,14 @@ function SiteForm({ site, institutions, onSaved }) {
     <DistrictField value={values.districtId} onChange={(value) => update('districtId', value)} emptyLabel="Detectar por ubicación" />
     <Field label="Dirección"><input value={values.address} onChange={(event) => update('address', event.target.value)} /></Field>
     <Field label="Teléfono de sede"><input type="tel" value={values.contactPhone} onChange={(event) => update('contactPhone', event.target.value)} /></Field>
-    <Field label="Latitud"><input required type="number" step="any" min="-90" max="90" value={values.latitude} onChange={(event) => update('latitude', event.target.value)} /></Field>
-    <Field label="Longitud"><input required type="number" step="any" min="-180" max="180" value={values.longitude} onChange={(event) => update('longitude', event.target.value)} /></Field>
+    <div className="site-location-picker"><button type="button" className="button secondary" onClick={() => setShowMap(!showMap)}>{showMap ? 'Ocultar mapa de ubicación' : 'Elegir ubicación de la sede en el mapa'}</button>
+      <p>{values.latitude !== '' && values.longitude !== '' ? 'Punto seleccionado. Puedes ajustarlo antes de guardar.' : 'Selecciona el edificio de la sede. Este punto no cambia su jurisdicción.'}</p>
+      {showMap && <Suspense fallback={<p>Cargando selector de ubicación…</p>}><LocationPicker latitude={values.latitude} longitude={values.longitude} onPick={(latitude, longitude) => setValues(current => ({ ...current, latitude, longitude }))} /></Suspense>}
+      <details><summary>Coordenadas (opcional para ingreso manual)</summary>
+        <Field label="Latitud"><input type="number" step="any" min="-90" max="90" value={values.latitude} onChange={(event) => update('latitude', event.target.value)} /></Field>
+        <Field label="Longitud"><input type="number" step="any" min="-180" max="180" value={values.longitude} onChange={(event) => update('longitude', event.target.value)} /></Field>
+      </details>
+    </div>
     <button className="button primary" disabled={saving}>{saving ? 'Guardando…' : site ? 'Guardar sede' : 'Agregar sede'}</button>
   </form>;
 }
@@ -130,19 +142,23 @@ export default function Organization() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingInstitution, setEditingInstitution] = useState(null);
+  const [institutionName, setInstitutionName] = useState('');
   const selected = (sites.data ?? []).find((site) => site.id === selectedId) ?? (createdSite?.id === selectedId ? createdSite : null);
   async function createInstitution(event) {
     event.preventDefault(); if (saving) return;
     setSaving(true); setError('');
-    try { await api.request('/admin/institutions', { method: 'POST', body: JSON.stringify({ name, type }) }); setName(''); await institutions.reload(); }
+    try { await api.request('/admin/institutions', { method: 'POST', body: JSON.stringify({ name, type }) }); setName(''); setNotice('Institución creada correctamente. Ahora puedes agregar su sede.'); await institutions.reload(); }
     catch (issue) { setError(issue.message); }
     finally { setSaving(false); }
   }
-  async function rename(institution) {
-    const value = window.prompt('Nuevo nombre de institución', institution.name);
-    if (!value || value === institution.name) return;
-    try { await api.request(`/admin/institutions/${institution.id}`, { method: 'PATCH', body: JSON.stringify({ name: value }) }); await institutions.reload(); }
+  async function rename(event) {
+    event.preventDefault();
+    if (saving || !editingInstitution) return;
+    setSaving(true); setError('');
+    try { await api.request(`/admin/institutions/${editingInstitution}`, { method: 'PATCH', body: JSON.stringify({ name: institutionName }) }); setEditingInstitution(null); setNotice('Nombre de institución actualizado.'); await institutions.reload(); }
     catch (issue) { setError(issue.message); }
+    finally { setSaving(false); }
   }
   async function siteSaved(site) {
     setDistrictId(''); setCreatedId(site.id); setSelectedId(site.id);
@@ -154,8 +170,13 @@ export default function Organization() {
     <div className="page-intro"><span className="eyebrow">Organización</span><h1>Instituciones y sedes</h1><p>Administra las sedes y las cuentas individuales de su personal.</p></div>
     <Notice kind="error">{error}</Notice><Notice kind="success">{notice}</Notice>
     <DistrictField value={districtId} onChange={(value) => { setDistrictId(value); setSelectedId(''); }} />
-    <ErrorBoundaryContent loading={institutions.loading || sites.loading} error={institutions.error || sites.error}>
-      {(institutions.data ?? []).map((institution) => <Panel key={institution.id} title={institution.name} action={session.user.roles.includes('SuperAdministrador') && <button className="text-button" onClick={() => rename(institution)}>Editar nombre</button>}>
+    <ErrorBoundaryContent loading={(institutions.loading && !institutions.data) || (sites.loading && !sites.data)} error={institutions.error || sites.error}>
+      {(institutions.data ?? []).map((institution) => <Panel key={institution.id} title={institution.name} action={session.user.roles.includes('SuperAdministrador') && <button className="text-button" onClick={() => { setEditingInstitution(institution.id); setInstitutionName(institution.name); }}>Editar nombre</button>}>
+        {editingInstitution === institution.id && <form className="form-grid compact" onSubmit={rename} aria-label="Editar institución">
+          <Field label="Nuevo nombre de institución"><input required maxLength={200} value={institutionName} onChange={event => setInstitutionName(event.target.value)} /></Field>
+          <button className="button primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar nombre de institución'}</button>
+          <button type="button" className="button ghost" disabled={saving} onClick={() => setEditingInstitution(null)}>Cancelar edición de institución</button>
+        </form>}
         <p>{institutionLabels[institution.type] ?? institution.type} · {institution.active ? 'Activa' : 'Inactiva'}</p>
         <div className="cards">{(sites.data ?? []).filter((site) => site.institutionId === institution.id).map((site) => <article className="mini-card" key={site.id}>
           <strong>{site.name}</strong><span>{site.districtName || 'Distrito pendiente'}</span>

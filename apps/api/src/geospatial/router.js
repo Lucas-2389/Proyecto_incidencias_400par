@@ -154,6 +154,23 @@ function createGeospatialRouter(pool, authConfig) {
     res.json(aggregatePublic(await loadIncidentRows(pool, filters)));
   });
   const secure = [requireAuthentication(pool, authConfig), requireRoles('SuperAdministrador', 'AdministradorInstitucional', 'Operador')];
+  // Shared reference layer: no personnel, contacts, assignments or coverage polygons.
+  router.get('/ops/map/sites', ...secure, async (_req, res) => {
+    const [rows] = await pool.execute(
+      `SELECT s.id, s.name, i.name AS institutionName, i.type AS institutionType,
+        s.is_demo AS isDemo, d.code AS districtCode, d.name AS districtName,
+        ST_X(s.location) AS latitude, ST_Y(s.location) AS longitude
+       FROM sites s JOIN institutions i ON i.id = s.institution_id
+       JOIN districts d ON d.id = s.district_id
+       WHERE s.active = TRUE AND i.active = TRUE AND d.code LIKE '05%'
+         AND i.type IN ('municipalidad', 'pnp', 'samu', 'bomberos')
+       ORDER BY i.type, s.name LIMIT 5001`,
+    );
+    if (rows.length > 5000) throw new HttpError(422, 'QUERY_LIMIT', 'Demasiadas sedes de referencia');
+    res.set('Cache-Control', 'no-store');
+    res.json({ source: 'registered-sites', completeDirectory: false,
+      sites: rows.map(row => ({ ...row, isDemo: Boolean(row.isDemo), latitude: Number(row.latitude), longitude: Number(row.longitude) })) });
+  });
   router.get('/ops/map', ...secure, async (req, res) => {
     const filters = parseFilters(req.query);
     filters.districtId = await canonicalDistrictId(pool, req.query.districtId);

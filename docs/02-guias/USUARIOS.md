@@ -77,3 +77,17 @@ La subida de foto y el flujo HTTP se probaron contra Render. La comprobación f�
 | API no disponible | Revisar `/api/health` y `/api/health/database`; comunicar hora y mensaje sin tokens ni contraseñas. |
 
 No publicar capturas con datos personales, tokens o contraseñas. Todos los casos DEMO son ficticios y no deben provocar un despacho real.
+
+## Interacción recuperada sobre la versión colaborativa
+
+El panel comparte ahora bordes definidos, tipografía consistente y azul para acciones. Las prioridades y avisos mantienen sus colores y etiquetas. Puedes recorrer botones y enlaces con Tab; el foco muestra un contorno visible. Las tablas anchas permiten desplazamiento horizontal dentro de su bloque en celular, conservando la página y el menú dentro de la pantalla.
+
+En el dashboard, pulsa Incidentes para abrir los reportes del periodo, En atención para consultar asignados/en camino/en atención, o Cerrados para ver sus cierres. Se conserva el distrito seleccionado y los últimos siete días consultados. La tarjeta de tiempo muestra el promedio y enlaza a las atenciones del periodo. Los bordes se resaltan con mouse o foco de teclado.
+
+- **Mapa:** empieza sin capas para evitar saturación. Activa Reportes, Límites distritales o las entidades con sus botones. Ver sede centra una sede registrada; Centrar zona muestra la zona seleccionada. Cambiar capas no mueve el mapa. Los ejemplos se identifican como simulación. Ver [mapa regional y referencias](MAPA_REFERENCIAS.md).
+- **Tipos de incidente:** los botones muestran solo tipos con reportes autorizados para fecha y distrito; se conservan al elegir otro tipo. Todos los tipos restablece la consulta general.
+- **Unidades y Personal:** administradores pueden abrir estos módulos desde el menú. Editar completa el formulario; Guardar cambios confirma la edición. Nuevo / cancelar edición restablece el formulario. Desactivar muestra una confirmación antes de enviar la acción. La flota muestra disponibles y en servicio y se actualiza cada 15 segundos.
+- **Sedes:** abrir Editar sede o Agregar sede y pulsar Elegir ubicación de la sede en el mapa. Un clic selecciona el punto; guardar confirma el registro. Se conservan teléfono, distrito y el flujo de Usuarios con acceso.
+- **Atención:** elegir sede y operador como antes. Elegir unidades y personal despliega una selección opcional; los ocupados aparecen deshabilitados. Si otro usuario los reserva antes, la API rechaza la operación e informa el conflicto.
+- **Verificación:** iniciar indica revisión en curso; guardar registra la conclusión y prioridad. Motivo explica qué se comprobó. Estas acciones no envían unidades. Se muestra una confirmación al guardar.
+- **Cerrar sesión:** abrir el menú de cuenta, pulsar Cerrar sesión y confirmar; Continuar trabajando cancela. Se mantienen Mi perfil y Cambiar contraseña.

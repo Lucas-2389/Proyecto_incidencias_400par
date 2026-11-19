@@ -5,10 +5,10 @@ import App from '../App';
 
 afterEach(() => vi.unstubAllGlobals());
 
-it.each(['/unidades', '/personal'])('redirige la ruta retirada %s sin montar recursos', (path) => {
+it.each(['/unidades', '/personal'])('protege la ruta administrativa recuperada %s sin montar recursos', (path) => {
   const Router = ({ children }) => <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>;
   render(<App Router={Router} />);
-  expect(screen.getByRole('link', { name: /Entrar al panel institucional/ })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Centro de operaciones' })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: /Unidades|Personal/ })).not.toBeInTheDocument();
 });
 
