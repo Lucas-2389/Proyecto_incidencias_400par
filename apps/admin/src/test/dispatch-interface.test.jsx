@@ -117,6 +117,11 @@ it('muestra sedes solo al activar su entidad y permite ocultarlas', async () => 
   render(<MemoryRouter><MapView /></MemoryRouter>);
   await screen.findByRole('img', { name: 'Mapa' });
   expect(screen.getByText(/No hay sedes sin indicador de simulación/)).toBeInTheDocument();
+  for (const entity of ['Municipalidades', 'PNP', 'SAMU', 'Bomberos']) {
+    expect(screen.getByRole('button', { name: `${entity} · 0`, exact: true })).toBeEnabled();
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'PNP · 0', exact: true }));
+  expect(screen.getByText(/Alguna entidad seleccionada no tiene ubicaciones/)).toBeInTheDocument();
   fireEvent.click(screen.getByText('Información de las referencias'));
   fireEvent.click(screen.getByLabelText('Incluir sedes de simulación'));
   const municipality = screen.getByRole('button', { name: /Municipalidades · 1/ });
@@ -338,7 +343,8 @@ it('distingue escritura confirmada de recarga fallida y reintenta solo la lectur
 it('presenta filtros de mapa ordenados y transmite tipo y distrito', async () => {
   render(<MemoryRouter><MapView /></MemoryRouter>);
   await screen.findByRole('option', { name: 'Ayacucho' });
-  expect(screen.getAllByRole('combobox').map((select) => select.closest('label').textContent)).toEqual([expect.stringContaining('Tipo de incidente'), expect.stringContaining('Distrito'), expect.stringContaining('Provincia de referencia'), expect.stringContaining('Sede para centrar')]);
+  expect(screen.getAllByRole('combobox').map((select) => select.closest('label').textContent)).toEqual([expect.stringContaining('Tipo de incidente'), expect.stringContaining('Distrito'), expect.stringContaining('Provincia de referencia')]);
+  expect(screen.queryByLabelText('Sede para centrar')).not.toBeInTheDocument();
   expect(screen.getByLabelText('Desde (opcional)')).toHaveValue('');
   expect(screen.getByLabelText('Hasta (opcional)')).toHaveValue('');
   fireEvent.change(screen.getByLabelText('Tipo de incidente'), { target: { value: '1' } });

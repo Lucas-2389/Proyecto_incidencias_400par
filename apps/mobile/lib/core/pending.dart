@@ -67,6 +67,10 @@ class SubmissionService {
     } else {
       try {
         receipt = await api.submitReport(report.body, report.clientRequestId);
+      } on ApiException catch (error) {
+        if (error.status < 500) rethrow;
+        await repository.save(report);
+        return SubmissionResult(pending: true);
       } on SocketException {
         await repository.save(report);
         return SubmissionResult(pending: true);

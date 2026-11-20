@@ -33,6 +33,7 @@ docs/
 ## Validación y antecedentes
 
 - [Validación del piloto](03-validacion/PILOTO.md).
+- [Evaluación local del mapa, sedes pendientes y ocho escenarios simulados](03-validacion/EVALUACION_MAPA.md).
 - [Informe del esquema Aiven](03-validacion/MIGRACIONES_AIVEN.md).
 - [Revisión documental de esta entrega](03-validacion/REVISION_DOCUMENTAL.md).
 - [Índice histórico](04-historial/README.md).

@@ -25,6 +25,7 @@ class PublicMapApi extends ApiClient {
   PublicMapApi() : super(baseUrl: 'http://example.invalid/api/v1');
   final paths = <String>[];
   bool fail = false;
+  bool districtsUnavailable = false;
   bool hidden = false;
   bool empty = false;
   bool coincident = false;
@@ -51,6 +52,9 @@ class PublicMapApi extends ApiClient {
   }) async {
     paths.add(path);
     expect(auth, isFalse);
+    if (districtsUnavailable && path.contains('/districts')) {
+      throw ApiException(500, 'Error interno');
+    }
     return path.contains('categories') ? publicCategories : publicDistricts;
   }
 
@@ -115,6 +119,26 @@ Future<PublicFavorites> favoritesStore() async {
 }
 
 void main() {
+  testWidgets('el mapa carga incidentes cuando falla el catálogo distrital', (tester) async {
+    final api = PublicMapApi()..districtsUnavailable = true;
+    final favorites = await favoritesStore();
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: MapViewScreen(api: api, favorites: favorites)),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Filtro por distrito temporalmente no disponible.'), findsOneWidget);
+    expect(find.byType(MarkerLayer), findsOneWidget);
+    expect(find.textContaining('Error interno'), findsNothing);
+    api.districtsUnavailable = false;
+    await tester.tap(find.text('Reintentar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Filtro por distrito temporalmente no disponible.'), findsNothing);
+    expect(find.byType(MarkerLayer), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    favorites.dispose();
+    api.dispose();
+  });
+
   testWidgets('cinco contornos permanecen visibles sin incidentes y destacan el distrito elegido', (tester) async {
     final api = PublicMapApi()..empty = true;
     final favorites = await favoritesStore();

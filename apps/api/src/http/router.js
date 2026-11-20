@@ -4,6 +4,7 @@ const { createAuthRouter } = require('../auth/router');
 const { createTerritoryRouter } = require('../territory/router');
 const { createInstitutionsRouter } = require('../institutions/router');
 const { createSitesRouter } = require('../institutions/sites');
+const { createReferencesRouter } = require('../institutions/references');
 const { createCoverageRouter } = require('../institutions/coverage');
 const { createInstitutionalUsersRouter } = require('../institutions/users');
 const { createPersonnelRouter } = require('../resources/personnel');
@@ -28,6 +29,7 @@ function createV1Router({ pool, authConfig, mailbox, evidenceStore, notification
   if (pool) router.use('/territory', createTerritoryRouter(pool));
   if (pool) router.use('/admin/institutions', createInstitutionsRouter(pool, authConfig));
   if (pool) router.use('/admin/sites', createSitesRouter(pool, authConfig));
+  if (pool) router.use('/admin/site-references', createReferencesRouter(pool, authConfig));
   if (pool) router.use('/admin/coverage', createCoverageRouter(pool, authConfig));
   if (pool) router.use('/admin/users', createInstitutionalUsersRouter(pool, authConfig));
   if (pool) router.use('/resources/personnel', createPersonnelRouter(pool, authConfig));

@@ -50,6 +50,7 @@ class TriageApi extends ReportApi {
 Future<void> chooseCategory(WidgetTester tester, String label) async {
   final selector = find.byKey(const Key('reportCategory'));
   await tester.ensureVisible(selector);
+  await tester.pumpAndSettle();
   await tester.tap(selector);
   await tester.pumpAndSettle();
   await tester.tap(find.text(label).last);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -27,9 +28,6 @@ class LocationFix {
 }
 
 Future<LocationFix> readDeviceLocation() async {
-  if (!await Geolocator.isLocationServiceEnabled()) {
-    throw Exception('Activa el GPS o elige la ubicación manualmente.');
-  }
   var permission = await Geolocator.checkPermission();
   if (permission == LocationPermission.denied) {
     permission = await Geolocator.requestPermission();
@@ -41,7 +39,10 @@ Future<LocationFix> readDeviceLocation() async {
     );
   }
   final position = await Geolocator.getCurrentPosition(
-    locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    locationSettings: const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      timeLimit: Duration(seconds: 30),
+    ),
   );
   return LocationFix(
     position.latitude,
@@ -68,6 +69,7 @@ class ReportScreen extends StatefulWidget {
 class _ReportScreenState extends State<ReportScreen> {
   final form = GlobalKey<FormState>();
   final map = MapController();
+  final mapAnchor = GlobalKey();
   final description = TextEditingController();
   final contactPhone = TextEditingController();
   final locationReference = TextEditingController();
@@ -95,6 +97,9 @@ class _ReportScreenState extends State<ReportScreen> {
   String? photoError;
   bool pending = false;
   bool busy = false;
+  bool locating = false;
+  int locationSelection = 0;
+  String? locationError;
   bool contactEdited = false;
   String? contactIdentity;
   @override
@@ -329,18 +334,58 @@ class _ReportScreenState extends State<ReportScreen> {
     map.move(selected, 15);
   }
 
+  void chooseManualPoint(LatLng selected) {
+    locationSelection++;
+    setState(() {
+      locating = false;
+      locationError = null;
+    });
+    choosePoint(selected);
+  }
+
+  void confirmAction(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> locate() async {
+    FocusScope.of(context).unfocus();
+    final request = ++locationSelection;
+    setState(() {
+      locating = true;
+      locationError = null;
+    });
     try {
       final position = await widget.locationReader();
-      if (!mounted) return;
+      if (!mounted || request != locationSelection) return;
       choosePoint(
         LatLng(position.latitude, position.longitude),
         accuracyMeters: position.accuracyMeters,
         at: position.capturedAt,
       );
-      setState(() => error = null);
-    } catch (issue) {
-      if (mounted) setState(() => error = issue.toString());
+      confirmAction('Ubicación obtenida. Revisa el punto del mapa antes de enviar.');
+      final mapContext = mapAnchor.currentContext;
+      if (mapContext != null) {
+        unawaited(
+          Scrollable.ensureVisible(
+            mapContext,
+            duration: const Duration(milliseconds: 250),
+            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted || request != locationSelection) return;
+      setState(
+        () => locationError =
+            'No pudimos obtener tu ubicación. Toca el mapa para marcar el lugar.',
+      );
+    } finally {
+      if (mounted && request == locationSelection) {
+        setState(() => locating = false);
+      }
     }
   }
 
@@ -349,6 +394,8 @@ class _ReportScreenState extends State<ReportScreen> {
       final image = await ImagePicker().pickImage(
         source: source,
         imageQuality: 85,
+        maxWidth: 1920,
+        maxHeight: 1920,
       );
       if (image == null) return;
       final extension = image.path.split('.').last.toLowerCase();
@@ -361,20 +408,24 @@ class _ReportScreenState extends State<ReportScreen> {
           photoPath = stored.path;
           photoError = null;
         });
+        confirmAction('Foto adjuntada. Se enviará junto con el reporte.');
       }
     } catch (issue) {
       if (mounted) {
         setState(() => error = 'No se pudo preparar la foto: $issue');
+        confirmAction('No se pudo adjuntar la foto. Intenta elegirla de nuevo.');
       }
     }
   }
 
   Future<void> submit() async {
     if (!form.currentState!.validate()) {
+      confirmAction('Revisa los campos obligatorios antes de enviar.');
       return;
     }
     if (point == null || categoryId == null) {
       setState(() => error = 'Selecciona categoría y ubicación.');
+      confirmAction('Selecciona la categoría y marca el lugar del reporte.');
       return;
     }
     setState(() {
@@ -440,12 +491,18 @@ class _ReportScreenState extends State<ReportScreen> {
         }
         if (result.photoError == null) photoPath = null;
       });
+      confirmAction(result.pending
+          ? 'Reporte pendiente de conexión. Todavía no llegó a la central.'
+          : result.photoError != null
+              ? 'Reporte recibido por la central. La fotografía está pendiente.'
+              : 'Reporte recibido por la central correctamente.');
     } catch (issue) {
       if (mounted) {
         setState(() {
           error = issue.toString();
           busy = false;
         });
+        confirmAction('No se pudo enviar el reporte. $issue');
       }
     }
   }
@@ -471,20 +528,28 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) => ListView(
+    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+    physics: const AlwaysScrollableScrollPhysics(),
     children: [
       ScreenPadding(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Nuevo reporte',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            const ScreenIntro(
+              title: 'Nuevo reporte',
+              message:
+                  'Cuéntanos qué ocurre y confirma el punto exacto antes de enviar. No necesitas iniciar sesión.',
+              icon: Icons.add_location_alt_outlined,
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Cuéntanos qué ocurre y confirma el punto exacto antes de enviar.',
+            const Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(label: Text('1 · Describe')),
+                Chip(label: Text('2 · Ubica')),
+                Chip(label: Text('3 · Foto opcional')),
+                Chip(label: Text('4 · Envía')),
+              ],
             ),
             if (pending)
               const MessageCard(
@@ -549,6 +614,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       }
                       return DropdownButtonFormField<int>(
                         key: const Key('reportCategory'),
+                        menuMaxHeight: 320,
                         initialValue: categoryId,
                         isExpanded: true,
                         decoration: const InputDecoration(
@@ -640,9 +706,13 @@ class _ReportScreenState extends State<ReportScreen> {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: locate,
+                          onPressed: locating ? null : locate,
                           icon: const Icon(Icons.my_location),
-                          label: const Text('Usar mi ubicación'),
+                          label: Text(
+                            locating
+                                ? 'Buscando ubicación…'
+                                : 'Usar mi ubicación',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -654,7 +724,12 @@ class _ReportScreenState extends State<ReportScreen> {
                       ),
                     ],
                   ),
-                  if (point == null)
+                  if (locationError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(locationError!),
+                    ),
+                  if (point == null && locationError == null)
                     const Padding(
                       padding: EdgeInsets.only(top: 8),
                       child: Text(
@@ -666,7 +741,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         ),
                       ),
                     )
-                  else
+                  else if (point != null)
                     Card(
                       margin: const EdgeInsets.only(top: 8),
                       color: const Color(0xFFE8F5F2),
@@ -690,47 +765,23 @@ class _ReportScreenState extends State<ReportScreen> {
                     ),
                   const SizedBox(height: 8),
                   SizedBox(
+                    key: mapAnchor,
                     height: 280,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: FlutterMap(
-                        mapController: map,
-                        options: MapOptions(
-                          initialCenter: const LatLng(-13.16, -74.22),
-                          initialZoom: 13,
-                          onTap: (_, location) => choosePoint(location),
-                        ),
-                        children: [
-                          TileLayer(
-                            urlTemplate: AppConfig.tileUrl,
-                            userAgentPackageName: 'org.incidencias.mobile',
-                          ),
-                          if (point != null)
-                            MarkerLayer(
-                              markers: [
-                                Marker(
-                                  point: point!,
-                                  width: 42,
-                                  height: 42,
-                                  child: const Icon(
-                                    Icons.location_on,
-                                    color: Colors.red,
-                                    size: 42,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          const RichAttributionWidget(
-                            attributions: [
-                              TextSourceAttribution(
-                                '© OpenStreetMap contributors',
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                    child: _ReportPointMap(
+                      controller: map,
+                      point: point,
+                      onSelect: chooseManualPoint,
                     ),
                   ),
+                  if (photoPath != null) ...[
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(File(photoPath!), height: 180,
+                        width: double.infinity, fit: BoxFit.contain),
+                    ),
+                    const Text('Foto lista para adjuntar al reporte'),
+                  ],
                   OutlinedButton.icon(
                     onPressed: () => showModalBottomSheet<void>(
                       context: context,
@@ -782,5 +833,54 @@ class _ReportScreenState extends State<ReportScreen> {
         ),
       ),
     ],
+  );
+}
+
+class _ReportPointMap extends StatelessWidget {
+  const _ReportPointMap({
+    required this.controller,
+    required this.point,
+    required this.onSelect,
+  });
+
+  final MapController controller;
+  final LatLng? point;
+  final ValueChanged<LatLng> onSelect;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(12),
+    child: FlutterMap(
+      mapController: controller,
+      options: MapOptions(
+        initialCenter: point ?? const LatLng(-13.16, -74.22),
+        initialZoom: point == null ? 13 : 15,
+        onTap: (_, location) => onSelect(location),
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: AppConfig.tileUrl,
+          userAgentPackageName: 'org.incidencias.mobile',
+        ),
+        if (point != null)
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: point!,
+                width: 42,
+                height: 42,
+                child: const Icon(
+                  Icons.location_on,
+                  color: Colors.red,
+                  size: 42,
+                ),
+              ),
+            ],
+          ),
+        const RichAttributionWidget(
+          attributions: [TextSourceAttribution('© OpenStreetMap contributors')],
+        ),
+      ],
+    ),
   );
 }

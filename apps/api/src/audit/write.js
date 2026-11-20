@@ -1,5 +1,6 @@
 const allowedFields = new Set(['id', 'name', 'email', 'phone', 'contactPhone', 'status', 'active', 'type', 'role',
-  'institutionId', 'siteId', 'districtId', 'address', 'scope', 'location', 'latitude', 'longitude', 'territoryStatus']);
+  'institutionId', 'siteId', 'districtId', 'address', 'scope', 'location', 'latitude', 'longitude', 'territoryStatus',
+  'verificationMethod', 'locationSource', 'reviewedAt', 'districtCode']);
 
 function auditFields(value) {
   if (!value) return null;

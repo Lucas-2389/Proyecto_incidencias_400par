@@ -7,7 +7,7 @@ import { currentRange, OSM_TILE_URL, DISTRICT_BOUNDARIES } from '../config';
 import DistrictField from '../DistrictField';
 import DistrictBoundaries from '../DistrictBoundaries';
 import { queryString } from '../api/client';
-import { statusLabels } from '../incidentLabels';
+import { statusLabels, priorityLabels } from '../incidentLabels';
 import { ErrorBoundaryContent, Field, Notice, Panel, friendlyDate, useRemote } from '../ui';
 import { mapPeriod } from '../mapPeriod';
 import 'leaflet/dist/leaflet.css';
@@ -61,15 +61,16 @@ function glyphSvg(glyph) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${glyphPaths[glyph] ?? glyphPaths.alert}</svg>`;
 }
 
-function iconFor(category, count = 1, mixed = false) {
+function iconFor(category, count = 1, mixed = false, priority = 'normal') {
   const look = appearance(category);
   const glyph = mixed ? 'layers' : look.glyph;
   const tone = mixed ? 'mixed' : look.tone;
-  const key = `${tone}:${glyph}:${count}`;
+  const urgent = priority === 'critical' || priority === 'high';
+  const key = `${tone}:${glyph}:${count}:${urgent}`;
   if (!markerIcons.has(key)) {
     markerIcons.set(key, divIcon({
       className: 'incident-map-icon',
-      html: `<span class="incident-map-symbol incident-map-symbol--${tone}" aria-hidden="true"><span class="incident-map-glyph">${glyphSvg(glyph)}</span>${count > 1 ? `<b class="incident-map-count">${count}</b>` : ''}</span>`,
+      html: `<span class="incident-map-symbol incident-map-symbol--${tone}${urgent ? ' incident-map-symbol--urgent' : ''}" aria-hidden="true"><span class="incident-map-glyph">${glyphSvg(glyph)}</span>${urgent ? '<i class="incident-map-urgent">!</i>' : ''}${count > 1 ? `<b class="incident-map-count">${count}</b>` : ''}</span>`,
       iconSize: [60, 68],
       iconAnchor: [30, 62],
       popupAnchor: [0, -55],
@@ -121,8 +122,11 @@ export default function MapView() {
   const boundaries = useRemote(DISTRICT_BOUNDARIES);
   const regional = useRemote('/territory/ayacucho/reference-boundaries');
   const references = useRemote('/ops/map/sites');
+  const documented = useRemote('/admin/site-references');
   const [includeDemoSites, setIncludeDemoSites] = useState(false);
-  const referenceSites = useMemo(() => (references.data?.sites ?? []).filter(site => includeDemoSites || !site.isDemo), [references.data, includeDemoSites]);
+  const referenceSites = useMemo(() => [...(references.data?.sites ?? []).filter(site => includeDemoSites || !site.isDemo),
+    ...(documented.data ?? []).filter(site => site.status === 'location_reviewed').map(site => ({ ...site, id: `reference-${site.id}`, institutionName: site.name,
+      districtName: `UBIGEO ${site.districtCode}`, isDemo: false, locationReviewed: true }))], [references.data, documented.data, includeDemoSites]);
   const [enabledEntities, setEnabledEntities] = useState([]);
   const [provinceCode, setProvinceCode] = useState('');
   const [showBoundaries, setShowBoundaries] = useState(false);
@@ -144,6 +148,7 @@ export default function MapView() {
   const baseMap = useRemote(referenceFilters ? `/ops/map${referenceFilters}` : null, [revision]);
   const activeCategoryIds = new Set((baseMap.data?.incidents ?? []).map(item => String(item.categoryId)));
   const referenceSite = referenceSites.find(site => site.id === referenceSiteId);
+  const visibleSites = referenceSites.filter(site => !provinceCode || site.districtCode?.startsWith(provinceCode));
   function chooseCategory(value) { setCategoryId(value); setShowReports(true); }
   function centerZone() {
     const features = districtId ? (boundaries.data?.features ?? []).filter(feature => String(feature.properties.id) === districtId)
@@ -161,6 +166,7 @@ export default function MapView() {
   function update() {
     if (!from && !to) setDefaultRange(currentRange(7));
     setRevision((value) => value + 1);
+    references.reload(); documented.reload();
   }
   return <div className="page-stack">
     <div className="page-intro"><span className="eyebrow">Territorio</span><h1>Mapa de incidencias</h1><p>Reportes autorizados y referencias de sedes en Ayacucho.</p></div>
@@ -182,19 +188,23 @@ export default function MapView() {
           className={`button ${enabledEntities.includes(entity.type) ? 'primary' : 'ghost'}`} aria-pressed={enabledEntities.includes(entity.type)}
           onClick={() => setEnabledEntities(current => current.includes(entity.type) ? current.filter(type => type !== entity.type) : [...current, entity.type])}>
           {entity.label} · {referenceSites.filter(site => site.institutionType === entity.type && (!provinceCode || site.districtCode?.startsWith(provinceCode))).length}
-        </button>)}<button type="button" className="button ghost" onClick={() => setEnabledEntities([])}>Ocultar sedes</button>
+        </button>)}{enabledEntities.length > 0 && <button type="button" className="button ghost" onClick={() => setEnabledEntities([])}>Ocultar sedes</button>}
           <button type="button" className="button ghost" onClick={() => { setEnabledEntities([]); setShowReports(false); setShowBoundaries(false); }}>Limpiar capas</button>
         </div>
+        {enabledEntities.some(type => !visibleSites.some(site => site.institutionType === type)) && <p className="map-note" role="status">Alguna entidad seleccionada no tiene ubicaciones disponibles en esta zona. Activa «Incluir sedes de simulación» para ver los ejemplos; las referencias reales pendientes requieren verificar sus coordenadas.</p>}
         <div className="map-position-controls"><Field label="Provincia de referencia"><select value={provinceCode} onChange={event => { setProvinceCode(event.target.value); setReferenceSiteId(''); }}>
           <option value="">Toda la región Ayacucho</option>{provinces.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
         </select></Field><button type="button" className="button secondary" disabled={!regional.data && !boundaries.data} onClick={centerZone}>Centrar zona</button>
-          <Field label="Sede para centrar"><select value={referenceSiteId} onChange={event => setReferenceSiteId(event.target.value)}><option value="">Elegir una sede registrada</option>
+          {visibleSites.length > 0 && <><Field label="Sede para centrar"><select value={referenceSiteId} onChange={event => setReferenceSiteId(event.target.value)}><option value="">Elegir una sede registrada</option>
             {referenceSites.filter(site => !provinceCode || site.districtCode?.startsWith(provinceCode)).map(site => <option key={site.id} value={site.id}>{site.name}{site.isDemo ? ' · Simulación' : ''}</option>)}
-          </select></Field><button type="button" className="button secondary" disabled={!referenceSite} onClick={centerSite}>Ver sede</button>
+          </select></Field><button type="button" className="button secondary" disabled={!referenceSite} onClick={centerSite}>Ver sede</button></>}
         </div>
         <p className="map-note">Activa solo lo que necesites. Acerca el mapa con el cursor sobre el lugar que quieres explorar; cambiar una capa no mueve la vista.</p>
+        {(documented.data ?? []).some(site => site.status === 'pending_location') && <p className="map-note">{documented.data.filter(site => site.status === 'pending_location').length} referencias con ubicación pendiente. <Link to="/instituciones">Revisar referencias institucionales →</Link></p>}
+        {documented.error && <Notice kind="error">No se pudieron consultar las referencias documentales. <button type="button" onClick={documented.reload}>Reintentar referencias documentales</button></Notice>}
+        <label className="check"><input type="checkbox" checked={includeDemoSites} onChange={event => { setIncludeDemoSites(event.target.checked); setReferenceSiteId(''); }} /> Incluir sedes de simulación</label>
+        {!visibleSites.length && <p className="map-note">No hay sedes con ubicación disponible en esta selección. Puedes consultar las referencias pendientes o activar las sedes de simulación para probar el mapa.</p>}
         <details className="map-source-details"><summary>Información de las referencias</summary>
-          <label className="check"><input type="checkbox" checked={includeDemoSites} onChange={event => { setIncludeDemoSites(event.target.checked); setReferenceSiteId(''); }} /> Incluir sedes de simulación</label>
           <p className="map-note">Sedes registradas, incluidos ejemplos de simulación; no es un directorio oficial completo. La provincia filtra estas referencias, sin ampliar el acceso a reportes.</p>
           {regional.data && <p className="map-note">Región: {regional.data.features.length} distritos · {provinces.length} provincias · Fuente INDECI · Cartografía referencial, sin valor de demarcación legal.</p>}
         </details>
@@ -268,14 +278,16 @@ function OperationalMap({ filters, revision, categories, categoryId, setCategory
             const label = mixed ? `${group.length} reportes · ${types.length} tipos`
               : multiple ? `${group.length} ${shortGroupNames[category?.code] ?? 'reportes'}` : category?.name ?? 'Incidente';
             const samePoint = group.every((item) => item.latitude === first.latitude && item.longitude === first.longitude);
-            return <Marker key={first.id} position={[first.latitude, first.longitude]} icon={iconFor(category, group.length, mixed)}
+            const groupPriority = group.some(item => item.priority === 'critical') ? 'critical' : group.some(item => item.priority === 'high') ? 'high' : 'normal';
+            return <Marker key={first.id} position={[first.latitude, first.longitude]} icon={iconFor(category, group.length, mixed, groupPriority)}
               title={multiple ? `${label}. ${samePoint ? 'Abre para verlos' : 'Acerca el mapa para separar puntos cercanos'}` : `${label}: ${first.reference}`}>
               <Tooltip className="incident-map-label" direction="bottom" offset={[0, 12]}>{label}</Tooltip>
               <Popup autoPan={false}><div className="incident-map-popup">
                 {multiple && <strong>{group.length} reportes en esta zona</strong>}
                 {group.map((item) => <div className="incident-map-popup-item" key={item.id}>
                   <span className="eyebrow">{categoryById.get(item.categoryId)?.name ?? 'Incidente'}</span>
-                  <strong>{item.reference}</strong><span>{statusLabels[item.status] ?? item.status}</span>
+                  <strong>{item.reference}</strong><span>{statusLabels[item.status] ?? item.status} · Prioridad {priorityLabels[item.priority] ?? 'por revisar'}</span>
+                  {item.isDemo && <span className="incident-demo-label">Simulación de evaluación · Sin emergencia real</span>}
                   <Link to={`/incidentes/${item.id}`}>Ver detalle →</Link>
                 </div>)}
               </div></Popup>
@@ -298,6 +310,7 @@ function OperationalMap({ filters, revision, categories, categoryId, setCategory
           })}
         </div>
         <p className="map-legend-help">{counts.length ? 'Toca un tipo para filtrarlo. Acerca el mapa para separar reportes cercanos.' : 'Sin reportes para estos filtros. Puedes elegir otro tipo o volver a Todos los tipos.'}</p>
+        <p className="map-note">Cada símbolo identifica el tipo de reporte. El número agrupa reportes próximos; ! indica que alguno tiene prioridad alta o crítica. Abre el marcador para consultar estado, prioridad y detalle. La prioridad informada requiere evaluación institucional.</p>
         <p className="map-note">© OpenStreetMap contributors · Límites referenciales: INDECI / INEI · Puntos de incidentes limitados a tu ámbito.</p>
       </ErrorBoundaryContent>
     </>;

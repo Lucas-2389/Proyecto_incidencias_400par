@@ -45,7 +45,9 @@ export default function SiteReferences({ sites, enabled, provinceCode }) {
       <Tooltip>{group.length > 1 ? `${group.length} sedes · Abre para consultar las entidades` : `${group[0].name}${group[0].isDemo ? ' · Simulación' : ''}`}</Tooltip>
       <Popup autoPan={false}><div className="site-reference-popup">{group.map(site => <section key={site.id}><strong>{site.name}</strong>
         <span>{site.institutionName}</span><span>{site.districtName}</span>
-        <span>{site.isDemo ? 'Sede de simulación: ubicación de prueba' : 'Sede registrada: ubicación pendiente de validación oficial'}</span>
+        <span>{site.isDemo ? 'Sede de simulación: ubicación de prueba' : site.locationReviewed ? 'Referencia con ubicación revisada; no es sede habilitada para despacho' : 'Sede registrada: ubicación pendiente de validación oficial'}</span>
+        {site.verificationMethod === 'user_report' && <span>Ubicación indicada por un usuario; sin confirmación institucional independiente.</span>}
+        {site.locationReviewed && site.locationSource && <a href={site.locationSource} target="_blank" rel="noopener noreferrer">Evidencia de la revisión ↗</a>}
       </section>)}<small>Referencia visual. No indica disponibilidad ni asigna recursos.</small>
       </div></Popup>
     </Marker>);

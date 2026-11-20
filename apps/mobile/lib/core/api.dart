@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -205,6 +206,17 @@ class ApiClient extends ChangeNotifier {
       await _storage.write(key: 'guestEvidence:${receipt['id']}', value: permission);
     }
     return receipt;
+  }
+
+  Future<Uint8List> evidencePhoto(String incidentId, String photoId) async {
+    await loadProfile();
+    final generation = _generation;
+    final response = await _client.get(Uri.parse('$baseUrl/incidents/$incidentId/evidence/$photoId'),
+      headers: {'Authorization': 'Bearer $_accessToken'});
+    if (generation != _generation) throw ApiException(409, 'La sesión ha cambiado');
+    if (response.statusCode != 200) throw ApiException(response.statusCode,
+      response.statusCode == 410 ? 'Esta foto ya no está disponible para consulta ciudadana.' : 'No se pudo cargar la foto. Intenta nuevamente.');
+    return response.bodyBytes;
   }
 
   Future<void> uploadPhoto(String incidentId, String filePath) async {

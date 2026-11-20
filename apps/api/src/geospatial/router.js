@@ -40,7 +40,7 @@ function databaseDate(date) { return date.toISOString().slice(0, 23).replace('T'
 
 async function loadIncidentRows(pool, filters) {
   const [rows] = await pool.execute(
-    `SELECT i.id, i.reference, i.status, i.category_id AS categoryId, i.created_at AS createdAt,
+    `SELECT i.id, i.reference, i.status, i.priority, i.is_demo AS isDemo, i.category_id AS categoryId, i.created_at AS createdAt,
       c.family, (c.is_sensitive OR COALESCE(sc.is_sensitive, FALSE)) AS isSensitive,
       l.district_id AS districtId, ST_X(l.location_point) AS latitude, ST_Y(l.location_point) AS longitude
      FROM incidents i JOIN incident_locations l ON l.incident_id = i.id
@@ -187,7 +187,7 @@ function createGeospatialRouter(pool, authConfig) {
     );
     if (sites.length > 500) throw new HttpError(422, 'QUERY_LIMIT', 'Demasiadas sedes');
     res.json({ incidents: incidents.map((row) => ({ id: row.id, reference: row.reference, status: row.status,
-      categoryId: row.categoryId, latitude: Number(row.latitude), longitude: Number(row.longitude) })),
+      categoryId: row.categoryId, priority: row.priority, isDemo: Boolean(row.isDemo), latitude: Number(row.latitude), longitude: Number(row.longitude) })),
     sites: sites.filter((site) => hasInstitutionScope(req.auth, site.institutionId, site.id))
       .map((site) => ({ ...site, latitude: Number(site.latitude), longitude: Number(site.longitude) })) });
   });

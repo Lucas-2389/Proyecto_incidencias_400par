@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 
 import '../core/api.dart';
 import 'common.dart';
@@ -100,6 +101,19 @@ class _ReportDetailState extends State<ReportDetail> {
         const SizedBox(height: 12), MessageCard(message: 'Estado actual: ${incidentStatus(incident['status'])}'),
         Card(child: ListTile(title: const Text('Descripción'), subtitle: Text(incident['description']?.toString() ?? '—'))),
         Card(child: ListTile(title: const Text('Fecha de reporte'), subtitle: Text(formatDate(incident['createdAt'])))),
+        const Text('Mis fotografías · consulta durante 5 días'),
+        const Text('La institución conserva las evidencias después de este plazo.'),
+        for (final photo in (incident['evidence'] as List? ?? []))
+          if (DateTime.tryParse(photo['uploadedAt']?.toString() ?? '') case final DateTime uploaded)
+            if (DateTime.now().toUtc().isBefore(uploaded.toUtc().add(const Duration(days: 5))))
+              FutureBuilder<Uint8List>(
+                future: widget.api.evidencePhoto(widget.id, photo['id'] as String),
+                builder: (context, image) => image.hasError
+                  ? MessageCard(message: image.error.toString())
+                  : image.hasData ? Padding(padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Image.memory(image.data!, height: 220, fit: BoxFit.contain))
+                    : const Center(child: CircularProgressIndicator()),
+              ),
         Text('Línea de tiempo', style: Theme.of(context).textTheme.titleLarge),
         if (history.isEmpty) const MessageCard(message: 'Aún no hay eventos disponibles.'),
         ...history.map((event) => ListTile(leading: const Icon(Icons.timeline),

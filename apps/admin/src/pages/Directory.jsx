@@ -3,6 +3,7 @@ import { useSession } from '../session';
 import { queryString } from '../api/client';
 import { Empty, ErrorBoundaryContent, Field, Notice, Panel, useRemote } from '../ui';
 import DistrictField from '../DistrictField';
+import SiteReferenceRegistry from '../SiteReferenceRegistry';
 
 const emptyContact = { name: '', phone: '', scope: 'local', districtId: '', institutionId: '', siteId: '' };
 
@@ -46,6 +47,7 @@ export default function Directory() {
   return <div className="page-stack">
     <div className="page-intro"><span className="eyebrow">Servicios</span><h1>Contactos de emergencia</h1><p>Publica los teléfonos nacionales y locales que la ciudadanía consulta desde la app.</p></div>
     <Notice kind="error">{error}</Notice><Notice kind="success">{notice}</Notice>
+    <SiteReferenceRegistry />
     <Panel title={editing ? 'Editar contacto' : 'Agregar contacto'}>
       <form className="form-grid compact" onSubmit={submit}>
         <Field label="Nombre"><input required maxLength={150} value={values.name} onChange={(event) => update('name', event.target.value)} /></Field>

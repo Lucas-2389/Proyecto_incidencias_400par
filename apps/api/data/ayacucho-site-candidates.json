@@ -1,0 +1,143 @@
+[
+  {
+    "id": "andres-avelino-central",
+    "name": "Municipalidad Distrital Andrés Avelino Cáceres Dorregaray — Sede Central",
+    "institutionType": "municipalidad",
+    "districtCode": "050116",
+    "address": "Jr. Los Rosales N.º 205, Urbanización Jardín",
+    "sources": [
+      "https://www.gob.pe/institucion/muniandresavelinocaceresdorregaray/sedes",
+      "https://maps.google.com/maps?daddr=-13.162306,-74.213347&ll="
+    ],
+    "notes": "Dirección y punto publicados por la institución en gob.pe, consultados el 19/11/2026. Coordenadas del enlace Ver mapa de Sede Central: -13.162306, -74.213347. Referencia Parque de las Banderas aportada por el usuario; no se utiliza el centro del parque como ubicación del edificio. La fuente no acredita disponibilidad operativa."
+  },
+  {
+    "id": "mph-central",
+    "name": "Municipalidad Provincial de Huamanga — Sede Central",
+    "institutionType": "municipalidad",
+    "districtCode": "050101",
+    "address": "Portal Constitución N.º 44, Ayacucho",
+    "sources": [
+      "https://www.gob.pe/institucion/munihuamanga/sedes"
+    ],
+    "notes": "Candidato documental. Dirección respaldada por publicación institucional; coordenadas y vigencia pendientes. No habilita atención ni jurisdicción."
+  },
+  {
+    "id": "carmen-alto-central",
+    "name": "Municipalidad Distrital de Carmen Alto — Sede Central",
+    "institutionType": "municipalidad",
+    "districtCode": "050104",
+    "address": "Av. Los Libertadores S/N, cuadra 7",
+    "sources": [
+      "https://www.gob.pe/institucion/municarmenalto/sedes"
+    ],
+    "notes": "Candidato aportado para revisión. Se reportan varias sedes en la página institucional; confirmar correspondencia entre edificio, denominación y dirección antes de revisar ubicación."
+  },
+  {
+    "id": "carmen-alto-libertadores",
+    "name": "Municipalidad Distrital de Carmen Alto — Sede Av. Los Libertadores",
+    "institutionType": "municipalidad",
+    "districtCode": "050104",
+    "address": "Av. Libertadores N.º 520",
+    "sources": [
+      "https://www.gob.pe/institucion/municarmenalto/sedes"
+    ],
+    "notes": "Candidato documental. No sustituye automáticamente a la sede central. Coordenadas y vigencia pendientes."
+  },
+  {
+    "id": "carmen-alto-peru",
+    "name": "Municipalidad Distrital de Carmen Alto — Sede Av. Perú",
+    "institutionType": "municipalidad",
+    "districtCode": "050104",
+    "address": "Av. Perú N.º 100",
+    "sources": [
+      "https://www.gob.pe/institucion/municarmenalto/sedes"
+    ],
+    "notes": "Candidato aportado por revisión externa; nombre y dirección pendientes de contraste directo. Sin punto cartográfico confirmado."
+  },
+  {
+    "id": "san-juan-central",
+    "name": "Municipalidad Distrital de San Juan Bautista — Sede Central",
+    "institutionType": "municipalidad",
+    "districtCode": "050110",
+    "address": "Jr. España N.º 119 / Jr. Mariano Bellido N.º 224",
+    "sources": [
+      "https://www.gob.pe/institucion/munisanjuanbautista-ayacucho/sedes"
+    ],
+    "notes": "Candidato documental. Confirmar acceso y edificio; coordenadas y vigencia pendientes."
+  },
+  {
+    "id": "pnp-ayacucho",
+    "name": "Comisaría PNP Ayacucho",
+    "institutionType": "pnp",
+    "districtCode": "050101",
+    "address": "Jr. 28 de Julio N.º 325",
+    "sources": [
+      "https://www.gob.pe/institucion/pnp/informes-publicaciones/6664125-prontuario-telefonico-de-la-region-policial-ayacucho"
+    ],
+    "notes": "Candidato. Contrastar dirección y denominación con el prontuario PNP antes de revisar ubicación. No se declara estado operativo vigente.",
+    "userLocationCorrection": {
+      "latitude": -13.1638933636342,
+      "longitude": -74.2271857026688,
+      "method": "user_report",
+      "reportedOn": "2026-11-19",
+      "source": "https://maps.google.com/maps?q=-13.1638933636342,-74.2271857026688",
+      "notes": "Punto aportado por el usuario. Contraste distrital regional, sin confirmación institucional independiente. La dirección documental previa no se considera validada para este punto."
+    }
+  },
+  {
+    "id": "bomberos-ayacucho-63",
+    "name": "Compañía de Bomberos Ayacucho N.º 63",
+    "institutionType": "bomberos",
+    "districtCode": "050101",
+    "address": "Av. Mariscal Cáceres, manzana R, lote 27",
+    "sources": [
+      "https://www.bomberosperu.gob.pe/np_noticias_seleccionada.asp?id=1450"
+    ],
+    "notes": "Dirección documentada en noticia oficial de julio de 2012: evidencia histórica, no confirmación de vigencia ni del punto del edificio. Coordenadas pendientes.",
+    "userLocationCorrection": {
+      "latitude": -13.147844714758861,
+      "longitude": -74.22351278465743,
+      "method": "user_report",
+      "reportedOn": "2026-11-19",
+      "source": "https://maps.google.com/maps?q=-13.147844714758861,-74.22351278465743",
+      "notes": "Punto aportado por el usuario. Contraste distrital regional, sin confirmación institucional independiente. La dirección documental previa no se considera validada para este punto."
+    }
+  },
+  {
+    "id": "pnp-carmen-alto",
+    "name": "Comisaría PNP de Carmen Alto",
+    "institutionType": "pnp",
+    "districtCode": "050104",
+    "address": null,
+    "sources": [
+      "https://maps.google.com/maps?q=-13.177005094404521,-74.22128986394388"
+    ],
+    "notes": "Referencia y coordenadas aportadas por el usuario el 19/11/2026; entidad confirmada por el usuario. Dirección postal pendiente. Sin confirmación institucional independiente.",
+    "userLocationCorrection": {
+      "latitude": -13.177005094404521,
+      "longitude": -74.22128986394388,
+      "method": "user_report",
+      "reportedOn": "2026-11-19",
+      "source": "https://maps.google.com/maps?q=-13.177005094404521,-74.22128986394388"
+    }
+  },
+  {
+    "id": "bomberos-caceres-por-confirmar",
+    "name": "Bomberos — sede reportada en San Juan Bautista (nombre y número por confirmar)",
+    "institutionType": "bomberos",
+    "districtCode": "050110",
+    "address": null,
+    "sources": [
+      "https://maps.google.com/maps?q=-13.168533277102654,-74.20044907814165"
+    ],
+    "notes": "Referencia y coordenadas aportadas por el usuario el 19/11/2026; entidad confirmada por el usuario. Dirección postal pendiente. Sin confirmación institucional independiente. Nombre y número de compañía pendientes; no se atribuye a una compañía concreta.",
+    "userLocationCorrection": {
+      "latitude": -13.168533277102654,
+      "longitude": -74.20044907814165,
+      "method": "user_report",
+      "reportedOn": "2026-11-19",
+      "source": "https://maps.google.com/maps?q=-13.168533277102654,-74.20044907814165"
+    }
+  }
+]

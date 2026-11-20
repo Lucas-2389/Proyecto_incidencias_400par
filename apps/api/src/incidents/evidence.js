@@ -82,10 +82,14 @@ function createEvidenceRouter(pool, authConfig, evidenceStore) {
   router.get('/:id/evidence/:evidenceId', ...protect, async (req, res) => {
     if (!evidenceStore) throw new HttpError(503, 'EVIDENCE_UNAVAILABLE', 'Fotografías no disponibles');
     const [[row]] = await pool.execute(
-      'SELECT id, object_key AS objectKey, media_type AS mediaType, storage_provider AS storageProvider FROM evidence WHERE id = ? AND incident_id = ?',
+      'SELECT id, object_key AS objectKey, media_type AS mediaType, storage_provider AS storageProvider, created_at AS createdAt FROM evidence WHERE id = ? AND incident_id = ?',
       [req.params.evidenceId, req.params.id],
     );
     if (!row) throw new HttpError(404, 'NOT_FOUND', 'Fotografía no encontrada');
+    const institutional = ['Operador', 'AdministradorInstitucional', 'SuperAdministrador'].some(role => req.auth.roles.has(role));
+    if (!institutional && Date.now() >= new Date(row.createdAt).getTime() + 5 * 86400000) {
+      throw new HttpError(410, 'PHOTO_EXPIRED', 'La consulta ciudadana de esta foto terminó después de cinco días. La institución conserva la evidencia.');
+    }
     let bytes;
     try { bytes = await evidenceStore.read(row.objectKey, row.mediaType, row.storageProvider); }
     catch { throw new HttpError(503, 'EVIDENCE_UNAVAILABLE', 'Fotografía no disponible'); }
@@ -94,6 +98,7 @@ function createEvidenceRouter(pool, authConfig, evidenceStore) {
        VALUES (?, ?, 'evidence.read', 'evidence', ?)`, [req.auth.user.id, req.correlationId, row.id],
     );
     res.set('Content-Type', row.mediaType);
+    res.set('Cache-Control', 'private, no-store');
     res.set('Content-Disposition', 'attachment');
     res.send(bytes);
   });

@@ -144,6 +144,8 @@ RNF-01, RNF-02 y RNF-04 describen objetivos de evolución. No se ha iniciado en 
 
 El usuario institucional puede mostrar u ocultar por separado las sedes registradas de Municipalidad, PNP, SAMU y Bomberos, combinar estas capas y filtrar sus referencias por provincia de Ayacucho. Debe distinguir sedes de simulación y no interpretar el inventario como un padrón oficial completo.
 
+Actualización del inventario municipal regional: debe cubrir las municipalidades provinciales y distritales de Ayacucho con dirección y procedencia documental. Una dirección sin punto institucional publicado permanece pendiente y puede consultarse mediante búsqueda. Solo los puntos publicados contrastados con el interior del distrito regional pueden mostrarse como referencias revisadas. No se deben usar coordenadas de capitales, parques ni centroides en sustitución del edificio. Los conflictos entre el enlace publicado y el distrito deben conservarse explícitos para revisión. Esta incorporación de referencias no habilita atención, cuentas ni asignaciones en nuevos distritos.
+
 La capa territorial regional permite consultar los distritos presentes en la fuente pública, identificar su nombre al pasar el cursor y destacar el contorno. Debe indicar su carácter referencial y su procedencia; no debe presentarse como demarcación legal ni ampliar permisos de atención fuera del ámbito autorizado.
 
 Cambiar el tipo de incidente no debe desmontar el mapa ni desplazar la página durante una actualización. Debe conservar el zoom, informar el estado de carga y permitir volver a todos los tipos. Una actualización fallida conserva la consulta anterior e informa el fallo.

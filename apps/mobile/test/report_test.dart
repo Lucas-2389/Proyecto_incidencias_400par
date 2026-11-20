@@ -17,6 +17,7 @@ class ReportApi extends ApiClient {
     user = id == null ? null : {'id': id, 'phone': phone};
     notifyListeners();
   }
+
   @override
   Future<List<Map<String, dynamic>>> list(
     String path, {
@@ -56,31 +57,54 @@ Future<void> fillReport(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('contacto autocompletado respeta edición tardía y cambio de cuenta', (tester) async {
-    final api = ReportApi()..setProfile('one', '999111222');
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: ReportScreen(api: api,
-      submissions: SubmissionService(api, ReportPending())))));
-    await tester.pumpAndSettle();
-    final contact = find.byKey(const Key('contactPhone'));
-    expect(tester.widget<TextFormField>(contact).controller!.text, '999111222');
-    await tester.enterText(contact, '');
-    api.setProfile('one', '999333444');
-    await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(contact).controller!.text, '');
-    await tester.enterText(find.widgetWithText(TextFormField, 'Describe lo sucedido'), 'Borrador');
-    api.setProfile('two', '999555666');
-    await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(contact).controller!.text, '999555666');
-    expect(find.text('Borrador'), findsOneWidget);
-    api.setProfile(null, null);
-    await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(contact).controller!.text, '');
-    api.setProfile('restored', '999777888');
-    await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(contact).controller!.text, '999777888');
-    await tester.pumpWidget(const SizedBox.shrink());
-    api.dispose();
-  });
+  testWidgets(
+    'contacto autocompletado respeta edición tardía y cambio de cuenta',
+    (tester) async {
+      final api = ReportApi()..setProfile('one', '999111222');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ReportScreen(
+              api: api,
+              submissions: SubmissionService(api, ReportPending()),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final contact = find.byKey(const Key('contactPhone'));
+      expect(
+        tester.widget<TextFormField>(contact).controller!.text,
+        '999111222',
+      );
+      await tester.enterText(contact, '');
+      api.setProfile('one', '999333444');
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextFormField>(contact).controller!.text, '');
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Describe lo sucedido'),
+        'Borrador',
+      );
+      api.setProfile('two', '999555666');
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextFormField>(contact).controller!.text,
+        '999555666',
+      );
+      expect(find.text('Borrador'), findsOneWidget);
+      api.setProfile(null, null);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextFormField>(contact).controller!.text, '');
+      api.setProfile('restored', '999777888');
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextFormField>(contact).controller!.text,
+        '999777888',
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      api.dispose();
+    },
+  );
   testWidgets(
     'GPS concedido y referencia de calle se envían con la ubicación',
     (tester) async {
@@ -105,6 +129,7 @@ void main() {
       await fillReport(tester);
       await tester.tap(find.text('Usar mi ubicación'));
       await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
       expect(find.textContaining('Precisión estimada: 5 m'), findsOneWidget);
       await tester.enterText(
         find.byKey(const Key('locationReference')),
@@ -153,15 +178,17 @@ void main() {
     await tester.tap(find.text('Usar mi ubicación'));
     await tester.pumpAndSettle();
     expect(
-      find.textContaining('Permiso de ubicación denegado'),
+      find.textContaining('No pudimos obtener tu ubicación'),
       findsOneWidget,
     );
     expect(find.byKey(const Key('latitude')), findsNothing);
     expect(find.byKey(const Key('longitude')), findsNothing);
-    await fillReport(tester);
     await tester.ensureVisible(find.byType(FlutterMap));
     await tester.tap(find.byType(FlutterMap));
+    await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+    await fillReport(tester);
     expect(find.text('Punto seleccionado en el mapa'), findsOneWidget);
     await tester.ensureVisible(find.text('Enviar reporte'));
     await tester.tap(find.text('Enviar reporte'));

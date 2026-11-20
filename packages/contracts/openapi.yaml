@@ -790,6 +790,43 @@ paths:
         '204': { description: Institución desactivada sin borrar historial }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /admin/site-references:
+    get:
+      operationId: listDocumentarySiteReferences
+      security: [{ bearerAuth: [] }]
+      summary: Referencias documentales separadas de las sedes operativas
+      description: Perfiles institucionales. Incluye fuentes, dirección candidata y coordenadas anulables. pending_location no se representa en el mapa; location_reviewed documenta una revisión, no acredita operación o jurisdicción.
+      responses:
+        '200':
+          description: Lista de referencias; latitude/longitude pueden ser null
+        '401': { description: Autenticación requerida }
+        '403': { description: Perfil no autorizado }
+  /admin/site-references/{id}:
+    patch:
+      operationId: reviewDocumentarySiteLocation
+      security: [{ bearerAuth: [] }]
+      summary: Registrar o retirar revisión de ubicación (solo superadministrador)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      description: No crea sedes operativas ni usuarios. Requiere coordenadas numéricas, method institutional_map, field_review o user_report, source HTTP(S) sin credenciales y notes. user_report identifica una corrección aportada por un usuario sin confirmación institucional independiente. Contrasta el punto con el distrito en la cartografía cargada. clear true retira el punto sin borrar el registro. Registra auditoría y responsable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clear: { type: boolean }
+                latitude: { type: number }
+                longitude: { type: number }
+                method: { type: string, enum: [institutional_map, field_review, user_report] }
+                source: { type: string, format: uri }
+                notes: { type: string, maxLength: 2000 }
+      responses:
+        '200': { description: Referencia actualizada }
+        '401': { description: Autenticación requerida }
+        '403': { description: Solo superadministrador }
+        '404': { description: Referencia no encontrada }
+        '422': { description: Datos o punto territorial inválidos }
   /territory/ayacucho/reference-boundaries:
     get:
       tags: [Territory]

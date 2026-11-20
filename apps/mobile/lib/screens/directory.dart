@@ -158,12 +158,11 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Contactos de emergencia',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const Text(
-                'Toca un teléfono para abrir el marcador y confirmar la llamada.',
+              const ScreenIntro(
+                title: 'Contactos de emergencia',
+                message:
+                    'Toca un teléfono para abrir el marcador y confirmar la llamada.',
+                icon: Icons.phone_in_talk_outlined,
               ),
               const SizedBox(height: 16),
               DistrictSelector(
@@ -229,9 +228,13 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     mode: LaunchMode.externalApplication,
                   );
                   if (!opened && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('No se pudo abrir la referencia oficial.'),
-                    ));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'No se pudo abrir la referencia oficial.',
+                        ),
+                      ),
+                    );
                   }
                 },
                 icon: const Icon(Icons.open_in_new),

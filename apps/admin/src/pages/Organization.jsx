@@ -5,6 +5,7 @@ import { queryString } from '../api/client';
 import { Empty, ErrorBoundaryContent, Field, Notice, Panel, Pill, useRemote } from '../ui';
 import { institutionLabels } from '../incidentLabels';
 import DistrictField from '../DistrictField';
+import SiteReferenceRegistry from '../SiteReferenceRegistry';
 const LocationPicker = lazy(() => import('../LocationPicker'));
 
 const territorialLabels = { pending: 'Distrito pendiente', resolved: 'Distrito confirmado por ubicación',
@@ -188,6 +189,7 @@ export default function Organization() {
     </ErrorBoundaryContent>
     {selected && <SiteUsers key={selected.id} site={selected} createdNow={createdId === selected.id} />}
     <Panel title="Agregar sede"><SiteForm institutions={institutions.data ?? []} onSaved={siteSaved} /></Panel>
+    <SiteReferenceRegistry />
     {session.user.roles.includes('SuperAdministrador') && <Panel title="Agregar institución"><form className="form-grid compact" onSubmit={createInstitution}>
       <Field label="Nombre de institución"><input required value={name} onChange={(event) => setName(event.target.value)} /></Field>
       <Field label="Tipo de institución"><select value={type} onChange={(event) => setType(event.target.value)}>{Object.entries(institutionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>

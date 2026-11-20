@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../core/api.dart';
+import '../core/app_theme.dart';
 import '../core/config.dart';
 import '../core/public_favorites.dart';
 import '../core/territory.dart';
@@ -45,6 +46,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
   final mapController = MapController();
   bool mapReady = false;
   String? boundaryError;
+  String? districtError;
   int boundaryGeneration = 0;
   int? categoryId;
   int? districtId;
@@ -151,10 +153,8 @@ class _MapViewScreenState extends State<MapViewScreen> {
           Polygon(
             points: rings.first,
             holePointsList: rings.skip(1).toList(),
-            color: selected ? const Color(0x200F766E) : const Color(0x0564748B),
-            borderColor: selected
-                ? const Color(0xFF0F766E)
-                : const Color(0xFF64748B),
+            color: selected ? const Color(0x18002FA7) : const Color(0x0564748B),
+            borderColor: selected ? AppColors.blue : const Color(0xFF64748B),
             borderStrokeWidth: selected ? 3 : 1,
             label: (feature['properties'] as Map)['name'] as String?,
           ),
@@ -190,14 +190,13 @@ class _MapViewScreenState extends State<MapViewScreen> {
     };
     try {
       if (!catalogsLoaded) {
-        final catalogs = await Future.wait([
-          widget.api.list('/catalog/categories'),
-          widget.api.list(metropolitanDistrictsPath),
-        ]);
+        final availableCategories = await widget.api.list(
+          '/catalog/categories',
+        );
         if (!mounted || current != generation) return;
-        categories = catalogs[0];
-        districts = catalogs[1];
+        categories = availableCategories;
         catalogsLoaded = true;
+        loadDistricts();
       }
       final path = Uri(
         path: '/public/incidents',
@@ -216,10 +215,29 @@ class _MapViewScreenState extends State<MapViewScreen> {
       });
     } catch (issue) {
       if (mounted && current == generation) {
-        setState(() => error = 'No se pudo cargar el mapa. $issue');
+        setState(() => error = 'No se pudo conectar con la PC. Revisa la conexión y pulsa Reintentar.');
       }
     } finally {
       if (mounted && current == generation) setState(() => loading = false);
+    }
+  }
+
+  Future<void> loadDistricts() async {
+    try {
+      final availableDistricts = await widget.api.list(
+        metropolitanDistrictsPath,
+      );
+      if (mounted)
+        setState(() {
+          districts = availableDistricts;
+          districtError = null;
+        });
+    } catch (_) {
+      if (mounted)
+        setState(
+          () => districtError =
+              'Filtro por distrito temporalmente no disponible.',
+        );
     }
   }
 
@@ -331,6 +349,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
         ),
         DropdownButtonFormField<int>(
           key: const Key('mapCategory'),
+          menuMaxHeight: 320,
           initialValue: categoryId,
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'Categoría'),
@@ -351,6 +370,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
         const SizedBox(height: 12),
         DropdownButtonFormField<int>(
           key: const Key('mapDistrict'),
+          menuMaxHeight: 320,
           initialValue: districtId,
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'Distrito'),
@@ -380,6 +400,11 @@ class _MapViewScreenState extends State<MapViewScreen> {
               label: Text(
                 dates == null ? 'Fechas (opcional)' : 'Cambiar fechas',
               ),
+            ),
+            OutlinedButton.icon(
+              onPressed: mapReady ? fitDistrict : null,
+              icon: const Icon(Icons.center_focus_strong),
+              label: const Text('Centrar zona'),
             ),
             if (dates != null)
               TextButton(
@@ -425,11 +450,28 @@ class _MapViewScreenState extends State<MapViewScreen> {
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: constraints.maxHeight * 0.55,
+              maxHeight: constraints.maxHeight * 0.60,
             ),
-            child: SingleChildScrollView(child: filters()),
+            child: SingleChildScrollView(physics: const AlwaysScrollableScrollPhysics(), child: ExpansionTile(
+              title: const Text('Filtrar reportes'),
+              subtitle: Text('${incidents.length} reportes · categoría, distrito y fechas'),
+              children: [filters()],
+            )),
           ),
           if (loading) const LinearProgressIndicator(),
+          if (districtError != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(child: Text(districtError!)),
+                  TextButton(
+                    onPressed: loadDistricts,
+                    child: const Text('Reintentar'),
+                  ),
+                ],
+              ),
+            ),
           if (error != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -483,29 +525,57 @@ class _MapViewScreenState extends State<MapViewScreen> {
                         child: Tooltip(
                           message: label,
                           child: Material(
-                            color: const Color(0xFF086C63),
+                            color: AppColors.blue,
                             shape: const CircleBorder(),
                             child: InkWell(
                               key: Key('mapMarker-${incident['id']}'),
                               customBorder: const CircleBorder(),
                               onTap: () => select(group),
-                              child: Center(
-                                child: group.length > 1
-                                    ? Text(
-                                        '${group.length}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Center(
+                                    child: Icon(
+                                      group.length > 1
+                                          ? Icons.layers_outlined
+                                          : categoryIcon(
+                                              codeFor(
+                                                incident['categoryId'] as int?,
+                                              ),
+                                            ),
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  if (group.length > 1)
+                                    Positioned(
+                                      right: -2,
+                                      top: -4,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
                                         ),
-                                      )
-                                    : Icon(
-                                        categoryIcon(
-                                          codeFor(
-                                            incident['categoryId'] as int?,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.ink,
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 2,
                                           ),
                                         ),
-                                        color: Colors.white,
+                                        child: Text(
+                                          '${group.length}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                          ),
+                                        ),
                                       ),
+                                    ),
+                                ],
                               ),
                             ),
                           ),

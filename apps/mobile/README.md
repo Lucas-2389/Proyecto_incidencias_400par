@@ -1,4 +1,14 @@
-# App Android ciudadana — 1.0.4+5
+# App Android ciudadana — 1.0.5+6
+
+## Interfaz actualizada
+
+El tema común en `lib/core/app_theme.dart` unifica el acento azul, fondos neutros, bordes de tarjetas, foco de formularios y estados de los controles. Inicio ofrece Crear reporte y acceso directo a Teléfonos de emergencia; las tarjetas abren Mapa, Contactos, Alertas y la presentación. El formulario explica Describe → Ubica → Foto opcional → Envía, y los marcadores agrupados del mapa muestran un símbolo de capas y el número de reportes. Centrar zona permite volver al distrito elegido.
+
+El reporte y la fotografía siguen disponibles sin cuenta. Perfil conserva el acceso opcional existente. Las referencias de sedes revisadas del panel institucional siguen bajo autenticación y no se incorporan a la API pública por esta mejora visual. Por eso el APK no incluye automáticamente el padrón municipal administrativo.
+
+La versión release usa la URL de producción centralizada existente. Para ver datos exclusivos de tu MySQL local, compilar con las opciones de desarrollo de esta guía. El build local se verifica con Flutter 3.38.3 / Dart 3.10.1 y JDK 17; `pub get` ajusta seis dependencias transitivas a las versiones fijadas por ese SDK, sin añadir librerías de aplicación. Usar el mismo SDK al reproducir la compilación.
+
+Validación del 19/11/2026: `flutter pub get` completado; `flutter analyze --no-pub` sin observaciones; `flutter test --no-pub` con 47 pruebas aprobadas y dos omitidas por requerir integración real. Incluye navegación de invitado, contactos, formularios de reporte, foto y pendientes, mapa público, perfil y triaje. La prueba nueva comprueba la navegación directa a contactos en un ancho de 360 px. Las comprobaciones no sustituyen la prueba manual de cámara/GPS en un teléfono. ADB no detectó dispositivos al preparar esta actualización.
 
 ## Uso actual
 
@@ -65,3 +75,11 @@ Permisos Android existentes: Internet, red y ubicación. Cámara/galería se abr
 - [Antecedentes y resultados por versión](../../docs/04-historial/EVOLUCION_MOVIL.md).
 
 Los artefactos `citizen-profile-and-session` describen la edición de cuenta y continuidad de sesión de esta entrega.
+# Consulta privada de fotografías
+
+Al iniciar sesión, el icono de fotografías de la barra superior abre «Mis reportes».
+Los reportes enviados sin cuenta no se asignan retroactivamente a una cuenta.
+Las fotos del propio reporte pueden consultarse durante cinco días desde su subida.
+La API comprueba este plazo también al descargar la imagen y envía `Cache-Control: private, no-store`.
+Después del plazo la institución conserva el archivo como evidencia; no hay borrado automático.
+El mapa público no expone fotografías privadas.
